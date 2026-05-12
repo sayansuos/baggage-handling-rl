@@ -97,11 +97,11 @@ class EnvironmentManager:
 
     def generate_moving_obstacles(
         self,
-        nb_targets=2,
-        radius_min=Agent.RADIUS,
-        radius_max=2 * Agent.RADIUS,
-        min_dist=MARGIN,
-        mode="random",
+        nb_targets: int = 2,
+        radius_min: float = Agent.RADIUS,
+        radius_max: float = 2 * Agent.RADIUS,
+        min_dist: float = MARGIN,
+        mode: str = "random",
     ):
         """
         Generate moving obstacles in the environment.
@@ -137,26 +137,26 @@ class EnvironmentManager:
         )
         top_wall.current_position = (
             self.env_width / 2,
-            self.env_height - self.THICKNESS / 2,
+            self.env_height,
         )
 
         right_wall = StaticEntity(
             width=self.THICKNESS, height=self.env_height, num=len(self.static_obstacles)
         )
         right_wall.current_position = (
-            self.env_width - self.THICKNESS / 2,
+            self.env_width,
             self.env_height / 2,
         )
 
         bot_wall = StaticEntity(
             width=self.env_width, height=self.THICKNESS, num=len(self.static_obstacles)
         )
-        bot_wall.current_position = (self.env_width / 2, self.THICKNESS / 2)
+        bot_wall.current_position = (self.env_width / 2, 0)
 
         left_wall = StaticEntity(
             width=self.THICKNESS, height=self.env_height, num=len(self.static_obstacles)
         )
-        left_wall.current_position = (self.THICKNESS / 2, self.env_height / 2)
+        left_wall.current_position = (0, self.env_height / 2)
 
         self.static_obstacles.extend([top_wall, right_wall, bot_wall, left_wall])
 
@@ -258,8 +258,8 @@ class EnvironmentManager:
         i = 0
         while not is_free and i < self.MAX_ATTEMPTS:
             pos = (
-                np.random.uniform(0, self.env_width),
-                np.random.uniform(0, self.env_height),
+                np.random.randint(self.THICKNESS, self.env_width - self.THICKNESS),
+                np.random.randint(self.THICKNESS, self.env_height - self.THICKNESS),
             )
             is_free = self._is_free(entity, pos, min_dist, for_target)
             i += 1

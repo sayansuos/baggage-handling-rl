@@ -137,6 +137,7 @@ class Environment(gym.Env):
         Default render method for the global environment.
         """
         self.ax.clear()
+        self.ax.set_aspect("equal", adjustable="box")
         colors = plt.cm.get_cmap("tab10", self.nb_agents)
 
         for entity in self.static_obstacles:

@@ -61,7 +61,7 @@ class MovingEntity(Entity, Thread):
         self,
         other: Entity,
         new_pos: np.array,
-        margin: float = 0.0,
+        min_dist: float,
     ):
         """
         Check collision between this moving entity and another entity.
@@ -69,27 +69,27 @@ class MovingEntity(Entity, Thread):
         This method dispatches the collision logic to the appropriate
         shape-specific implementation of the other entity.
         """
-        return other._collide_circle(self, other.current_position, new_pos, margin)
+        return other._collide_circle(self, other.current_position, new_pos, min_dist)
 
     def _collide_circle(
         self,
         circle: MovingEntity,
         pos_self: np.array,
         pos_other: np.array,
-        margin: float = 0.0,
+        min_dist: float,
     ):
         """
         Check collision between this moving entity and a circular entity.
         """
         dist = np.linalg.norm(np.array(pos_self) - np.array(pos_other))
-        return dist < self.radius + circle.radius + margin
+        return dist < self.radius + circle.radius + min_dist
 
     def _collide_rectangle(
         self,
         rect: Entity,
         pos_self: np.array,
         pos_other: np.array,
-        margin: float = 0.0,
+        min_dist: float,
     ):
         """
         Check collision between this moving entity and a rectangular entity.
@@ -102,7 +102,7 @@ class MovingEntity(Entity, Thread):
 
         dist = np.linalg.norm([x - closest_x, y - closest_y])
 
-        return dist < self.radius + margin
+        return dist < self.radius + min_dist
 
     def get_distance_from_target(self) -> float:
         """
@@ -125,6 +125,7 @@ class MovingEntity(Entity, Thread):
             self.radius,
             facecolor=color,
             edgecolor=color,
+            linewidth=0,
         )
 
         ax.add_patch(circle)

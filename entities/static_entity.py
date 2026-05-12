@@ -61,7 +61,7 @@ class StaticEntity(Entity):
         self,
         other: Entity,
         new_pos: np.array,
-        margin: float = 0.0,
+        min_dist: float,
     ):
         """
         Check collision between this static entity and another entity.
@@ -69,14 +69,14 @@ class StaticEntity(Entity):
         This method dispatches the collision logic to the appropriate
         shape-specific implementation of the other entity.
         """
-        return other._collide_rectangle(self, other.current_position, new_pos, margin)
+        return other._collide_rectangle(self, other.current_position, new_pos, min_dist)
 
     def _collide_circle(
         self,
         circle: Entity,
         pos_self: np.array,
         pos_other: np.array,
-        margin: float = 0.0,
+        min_dist: float,
     ):
         """
         Check collision between this static entity and a circular entity.
@@ -86,14 +86,14 @@ class StaticEntity(Entity):
         closest_x = np.clip(x, x_min, x_max)
         closest_y = np.clip(y, y_min, y_max)
         dist = np.linalg.norm([x - closest_x, y - closest_y])
-        return dist < circle.radius + margin
+        return dist < circle.radius + min_dist
 
     def _collide_rectangle(
         self,
         rect: StaticEntity,
         pos_self: np.array,
         pos_other: np.array,
-        margin: float = 0.0,
+        min_dist: float,
     ):
         """
         Check collision between this static entity and a rectangular entity.
@@ -101,10 +101,10 @@ class StaticEntity(Entity):
         x1_min, y1_min, x1_max, y1_max = self.bounds_at(pos_self)
         x2_min, y2_min, x2_max, y2_max = rect.bounds_at(pos_other)
         return not (
-            x1_max + margin < x2_min
-            or x1_min - margin > x2_max
-            or y1_max + margin < y2_min
-            or y1_min - margin > y2_max
+            x1_max + min_dist < x2_min
+            or x1_min - min_dist > x2_max
+            or y1_max + min_dist < y2_min
+            or y1_min - min_dist > y2_max
         )
 
     def render(self, ax, color="black"):
@@ -118,6 +118,7 @@ class StaticEntity(Entity):
             x_max - x_min,
             y_max - y_min,
             facecolor=color,
+            linewidth=0,
         )
 
         ax.add_patch(rect)
