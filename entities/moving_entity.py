@@ -71,6 +71,9 @@ class MovingEntity(Entity, Thread):
         """
         Move the entity one step along its current path.
         """
+        if len(self.target_positions) > 1:
+            if self.current_position == self.target_positions[0]:
+                self.target_positions.pop(0)
         if len(self.path) < 2:
             next_pos = None
         else:
@@ -163,7 +166,7 @@ class MovingEntity(Entity, Thread):
                     facecolor=color,
                     edgecolor=color,
                     linewidth=0,
-                    alpha=0.2,
+                    alpha=0.1,
                 )
                 ax.add_patch(target)
 

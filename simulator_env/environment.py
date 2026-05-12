@@ -143,9 +143,7 @@ class Environment(gym.Env):
         pass
 
     def step(self, action=None):
-
         coll = self.obstacles_update()
-
         obs = None
         reward = None
         done = False
@@ -203,7 +201,7 @@ class Environment(gym.Env):
         self.ax.set_ylim(0, self.env_height)
         self.ax.legend(loc="upper left")
 
-        plt.pause(0.01)
+        plt.pause(0.05)
 
     @property
     def grid(self):
