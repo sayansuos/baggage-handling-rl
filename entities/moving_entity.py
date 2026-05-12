@@ -1,7 +1,8 @@
 import numpy as np
-from entities.entity import Entity
 from threading import Thread
 from matplotlib.patches import Circle
+from entities.entity import Entity
+from motion.astar import AStar
 
 
 class MovingEntity(Entity, Thread):
@@ -28,6 +29,7 @@ class MovingEntity(Entity, Thread):
         Linear velocity of the entity.
     omega : float
         Angular velocity of the entity.
+    paths : list[tuple]
     """
 
     def __init__(self, radius: float, v: float = 0, omega: float = 0, num: int = None):
@@ -41,6 +43,7 @@ class MovingEntity(Entity, Thread):
         self.radius = radius
         self.v = v
         self.omega = omega
+        self.paths = []
 
     @property
     def bounds(self) -> tuple[float, float, float, float]:
@@ -114,7 +117,11 @@ class MovingEntity(Entity, Thread):
             np.array(self.current_position) - np.array(self.target_positions[0])
         )
 
-    def render(self, ax, color="black"):
+    def render(
+        self,
+        ax,
+        color="black",
+    ):
         """
         Default render method for moving entities.
         """
@@ -127,9 +134,26 @@ class MovingEntity(Entity, Thread):
             edgecolor=color,
             linewidth=0,
         )
-
+        outline = Circle(
+            (x, y),
+            self.radius,
+            fill=False,
+            edgecolor="black",
+            linewidth=1,
+            linestyle="--",
+        )
         ax.add_patch(circle)
+        ax.add_patch(outline)
 
         if self.target_positions:
-            tx, ty = self.target_positions[0]
-            ax.scatter(tx, ty, color=color, marker="x")
+            for pos in self.target_positions:
+                tx, ty = pos
+                ax.scatter(tx, ty, color=color, marker="x")
+
+        if hasattr(self, "paths"):
+            for path in self.paths:
+                if len(path) < 2:
+                    continue
+                ys = [p[0] for p in path]
+                xs = [p[1] for p in path]
+                ax.plot(xs, ys, "--", color=color, alpha=0.2, linewidth=1)

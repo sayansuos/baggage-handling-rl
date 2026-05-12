@@ -3,6 +3,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from gymnasium import spaces
 from entities.agent import Agent
+from motion.astar import AStar
+from simulator_env.gridmap import GridMap
 from simulator_env.environment_manager import EnvironmentManager
 
 
@@ -53,6 +55,8 @@ class Environment(gym.Env):
         self.static_obstacles = env_manager.generate_static_obstacles()
         self.moving_obstacles = env_manager.generate_moving_obstacles()
         self.agents = env_manager.generate_agents()
+
+        self.grid_map = GridMap(self)
 
         # ---------------------------------------------------------------
         # Observation Space
@@ -132,6 +136,28 @@ class Environment(gym.Env):
     def step(self, action):
         pass
 
+    def _to_grid(self, pos):
+        return self.grid_map.world_to_grid(pos)
+
+    def compute_astar_paths(self):
+        """
+        Return the paths found by A* algorithm for each moving obstacle.
+        """
+
+        pathfinder = AStar(self.grid)
+
+        for entity in self.moving_obstacles:
+            entity.paths = []
+            if not entity.target_positions:
+                continue
+            start = entity.start_position
+            for goal in entity.target_positions:
+                start_grid = self._to_grid(start)
+                goal_grid = self._to_grid(goal)
+                path = pathfinder.find_path(start_grid, goal_grid)
+                entity.paths.append(path)
+                start = goal
+
     def render(self):
         """
         Default render method for the global environment.
@@ -139,6 +165,8 @@ class Environment(gym.Env):
         self.ax.clear()
         self.ax.set_aspect("equal", adjustable="box")
         colors = plt.cm.get_cmap("tab10", self.nb_agents)
+
+        self.compute_astar_paths()
 
         for entity in self.static_obstacles:
             entity.render(self.ax)
@@ -157,3 +185,7 @@ class Environment(gym.Env):
         self.ax.legend(loc="upper left")
 
         plt.pause(10)
+
+    @property
+    def grid(self):
+        return self.grid_map.grid
