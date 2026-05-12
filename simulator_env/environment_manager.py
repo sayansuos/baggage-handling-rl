@@ -99,7 +99,7 @@ class EnvironmentManager:
         self,
         nb_targets: int = 2,
         radius_min: float = Agent.RADIUS,
-        radius_max: float = 2 * Agent.RADIUS,
+        radius_max: float = Agent.RADIUS,
         min_dist: float = MARGIN,
         mode: str = "random",
     ):
@@ -248,11 +248,7 @@ class EnvironmentManager:
 
     def _set_random_position(self, entity: Entity, min_dist: float, for_target=False):
         """
-        Randomly generate agents.
-
-        Each agent receives:
-        - a collision-free initial position
-        - multiple target positions
+        Randomly generate positions.
         """
         is_free = False
         i = 0
@@ -265,7 +261,7 @@ class EnvironmentManager:
             i += 1
         return pos
 
-    def _is_free(self, new: Entity, pos: np.array, min_dist: float, for_target: bool):
+    def _is_free(self, new: Entity, pos: np.ndarray, min_dist: float, for_target: bool):
         """
         Check whether an entity position is collision-free.
         """
@@ -281,5 +277,4 @@ class EnvironmentManager:
                 continue
             if new.collides_with(entity, pos, min_dist):
                 return False
-
         return True

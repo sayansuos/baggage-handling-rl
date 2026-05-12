@@ -52,6 +52,9 @@ class Agent(MovingEntity):
         self.map_size = self.MAP_SIZE
         self.theta = np.random.uniform(-np.pi, np.pi)
 
+    def __str__(self):
+        return f"Agent_{self.num}"
+
     def get_vision_field(
         self,
         width_min: float,

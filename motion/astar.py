@@ -28,11 +28,27 @@ class AStar:
         Occupancy grid used for navigation.
     """
 
-    def __init__(self, grid: np.ndarray):
+    def __init__(self, grid: np.ndarray, radius: int = None):
         """
         Builder
         """
         self.grid = grid
+        if radius:
+            self.inflate_obstacles(radius)
+
+    def inflate_obstacles(self, radius: int):
+        """ """
+        inflated = self.grid.copy()
+        rows, cols = inflated.shape
+        obstacle_cells = np.argwhere(self.grid == 1)
+        for r, c in obstacle_cells:
+            for dr in range(-radius, radius + 1):
+                for dc in range(-radius, radius + 1):
+                    nr = r + dr
+                    nc = c + dc
+                    if 0 <= nr < rows and 0 <= nc < cols:
+                        inflated[nr, nc] = 1
+        self.grid = inflated
 
     def get_valid_neighbors(self, pos: tuple) -> list[tuple]:
         """

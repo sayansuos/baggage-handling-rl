@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from gymnasium import spaces
 from entities.agent import Agent
+from entities.entity import Entity
 from motion.astar import AStar
 from simulator_env.gridmap import GridMap
 from simulator_env.environment_manager import EnvironmentManager
@@ -57,6 +58,7 @@ class Environment(gym.Env):
         self.agents = env_manager.generate_agents()
 
         self.grid_map = GridMap(self)
+        self.compute_astar_paths()
 
         # ---------------------------------------------------------------
         # Observation Space
@@ -94,6 +96,13 @@ class Environment(gym.Env):
             high=np.array([self.ALLOWED_V_MAX, self.ALLOWED_OMEGA_MAX]),
             dtype=np.float64,
         )
+
+    def obstacles_update(self):
+        for obs in self.moving_obstacles:
+            next_pos = obs._step()
+            if next_pos:
+                self.is_free(obs, next_pos, 0)
+                obs.current_position = next_pos
 
     def _get_obs(self, agent: Agent) -> dict:
         """
@@ -133,21 +142,32 @@ class Environment(gym.Env):
     def reset(self, seed=None, options=None):
         pass
 
-    def step(self, action):
-        pass
+    def step(self, action=None):
+
+        coll = self.obstacles_update()
+
+        obs = None
+        reward = None
+        done = False
+        info = {}
+
+        return obs, reward, done, info
 
     def _to_grid(self, pos):
         return self.grid_map.world_to_grid(pos)
+
+    def _from_grid(self, pos):
+        return self.grid_map.grid_to_world(pos)
 
     def compute_astar_paths(self):
         """
         Return the paths found by A* algorithm for each moving obstacle.
         """
 
-        pathfinder = AStar(self.grid)
+        pathfinder = AStar(self.grid, int(Agent.RADIUS) + 1)
 
         for entity in self.moving_obstacles:
-            entity.paths = []
+            # entity.path = []
             if not entity.target_positions:
                 continue
             start = entity.start_position
@@ -155,7 +175,8 @@ class Environment(gym.Env):
                 start_grid = self._to_grid(start)
                 goal_grid = self._to_grid(goal)
                 path = pathfinder.find_path(start_grid, goal_grid)
-                entity.paths.append(path)
+                path = [self._from_grid(pos) for pos in path]
+                entity.path.extend(path)
                 start = goal
 
     def render(self):
@@ -165,8 +186,6 @@ class Environment(gym.Env):
         self.ax.clear()
         self.ax.set_aspect("equal", adjustable="box")
         colors = plt.cm.get_cmap("tab10", self.nb_agents)
-
-        self.compute_astar_paths()
 
         for entity in self.static_obstacles:
             entity.render(self.ax)
@@ -184,8 +203,26 @@ class Environment(gym.Env):
         self.ax.set_ylim(0, self.env_height)
         self.ax.legend(loc="upper left")
 
-        plt.pause(10)
+        plt.pause(0.01)
 
     @property
     def grid(self):
         return self.grid_map.grid
+
+    def is_free(
+        self,
+        entity: Entity,
+        pos: np.ndarray,
+        min_dist: float,
+    ):
+        """
+        Check whether a position is collision-free.
+        """
+        for other in self.static_obstacles + self.moving_obstacles + self.agents:
+            if other is entity:
+                continue
+            if other.current_position is None:
+                continue
+            if entity.collides_with(other, pos, min_dist):
+                return False
+        return True

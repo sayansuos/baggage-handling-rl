@@ -79,6 +79,6 @@ class GridMap:
         Convert grid coordinates back to world coordinates.
         """
         row, col = cell
-        x = (col + 0.5) * self.resolution
-        y = (row + 0.5) * self.resolution
+        x = (col) * self.resolution
+        y = (row) * self.resolution
         return x, y

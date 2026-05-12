@@ -30,6 +30,9 @@ class StaticEntity(Entity):
         self.width = width
         self.height = height
 
+    def __str__(self):
+        return f"StaticEntity_{self.num}"
+
     @property
     def bounds(self) -> tuple[float, float, float, float]:
         """

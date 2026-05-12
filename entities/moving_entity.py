@@ -30,6 +30,7 @@ class MovingEntity(Entity, Thread):
     omega : float
         Angular velocity of the entity.
     paths : list[tuple]
+
     """
 
     def __init__(self, radius: float, v: float = 0, omega: float = 0, num: int = None):
@@ -38,12 +39,18 @@ class MovingEntity(Entity, Thread):
         """
 
         super().__init__(num)
+
         self.start_position = None
         self.target_positions = []
+
         self.radius = radius
         self.v = v
         self.omega = omega
-        self.paths = []
+
+        self.path = []
+
+    def __str__(self):
+        return f"MovingEntity_{self.num}"
 
     @property
     def bounds(self) -> tuple[float, float, float, float]:
@@ -59,6 +66,17 @@ class MovingEntity(Entity, Thread):
             x + self.radius,
             y + self.radius,
         )
+
+    def _step(self) -> tuple(int, int):
+        """
+        Move the entity one step along its current path.
+        """
+        if len(self.path) < 2:
+            next_pos = None
+        else:
+            next_pos = self.path[1]
+            self.path = self.path[1:]
+        return next_pos
 
     def collides_with(
         self,
@@ -134,26 +152,23 @@ class MovingEntity(Entity, Thread):
             edgecolor=color,
             linewidth=0,
         )
-        outline = Circle(
-            (x, y),
-            self.radius,
-            fill=False,
-            edgecolor="black",
-            linewidth=1,
-            linestyle="--",
-        )
         ax.add_patch(circle)
-        ax.add_patch(outline)
 
         if self.target_positions:
             for pos in self.target_positions:
                 tx, ty = pos
-                ax.scatter(tx, ty, color=color, marker="x")
+                target = Circle(
+                    (tx, ty),
+                    0.5,
+                    facecolor=color,
+                    edgecolor=color,
+                    linewidth=0,
+                    alpha=0.2,
+                )
+                ax.add_patch(target)
 
-        if hasattr(self, "paths"):
-            for path in self.paths:
-                if len(path) < 2:
-                    continue
-                ys = [p[0] for p in path]
-                xs = [p[1] for p in path]
+        if hasattr(self, "path"):
+            if len(self.path) >= 2:
+                xs = [p[0] for p in self.path]
+                ys = [p[1] for p in self.path]
                 ax.plot(xs, ys, "--", color=color, alpha=0.2, linewidth=1)
