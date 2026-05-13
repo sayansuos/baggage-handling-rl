@@ -29,8 +29,10 @@ class MovingEntity(Entity, Thread):
         Linear velocity of the entity.
     omega : float
         Angular velocity of the entity.
-    paths : list[tuple]
-
+    path : list[tuple]
+        Path of the entity.
+    path_index : int
+        Position index in the path of the entity.
     """
 
     def __init__(self, radius: float, v: float = 0, omega: float = 0, num: int = None):
@@ -48,6 +50,7 @@ class MovingEntity(Entity, Thread):
         self.omega = omega
 
         self.path = []
+        self.path_index = 0
 
     def __str__(self):
         return f"MovingEntity_{self.num}"
@@ -67,18 +70,27 @@ class MovingEntity(Entity, Thread):
             y + self.radius,
         )
 
+    @property
+    def positions(self) -> list[tuple]:
+        """
+        Return all the main positions of the circular entity.
+        """
+        return [self.start_position] + self.target_positions
+
     def _step(self) -> tuple(int, int):
         """
-        Move the entity one step along its current path.
+        Move the entity one step along its current path and reset it.
         """
-        if len(self.target_positions) > 1:
-            if self.current_position == self.target_positions[0]:
-                self.target_positions.pop(0)
-        if len(self.path) < 2:
-            next_pos = None
+        if self.path_index == len(self.path) - 1:
+            next_pos = self.current_position
+            self.path = self.path[::-1]
+            self.path_index = 0
+            all_positions = self.positions[::-1]
+            self.start_position = all_positions[0]
+            self.target_positions = all_positions[1:]
         else:
-            next_pos = self.path[1]
-            self.path = self.path[1:]
+            next_pos = self.path[self.path_index]
+            self.path_index += 1
         return next_pos
 
     def collides_with(
@@ -172,6 +184,6 @@ class MovingEntity(Entity, Thread):
 
         if hasattr(self, "path"):
             if len(self.path) >= 2:
-                xs = [p[0] for p in self.path]
-                ys = [p[1] for p in self.path]
+                xs = [p[0] for p in self.path[self.path_index :]]
+                ys = [p[1] for p in self.path[self.path_index :]]
                 ax.plot(xs, ys, "--", color=color, alpha=0.2, linewidth=1)

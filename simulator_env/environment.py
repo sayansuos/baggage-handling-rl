@@ -97,13 +97,6 @@ class Environment(gym.Env):
             dtype=np.float64,
         )
 
-    def obstacles_update(self):
-        for obs in self.moving_obstacles:
-            next_pos = obs._step()
-            if next_pos:
-                self.is_free(obs, next_pos, 0)
-                obs.current_position = next_pos
-
     def _get_obs(self, agent: Agent) -> dict:
         """
         Compute the decentralized observation of an agent.
@@ -129,53 +122,17 @@ class Environment(gym.Env):
             ),
         }
 
-    def _get_info_agents(self):
-        pass
-
-    def get_info_obstacles(self):
-        pass
-
-    def get_all_positions(self):
-
-        return [object.current_position for object in self.objects]
-
     def reset(self, seed=None, options=None):
         pass
 
     def step(self, action=None):
-        coll = self.obstacles_update()
+        self._obstacles_update()
         obs = None
         reward = None
         done = False
         info = {}
 
         return obs, reward, done, info
-
-    def _to_grid(self, pos):
-        return self.grid_map.world_to_grid(pos)
-
-    def _from_grid(self, pos):
-        return self.grid_map.grid_to_world(pos)
-
-    def compute_astar_paths(self):
-        """
-        Return the paths found by A* algorithm for each moving obstacle.
-        """
-
-        pathfinder = AStar(self.grid, int(Agent.RADIUS) + 1)
-
-        for entity in self.moving_obstacles:
-            # entity.path = []
-            if not entity.target_positions:
-                continue
-            start = entity.start_position
-            for goal in entity.target_positions:
-                start_grid = self._to_grid(start)
-                goal_grid = self._to_grid(goal)
-                path = pathfinder.find_path(start_grid, goal_grid)
-                path = [self._from_grid(pos) for pos in path]
-                entity.path.extend(path)
-                start = goal
 
     def render(self):
         """
@@ -203,9 +160,52 @@ class Environment(gym.Env):
 
         plt.pause(0.05)
 
+    # ---------------------------------------------------------------
+    # Methods needed for updates
+    # ---------------------------------------------------------------
+
     @property
     def grid(self):
         return self.grid_map.grid
+
+    def _to_grid(self, pos):
+        """
+        Convert world coordinates to grid coordinates.
+        """
+        return self.grid_map.world_to_grid(pos)
+
+    def _from_grid(self, pos):
+        """
+        Convert grid coordinates back to world coordinates.
+        """
+        return self.grid_map.grid_to_world(pos)
+
+    def compute_astar_paths(self):
+        """
+        Return the paths found by A* algorithm for each moving obstacle.
+        """
+
+        pathfinder = AStar(self.grid, int(Agent.RADIUS) + 1)
+
+        for entity in self.moving_obstacles:
+            # entity.path = []
+            if not entity.target_positions:
+                continue
+            start = entity.start_position
+            for goal in entity.target_positions:
+                start_grid = self._to_grid(start)
+                goal_grid = self._to_grid(goal)
+                path = pathfinder.find_path(start_grid, goal_grid)
+                path = [self._from_grid(pos) for pos in path]
+                entity.path.extend(path)
+                start = goal
+
+    def _obstacles_update(self):
+        for obs in self.moving_obstacles:
+            next_pos = obs._step()
+            if next_pos:
+                self.is_free(obs, next_pos, 0)
+                obs.current_position = next_pos
 
     def is_free(
         self,
