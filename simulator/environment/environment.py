@@ -2,11 +2,11 @@ import gymnasium as gym
 import numpy as np
 import matplotlib.pyplot as plt
 from gymnasium import spaces
-from entities.agent import Agent
-from entities.entity import Entity
-from motion.astar import AStar
-from simulator_env.gridmap import GridMap
-from simulator_env.environment_manager import EnvironmentManager
+from simulator.entities.agent import Agent
+from simulator.entities.entity import Entity
+from simulator.motion.astar import AStar
+from simulator.environment.gridmap import GridMap
+from simulator.environment.environment_manager import EnvironmentManager
 
 
 class Environment(gym.Env):
@@ -126,16 +126,11 @@ class Environment(gym.Env):
         pass
 
     def step(self, action=None):
-        self._obstacles_update()
-        # print("Agent:", self.agents[0].current_position)
-        # print("Obstacle:", self.static_obstacles[-1].bounds)
-        # print(self.grid_map.current_grid)
-        # print(self.grid_map.get_local_grid(self.agents[0]))
+        self._update_obstacles()
         obs = None
         reward = None
         done = False
         info = {}
-
         return obs, reward, done, info
 
     def render(self):
@@ -204,12 +199,19 @@ class Environment(gym.Env):
                 entity.path.extend(path)
                 start = goal
 
-    def _obstacles_update(self):
+    def _update_obstacles(self):
         for obs in self.moving_obstacles:
             next_pos = obs._step()
             if next_pos:
                 self.is_free(obs, next_pos, 0)
                 obs.current_position = next_pos
+
+    def get_local_grids(self):
+        local_grids = []
+        for agent in self.agents:
+            grid = self.grid_map.get_local_grid(agent)
+            local_grids.append(grid)
+        return local_grids
 
     def is_free(
         self,

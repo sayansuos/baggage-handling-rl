@@ -1,6 +1,6 @@
 import numpy as np
-from entities.moving_entity import MovingEntity
 from matplotlib.patches import Rectangle
+from simulator.entities.moving_entity import MovingEntity
 
 
 class Agent(MovingEntity):

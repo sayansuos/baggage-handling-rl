@@ -1,35 +1,22 @@
 import matplotlib.pyplot as plt
-import imageio.v2 as imageio
-import numpy as np
-from simulator_env.environment import Environment
+from simulator.environment.environment import Environment
+from simulator.utils import *
 
 env = Environment(
-    nb_agents=3,
-    nb_static_obstacles=0,
+    nb_agents=1,
+    nb_static_obstacles=10,
     nb_moving_obstacles=5,
-    env_width=60,
-    env_height=80,
+    env_width=100,
+    env_height=60,
 )
 
+save_grid(env.grid_map.current_grid, "grid.png")
+save_grid(env.get_local_grids()[0], "grid_local.png")
+save_animation(env, "anim.mp4")
+
 plt.ion()
-for _ in range(100):
+for _ in range(1):
     env.step()
     env.render()
-    plt.pause(0.01)
+    plt.pause(5)
 plt.ioff()
-
-
-# ---------------------------------------------------------------
-# To save a short video of the simulation
-# ---------------------------------------------------------------
-
-# writer = imageio.get_writer("anim.mp4", fps=30)
-
-# for _ in range(300):
-#     env.step()
-#     env.render()
-#     env.fig.canvas.draw()
-#     frame = np.asarray(env.fig.canvas.renderer.buffer_rgba())
-#     writer.append_data(frame)
-
-# writer.close()

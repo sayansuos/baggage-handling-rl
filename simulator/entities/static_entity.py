@@ -1,6 +1,6 @@
 import numpy as np
-from entities.entity import Entity
 from matplotlib.patches import Rectangle
+from simulator.entities.entity import Entity
 
 
 class StaticEntity(Entity):

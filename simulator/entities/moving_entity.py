@@ -1,8 +1,7 @@
 import numpy as np
 from threading import Thread
 from matplotlib.patches import Circle
-from entities.entity import Entity
-from motion.astar import AStar
+from simulator.entities.entity import Entity
 
 
 class MovingEntity(Entity, Thread):

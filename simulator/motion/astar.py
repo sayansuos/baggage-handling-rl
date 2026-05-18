@@ -1,6 +1,6 @@
 import numpy as np
 import heapq
-from entities.node import Node
+from simulator.entities.node import Node
 
 
 def get_distance(pos1: tuple, pos2: tuple) -> float:

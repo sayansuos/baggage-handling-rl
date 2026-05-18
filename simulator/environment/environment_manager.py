@@ -1,8 +1,8 @@
 import numpy as np
-from entities.agent import Agent
-from entities.entity import Entity
-from entities.static_entity import StaticEntity
-from entities.moving_entity import MovingEntity
+from simulator.entities.agent import Agent
+from simulator.entities.entity import Entity
+from simulator.entities.static_entity import StaticEntity
+from simulator.entities.moving_entity import MovingEntity
 
 
 class EnvironmentManager:
@@ -38,7 +38,7 @@ class EnvironmentManager:
 
     WIDTH_MIN, WIDTH_MAX = 5, 20
     HEIGHT_MIN, HEIGHT_MAX = 5, 20
-    THICKNESS = 2
+    THICKNESS = 1
     MARGIN = 2 * Agent.RADIUS
     MAX_ATTEMPTS = 100
 

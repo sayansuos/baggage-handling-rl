@@ -1,5 +1,5 @@
 import numpy as np
-from entities.agent import Agent
+from simulator.entities.agent import Agent
 
 
 class GridMap:
@@ -17,9 +17,6 @@ class GridMap:
     ----------
     env : Environment
         The simulation environment containing obstacles and dimensions.
-    resolution : int
-        Size of one grid cell in world units.
-        Higher resolution → finer grid but higher computation cost.
     _grid : np.ndarray
         Internal occupancy grid representation.
     """
@@ -29,7 +26,7 @@ class GridMap:
         Builder
         """
         self.env = env
-        self.resolution = resolution
+        self._rows, self._columns = self.env.env_height, self.env.env_width
         self._grid = self._build_grid()
 
     @property
@@ -52,24 +49,26 @@ class GridMap:
         their world-space bounding boxes into grid indices.
         """
 
-        rows = int(self.env.env_height / self.resolution)
-        cols = int(self.env.env_width / self.resolution)
-
-        grid = np.zeros((rows, cols), dtype=np.uint8)
+        grid = np.zeros((self._rows, self._columns), dtype=np.uint8)
 
         for obstacle in self.env.static_obstacles:
 
             x_min, y_min, x_max, y_max = obstacle.bounds
+            x_min = np.clip(x_min, 0, self._columns - 1)
+            x_max = np.clip(x_max, 0, self._columns - 1)
+            y_min = np.clip(y_min, 0, self._rows - 1)
 
-            r_min, c_min = self.world_to_grid((x_min, y_min))
-            r_max, c_max = self.world_to_grid((x_max, y_max))
+            r1, c1 = self.world_to_grid((x_min, y_min))
+            r2, c2 = self.world_to_grid((x_max, y_max))
 
-            r_min = max(0, r_min)
-            c_min = max(0, c_min)
-            r_max = min(rows - 1, r_max)
-            c_max = min(cols - 1, c_max)
+            r_min, r_max = sorted([r1, r2])
+            c_min, c_max = sorted([c1, c2])
 
-            grid[r_min : r_max + 1, c_min : c_max + 1] = 1
+            r_min, c_min = self._safe_cell(r_min, c_min)
+            r_max, c_max = self._safe_cell(r_max, c_max)
+
+            if r_min <= r_max and c_min <= c_max:
+                grid[r_min : r_max + 1, c_min : c_max + 1] = 1
 
         return grid
 
@@ -80,38 +79,64 @@ class GridMap:
         """
 
         grid = self._grid.copy()
+
         for entity in self.env.moving_obstacles + self.env.agents:
+
             r, c = self.world_to_grid(entity.current_position)
+
             pad = int(round(entity.radius))
-            grid[r - pad : r + pad + 1, c - pad : c + pad + 1] = 1
+            r1 = max(0, r - pad)
+            r2 = min(self._rows - 1, r + pad)
+            c1 = max(0, c - pad)
+            c2 = min(self._columns - 1, c + pad)
+
+            grid[r1 : r2 + 1, c1 : c2 + 1] = 1
 
         return grid
 
-    def get_local_grid(self, agent: Agent) -> np.ndarray:
+    def get_local_grid(self, agent: Agent, size: int = Agent.LENGTH_VIEW) -> np.ndarray:
         """
         Return the local occupancy grid perceived by the agent.
         """
-        size = Agent.LENGTH_VIEW
-        local = np.ones((size, size), dtype=self.current_grid.dtype)
+        if not size % 2 == 1:
+            return ValueError("The size must be impair.")
 
-        x_min, y_min, x_max, y_max = agent.get_vision_field(
-            0,
-            self.env.env_width,
-            0,
-            self.env.env_height,
-        )
-        r_min, c_min = self.world_to_grid((x_min, y_min))
-        r_max, c_max = self.world_to_grid((x_max, y_max))
+        grid = self.current_grid.copy()
+        half = size // 2
 
-        return self.current_grid[r_min : r_max + 1, c_min : c_max + 1]
+        cx, cy = agent.current_position
+        r, c = self.world_to_grid((cx, cy))
+
+        r_min, r_max = r - half, r + half
+        c_min, c_max = c - half, c + half
+
+        r_min, c_min = self._safe_cell(r_min, c_min)
+        r_max, c_max = self._safe_cell(r_max, c_max)
+
+        return grid[r_min : r_max + 1, c_min : c_max + 1]
+
+    def _safe_cell(self, r: int, c: int):
+        """
+        Clamp grid coordinates to valid grid boundaries.
+
+        This method ensures that a pair of grid indices stays inside
+        the occupancy grid limits by clipping:
+        - rows to [0, self._rows - 1]
+        - columns to [0, self._columns - 1]
+        """
+
+        r = np.clip(r, 0, self._rows - 1)
+        c = np.clip(c, 0, self._columns - 1)
+        return int(r), int(c)
 
     def world_to_grid(self, pos: tuple[float, float]) -> tuple[int, int]:
         """
         Convert world coordinates to grid coordinates.
         """
+
         x, y = pos
-        col = int(round(x) / self.resolution)
-        row = int(round(y) / self.resolution)
+        col = int(round(x))
+        row = self._rows - 1 - int(round(y))
         return row, col
 
     def grid_to_world(self, cell: tuple[int, int]) -> tuple[float, float]:
@@ -119,6 +144,6 @@ class GridMap:
         Convert grid coordinates back to world coordinates.
         """
         row, col = cell
-        x = (col) * self.resolution
-        y = (row) * self.resolution
+        x = col
+        y = self._rows - 1 - row
         return x, y
