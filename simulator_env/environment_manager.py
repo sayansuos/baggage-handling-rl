@@ -38,7 +38,7 @@ class EnvironmentManager:
 
     WIDTH_MIN, WIDTH_MAX = 5, 20
     HEIGHT_MIN, HEIGHT_MAX = 5, 20
-    THICKNESS = 1
+    THICKNESS = 2
     MARGIN = 2 * Agent.RADIUS
     MAX_ATTEMPTS = 100
 
@@ -99,7 +99,7 @@ class EnvironmentManager:
         self,
         nb_targets: int = 2,
         radius_min: float = Agent.RADIUS,
-        radius_max: float = Agent.RADIUS,
+        radius_max: float = Agent.RADIUS * 2,
         min_dist: float = MARGIN,
         mode: str = "random",
     ):
@@ -175,14 +175,16 @@ class EnvironmentManager:
             attempts = 0
 
             while not placed and attempts < self.MAX_ATTEMPTS:
-                w = np.random.uniform(self.WIDTH_MIN, self.WIDTH_MAX)
-                h = np.random.uniform(self.HEIGHT_MIN, self.HEIGHT_MAX)
+                w = np.random.randint(self.WIDTH_MIN, self.WIDTH_MAX - 1)
+                h = np.random.randint(self.HEIGHT_MIN, self.HEIGHT_MAX - 1)
+                w = w if w % 2 == 1 else w + 1
+                h = h if h % 2 == 1 else h + 1
                 obstacle = StaticEntity(
                     width=w, height=h, num=len(self.static_obstacles)
                 )
                 pos = (
-                    np.random.uniform(pad, self.env_width - pad),
-                    np.random.uniform(pad, self.env_height - pad),
+                    np.random.randint(pad, self.env_width - pad),
+                    np.random.randint(pad, self.env_height - pad),
                 )
 
                 obstacle.current_position = pos

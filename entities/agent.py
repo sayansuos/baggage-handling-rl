@@ -38,7 +38,7 @@ class Agent(MovingEntity):
 
     V_MIN, V_MAX = -10, 10
     OMEGA_MIN, OMEGA_MAX = -np.pi, np.pi
-    RADIUS = 1
+    RADIUS = 0.5
     LENGTH_VIEW = 5
     MAP_SIZE = LENGTH_VIEW**2
 
@@ -53,7 +53,7 @@ class Agent(MovingEntity):
         self.theta = np.random.uniform(-np.pi, np.pi)
 
     def __str__(self):
-        return f"Agent_{self.num}"
+        return f"Agent n°{self.num}"
 
     def get_vision_field(
         self,
@@ -69,25 +69,25 @@ class Agent(MovingEntity):
         bounding box centered on the agent.
         """
 
-        x_min, y_min, x_max, y_max = self.bounds
+        x, y = self.current_position
 
         x_min = np.clip(
-            x_min - self.length_view / 2,
+            x - self.length_view / 2,
             width_min,
             width_max,
         )
         y_min = np.clip(
-            y_min - self.length_view / 2,
+            y - self.length_view / 2,
             height_min,
             height_max,
         )
         x_max = np.clip(
-            x_max + self.length_view / 2,
+            x + self.length_view / 2,
             width_min,
             width_max,
         )
         y_max = np.clip(
-            y_max + self.length_view / 2,
+            y + self.length_view / 2,
             height_min,
             height_max,
         )

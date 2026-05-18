@@ -127,6 +127,10 @@ class Environment(gym.Env):
 
     def step(self, action=None):
         self._obstacles_update()
+        # print("Agent:", self.agents[0].current_position)
+        # print("Obstacle:", self.static_obstacles[-1].bounds)
+        # print(self.grid_map.current_grid)
+        # print(self.grid_map.get_local_grid(self.agents[0]))
         obs = None
         reward = None
         done = False
@@ -158,7 +162,7 @@ class Environment(gym.Env):
         self.ax.set_ylim(0, self.env_height)
         self.ax.legend(loc="upper left")
 
-        plt.pause(0.05)
+        # plt.pause(0.1)
 
     # ---------------------------------------------------------------
     # Methods needed for updates

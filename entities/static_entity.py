@@ -40,12 +40,11 @@ class StaticEntity(Entity):
         """
 
         x, y = self.current_position
-
         return (
-            x - self.width / 2,
-            y - self.height / 2,
-            x + self.width / 2,
-            y + self.height / 2,
+            x - self.width // 2,
+            y - self.height // 2,
+            x + self.width // 2,
+            y + self.height // 2,
         )
 
     def bounds_at(self, position):

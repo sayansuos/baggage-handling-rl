@@ -1,4 +1,5 @@
 import numpy as np
+from entities.agent import Agent
 
 
 class GridMap:
@@ -39,6 +40,10 @@ class GridMap:
     def shape(self) -> tuple:
         return self._grid.shape
 
+    @property
+    def current_grid(self) -> np.ndarray:
+        return self._update_grid()
+
     def _build_grid(self) -> np.ndarray:
         """
         Build the occupancy grid from the environment.
@@ -56,22 +61,57 @@ class GridMap:
 
             x_min, y_min, x_max, y_max = obstacle.bounds
 
-            gx_min = max(0, int(x_min / self.resolution))
-            gy_min = max(0, int(y_min / self.resolution))
-            gx_max = min(cols - 1, int(x_max / self.resolution))
-            gy_max = min(rows - 1, int(y_max / self.resolution))
+            r_min, c_min = self.world_to_grid((x_min, y_min))
+            r_max, c_max = self.world_to_grid((x_max, y_max))
 
-            grid[gy_min : gy_max + 1, gx_min : gx_max + 1] = 1
+            r_min = max(0, r_min)
+            c_min = max(0, c_min)
+            r_max = min(rows - 1, r_max)
+            c_max = min(cols - 1, c_max)
+
+            grid[r_min : r_max + 1, c_min : c_max + 1] = 1
 
         return grid
+
+    def _update_grid(self) -> np.ndarray:
+        """
+        Return the current occupancy grid including
+        moving obstacles and agents.
+        """
+
+        grid = self._grid.copy()
+        for entity in self.env.moving_obstacles + self.env.agents:
+            r, c = self.world_to_grid(entity.current_position)
+            pad = int(round(entity.radius))
+            grid[r - pad : r + pad + 1, c - pad : c + pad + 1] = 1
+
+        return grid
+
+    def get_local_grid(self, agent: Agent) -> np.ndarray:
+        """
+        Return the local occupancy grid perceived by the agent.
+        """
+        size = Agent.LENGTH_VIEW
+        local = np.ones((size, size), dtype=self.current_grid.dtype)
+
+        x_min, y_min, x_max, y_max = agent.get_vision_field(
+            0,
+            self.env.env_width,
+            0,
+            self.env.env_height,
+        )
+        r_min, c_min = self.world_to_grid((x_min, y_min))
+        r_max, c_max = self.world_to_grid((x_max, y_max))
+
+        return self.current_grid[r_min : r_max + 1, c_min : c_max + 1]
 
     def world_to_grid(self, pos: tuple[float, float]) -> tuple[int, int]:
         """
         Convert world coordinates to grid coordinates.
         """
         x, y = pos
-        col = int(x / self.resolution)
-        row = int(y / self.resolution)
+        col = int(round(x) / self.resolution)
+        row = int(round(y) / self.resolution)
         return row, col
 
     def grid_to_world(self, cell: tuple[int, int]) -> tuple[float, float]:
