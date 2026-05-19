@@ -58,7 +58,7 @@ class Environment(gym.Env):
         self.agents = env_manager.generate_agents()
 
         self.grid_map = GridMap(self)
-        self.compute_astar_paths()
+        self._compute_astar_paths()
 
         # ---------------------------------------------------------------
         # Observation Space
@@ -97,7 +97,7 @@ class Environment(gym.Env):
             dtype=np.float64,
         )
 
-    def _get_obs(self, agent: Agent) -> dict:
+    def _get_obs(self, agent: Agent, local_size: int = Agent.LENGTH_VIEW) -> dict:
         """
         Compute the decentralized observation of an agent.
 
@@ -105,21 +105,11 @@ class Environment(gym.Env):
         available to the agent.
         """
 
-        x, y = agent.current_position
-
-        if agent.target_positions:
-            gx, gy = agent.target_positions[0]
-            goal = np.array([gx - x, gy - y], dtype=np.float64)
-        else:
-            goal = np.zeros(2, dtype=np.float64)
-
         return {
-            "local_map": self._compute_local_map(agent),
-            "goal_relative_position": goal,
-            "motion": np.array([agent.v, agent.omega], dtype=np.float64),
-            "orientation": np.array(
-                [np.cos(agent.theta), np.sin(agent.theta)], dtype=np.float64
-            ),
+            "local_map": self._get_local_grid(agent, local_size),
+            "goal_relative_position": agent._goal_relative_position,
+            "motion": agent._motion,
+            "orientation": agent._orientation,
         }
 
     def reset(self, seed=None, options=None):
@@ -179,7 +169,7 @@ class Environment(gym.Env):
         """
         return self.grid_map.grid_to_world(pos)
 
-    def compute_astar_paths(self):
+    def _compute_astar_paths(self):
         """
         Return the paths found by A* algorithm for each moving obstacle.
         """
@@ -200,20 +190,44 @@ class Environment(gym.Env):
                 start = goal
 
     def _update_obstacles(self):
+        """
+        Update the positions of all moving obstacles.
+
+        Each moving obstacle computes its next position according
+        to its internal motion model or predefined path.
+
+        The new position is applied only if a valid next position
+        is returned.
+        """
+
         for obs in self.moving_obstacles:
             next_pos = obs._step()
             if next_pos:
-                self.is_free(obs, next_pos, 0)
+                self._is_free(obs, next_pos, 0)
                 obs.current_position = next_pos
 
-    def get_local_grids(self):
+    def _get_local_grid(self, agent: Agent, size: int = Agent.LENGTH_VIEW):
+        """
+        Return the local occupancy grid perceived by a given agent.
+
+        The local grid is centered around the agent's current position
+        and represents nearby occupied and free cells.
+        """
+
+        return self.grid_map.get_local_grid(agent, size)
+
+    def _get_local_grids(self, size: int = Agent.LENGTH_VIEW):
+        """
+        Return the local occupancy grids perceived by all agents.
+        """
+
         local_grids = []
         for agent in self.agents:
-            grid = self.grid_map.get_local_grid(agent)
+            grid = self.grid_map.get_local_grid(agent, size)
             local_grids.append(grid)
         return local_grids
 
-    def is_free(
+    def _is_free(
         self,
         entity: Entity,
         pos: np.ndarray,

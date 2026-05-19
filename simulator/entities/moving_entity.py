@@ -80,6 +80,7 @@ class MovingEntity(Entity, Thread):
         """
         Move the entity one step along its current path and reset it.
         """
+
         if self.path_index == len(self.path) - 1:
             next_pos = self.current_position
             self.path = self.path[::-1]

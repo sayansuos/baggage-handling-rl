@@ -55,6 +55,46 @@ class Agent(MovingEntity):
     def __str__(self):
         return f"Agent n°{self.num}"
 
+    @property
+    def _goal_relative_position(self):
+        """
+        Return the relative position of the current goal.
+
+        The goal position is expressed in the world reference frame
+        relative to the agent's current position.
+        """
+
+        x, y = self.current_position
+
+        if self.target_positions:
+            gx, gy = self.target_positions[0]
+            goal = np.array([gx - x, gy - y], dtype=np.float64)
+        else:
+            goal = np.zeros(2, dtype=np.float64)
+
+        return goal
+
+    @property
+    def _motion(self):
+        """
+        Return the current motion state of the agent.
+
+        The motion state contains the linear and angular velocities.
+        """
+        return np.array([self.v, self.omega], dtype=np.float64)
+
+    @property
+    def _orientation(self):
+        """
+        Return the current orientation of the agent.
+
+        The orientation is encoded using the cosine and sine
+        of the heading angle in order to avoid angular
+        discontinuities.
+        """
+
+        return np.array([np.cos(self.theta), np.sin(self.theta)], dtype=np.float64)
+
     def get_vision_field(
         self,
         width_min: float,
@@ -92,16 +132,6 @@ class Agent(MovingEntity):
             height_max,
         )
         return x_min, y_min, x_max, y_max
-
-    @property
-    def local_map(self):
-        """
-        Return the local map perceived by the agent.
-
-        The local map represents the surrounding environment
-        inside the agent's perception range.
-        """
-        pass
 
     def render(
         self,
