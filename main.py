@@ -2,6 +2,8 @@ import matplotlib.pyplot as plt
 from simulator.environment.environment import Environment
 from simulator.utils import *
 
+np.random.seed(1234)
+
 env = Environment(
     nb_agents=1,
     nb_static_obstacles=10,
@@ -10,8 +12,8 @@ env = Environment(
     env_height=60,
 )
 
-save_grid(env.grid_map.current_grid, "grid.png")
-save_grid(env.get_local_grids()[0], "grid_local.png")
+save_grid(env.grid_map.current_grid, "grid.png", scale=10, show_grid=True)
+save_grid(env.get_local_grids()[0], "grid_local.png", scale=50, show_grid=True)
 save_animation(env, "anim.mp4")
 
 plt.ion()
