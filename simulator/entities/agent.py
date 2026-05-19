@@ -32,15 +32,14 @@ class Agent(MovingEntity):
         Current orientation angle in radians.
     length_view : int
         Perception range around the agent.
-    map_size : int
-        Size of the agent's local map.
+    state : bool
+        State of the agent, either 'active', 'terminated' or 'truncated'.
     """
 
     V_MIN, V_MAX = -10, 10
     OMEGA_MIN, OMEGA_MAX = -np.pi, np.pi
     RADIUS = 0.5
     LENGTH_VIEW = 5
-    MAP_SIZE = LENGTH_VIEW**2
 
     def __init__(self, num: int = None):
         """
@@ -49,11 +48,15 @@ class Agent(MovingEntity):
 
         super().__init__(radius=self.RADIUS, num=num)
         self.length_view = self.LENGTH_VIEW
-        self.map_size = self.MAP_SIZE
         self.theta = np.random.uniform(-np.pi, np.pi)
+        self.state = "active"
 
     def __str__(self):
         return f"Agent n°{self.num}"
+
+    @property
+    def id(self):
+        return f"agent_{self.num}"
 
     @property
     def _goal_relative_position(self):
@@ -94,6 +97,39 @@ class Agent(MovingEntity):
         """
 
         return np.array([np.cos(self.theta), np.sin(self.theta)], dtype=np.float64)
+
+    def move(self, v: float, omega: float, dt: float = 1):
+        """
+        Update the agent's position regarding a given velocity.
+        """
+
+        self.theta = omega * dt
+        self.current_position = self._get_next_pos(v, omega, dt)
+
+    def _get_next_pos(self, v: float, omega: float, dt: float = 1):
+        """
+        Regarding the agent's next position regarding its velocity.
+        """
+
+        x = v * np.cos(self.theta) * dt
+        y = np.sin(self.theta) * dt
+        return x, y
+
+    def _step(self) -> tuple(int, int):
+        """
+        Move the entity one step along its current path and reset it.
+        """
+
+        if self.path_index == len(self.path) - 1:
+            next_pos = self.current_position
+            self.path = self.path[::-1]
+            self.path_index = 0
+            all_positions = self.positions[::-1]
+            self.start_position = all_positions[0]
+            self.target_positions = all_positions[1:]
+        else:
+            next_pos = self.path[self.path_index]
+        return next_pos
 
     def get_vision_field(
         self,

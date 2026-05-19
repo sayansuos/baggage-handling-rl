@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 from simulator.environment.environment import Environment
-from simulator.utils import *
+from simulator.utils.save_figures import *
 
 np.random.seed(1234)
 
@@ -13,12 +13,12 @@ env = Environment(
 )
 
 save_grid(env.grid_map.current_grid, "grid.png", scale=10, show_grid=True)
-save_grid(env.get_local_grids()[0], "grid_local.png", scale=50, show_grid=True)
+save_grid(env._get_local_grids()[0], "grid_local.png", scale=50, show_grid=True)
 save_animation(env, "anim.mp4")
 
 plt.ion()
-for _ in range(1):
+for _ in range(100):
     env.step()
     env.render()
-    plt.pause(5)
+    plt.pause(0.01)
 plt.ioff()

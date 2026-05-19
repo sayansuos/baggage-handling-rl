@@ -7,6 +7,7 @@ from simulator.entities.entity import Entity
 from simulator.motion.astar import AStar
 from simulator.environment.gridmap import GridMap
 from simulator.environment.environment_manager import EnvironmentManager
+from simulator.utils.environment_space import *
 
 
 class Environment(gym.Env):
@@ -52,52 +53,37 @@ class Environment(gym.Env):
             nb_static_obstacles,
             nb_moving_obstacles,
         )
+        self.env_manager = env_manager
+        self.grid_map = None
 
-        self.static_obstacles = env_manager.generate_static_obstacles()
-        self.moving_obstacles = env_manager.generate_moving_obstacles()
-        self.agents = env_manager.generate_agents()
-
-        self.grid_map = GridMap(self)
-        self._compute_astar_paths()
+        self._reset_world(True)
 
         # ---------------------------------------------------------------
-        # Observation Space
+        # Environment Spaces
         # ---------------------------------------------------------------
 
         self.observation_space = spaces.Dict(
             {
-                "local_map": spaces.Box(
-                    low=0,
-                    high=1,
-                    shape=(1, Agent.MAP_SIZE, Agent.MAP_SIZE),
-                    dtype=np.float64,
-                ),
-                "goal_relative_position": spaces.Box(
-                    low=-max(self.env_width, self.env_height),
-                    high=max(self.env_width, self.env_height),
-                    shape=(2,),
-                    dtype=np.float64,
-                ),
-                "motion": spaces.Box(
-                    low=np.array([Agent.V_MIN, Agent.OMEGA_MIN]),
-                    high=np.array([Agent.V_MAX, Agent.OMEGA_MAX]),
-                    dtype=np.float64,
-                ),
-                "orientation": spaces.Box(low=-1, high=1, shape=(2,), dtype=np.float64),
+                agent.id: get_single_observation_space(
+                    env_width,
+                    env_height,
+                )
+                for agent in self.agents
+            }
+        )
+        self.action_space = spaces.Dict(
+            {
+                agent.id: get_single_action_space(
+                    self.ALLOWED_V_MIN,
+                    self.ALLOWED_V_MAX,
+                    self.ALLOWED_OMEGA_MIN,
+                    self.ALLOWED_OMEGA_MAX,
+                )
+                for agent in self.agents
             }
         )
 
-        # ---------------------------------------------------------------
-        # Action Space
-        # ---------------------------------------------------------------
-
-        self.action_space = spaces.Box(
-            low=np.array([self.ALLOWED_V_MIN, self.ALLOWED_OMEGA_MIN]),
-            high=np.array([self.ALLOWED_V_MAX, self.ALLOWED_OMEGA_MAX]),
-            dtype=np.float64,
-        )
-
-    def _get_obs(self, agent: Agent, local_size: int = Agent.LENGTH_VIEW) -> dict:
+    def _get_obs(self) -> dict:
         """
         Compute the decentralized observation of an agent.
 
@@ -105,23 +91,52 @@ class Environment(gym.Env):
         available to the agent.
         """
 
-        return {
-            "local_map": self._get_local_grid(agent, local_size),
-            "goal_relative_position": agent._goal_relative_position,
-            "motion": agent._motion,
-            "orientation": agent._orientation,
-        }
+        obs = {}
+        for agent in self.agents:
+            obs[agent.id] = {
+                "local_map": self._get_local_grid(agent)[np.newaxis, :, :],
+                "goal_relative_position": agent._goal_relative_position,
+                "motion": agent._motion,
+                "orientation": agent._orientation,
+            }
+        return obs
 
-    def reset(self, seed=None, options=None):
+    def _get_info(self) -> dict:
+        """
+        Return auxiliary information for all agents.
+        """
+
         pass
 
+    def reset(self, seed=None, options=None):
+        """
+        Reset the environment to an initial state.
+        """
+
+        super().reset(seed=seed)
+        self._reset_world()
+        obs = self._get_obs()
+        info = self._get_info()
+
+        return obs, info
+
     def step(self, action=None):
+        """
+        Advance the environment by one simulation step.
+
+        Moving obstacles and agents are updated according
+        to their motion model or the provided actions.
+        """
+
         self._update_obstacles()
-        obs = None
-        reward = None
-        done = False
-        info = {}
-        return obs, reward, done, info
+        self._update_agents(action)
+
+        obs = self._get_obs()
+        reward = self._compute_reward()
+        terminated, truncated = self._compute_state()
+        info = self._get_info()
+
+        return obs, reward, terminated, truncated, info
 
     def render(self):
         """
@@ -147,36 +162,54 @@ class Environment(gym.Env):
         self.ax.set_ylim(0, self.env_height)
         self.ax.legend(loc="upper left")
 
-        # plt.pause(0.1)
-
     # ---------------------------------------------------------------
     # Methods needed for updates
     # ---------------------------------------------------------------
 
+    def _reset_world(self, astar_for_agents: bool = False):
+        """
+        Regenerate the full environment state.
+        """
+
+        self.static_obstacles = self.env_manager.generate_static_obstacles()
+        self.moving_obstacles = self.env_manager.generate_moving_obstacles()
+        self.agents = self.env_manager.generate_agents()
+        self.grid_map = GridMap(self)
+        self._compute_astar_paths(astar_for_agents)
+
     @property
     def grid(self):
+        """
+        Return the static occupancy grid of the environment.
+        """
+
         return self.grid_map.grid
 
-    def _to_grid(self, pos):
+    def _to_grid(self, pos: tuple):
         """
         Convert world coordinates to grid coordinates.
         """
         return self.grid_map.world_to_grid(pos)
 
-    def _from_grid(self, pos):
+    def _from_grid(self, pos: tuple):
         """
         Convert grid coordinates back to world coordinates.
         """
         return self.grid_map.grid_to_world(pos)
 
-    def _compute_astar_paths(self):
+    def _compute_astar_paths(self, for_agents: bool = False):
         """
         Return the paths found by A* algorithm for each moving obstacle.
         """
 
         pathfinder = AStar(self.grid, int(Agent.RADIUS) + 1)
 
-        for entity in self.moving_obstacles:
+        if for_agents:
+            entities = self.moving_obstacles + self.agents
+        else:
+            entities = self.moving_obstacles
+
+        for entity in entities:
             # entity.path = []
             if not entity.target_positions:
                 continue
@@ -188,6 +221,25 @@ class Environment(gym.Env):
                 path = [self._from_grid(pos) for pos in path]
                 entity.path.extend(path)
                 start = goal
+
+    def _update_agents(self, action=None):
+        """
+        Update the positions of all moving agents.
+
+        Each moving obstacle computes its next position according
+        to its internal motion model or predefined path.
+
+        The new position is applied only if a valid next position
+        is returned.
+        """
+
+        for agent in self.agents:
+            next_pos = agent._step()
+            if self._is_free(agent, next_pos, 0):
+                agent.current_position = next_pos
+                agent.path_index += 1
+            else:
+                continue
 
     def _update_obstacles(self):
         """
@@ -202,8 +254,7 @@ class Environment(gym.Env):
 
         for obs in self.moving_obstacles:
             next_pos = obs._step()
-            if next_pos:
-                self._is_free(obs, next_pos, 0)
+            if self._is_free(obs, next_pos, 0):
                 obs.current_position = next_pos
 
     def _get_local_grid(self, agent: Agent, size: int = Agent.LENGTH_VIEW):
@@ -244,3 +295,32 @@ class Environment(gym.Env):
             if entity.collides_with(other, pos, min_dist):
                 return False
         return True
+
+    def _compute_state(self):
+        """
+        Compute the termination state of all agents.
+
+        Each agent can either:
+        - continue interacting with the environment
+        - terminate naturally
+        - be truncated due to external conditions
+        """
+
+        terminated = {}
+        truncated = {}
+        for agent in self.agents:
+            terminated[agent.id] = False
+            truncated[agent.id] = False
+            if agent.state == "terminated":
+                terminated[agent.id] = True
+            elif agent.state != "truncated":
+                truncated[agent.id] = True
+            else:
+                continue
+        return terminated, truncated
+
+    def _compute_reward(self):
+        """
+        Compute the rewards associated with all agents.
+        """
+        pass
