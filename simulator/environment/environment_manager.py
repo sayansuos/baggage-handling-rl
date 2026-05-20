@@ -1,4 +1,5 @@
 import numpy as np
+from simulator.config import EnvConfig, AgentConfig
 from simulator.entities.agent import Agent
 from simulator.entities.entity import Entity
 from simulator.entities.static_entity import StaticEntity
@@ -36,30 +37,25 @@ class EnvironmentManager:
         List of generated moving obstacles.
     """
 
-    WIDTH_MIN, WIDTH_MAX = 5, 20
-    HEIGHT_MIN, HEIGHT_MAX = 5, 20
-    THICKNESS = 1
-    MARGIN = 2 * Agent.RADIUS
-    MAX_ATTEMPTS = 100
+    # WIDTH_MIN, WIDTH_MAX = 5, 20
+    # HEIGHT_MIN, HEIGHT_MAX = 5, 20
+    # THICKNESS = 1
+    # MARGIN = 2 * Agent.RADIUS
+    # MAX_ATTEMPTS = 100
 
-    def __init__(
-        self,
-        env_width: float,
-        env_height: float,
-        nb_agents: int,
-        nb_static_obstacles: int,
-        nb_moving_obstacles: int,
-    ):
+    def __init__(self, env_config: EnvConfig, agent_config: AgentConfig):
         """
         Builder
         """
+        self.env_config = env_config
+        self.agent_config = agent_config
 
-        self.env_width = env_width
-        self.env_height = env_height
+        self.width = env_config.width
+        self.height = env_config.height
 
-        self.nb_agents = nb_agents
-        self.nb_static_obstacles = nb_static_obstacles
-        self.nb_moving_obstacles = nb_moving_obstacles
+        self.nb_agents = env_config.nb_agents
+        self.nb_static_obstacles = env_config.nb_static_obstacles
+        self.nb_moving_obstacles = env_config.nb_moving_obstacles
 
         self.agents = []
         self.static_obstacles = []
@@ -75,7 +71,7 @@ class EnvironmentManager:
 
     def generate_static_obstacles(
         self,
-        min_dist: int = MARGIN,
+        min_dist: float = None,
         mode: str = "random",
     ):
         """
@@ -86,26 +82,32 @@ class EnvironmentManager:
         """
 
         self._add_walls()
-
+        if not min_dist:
+            min_dist = self.env_config.margin
         if mode == "random":
             self._random_static_obstacles(min_dist)
-
         if mode == "setup1":
             self._setup1_static_obstacles()
-
         return self.static_obstacles
 
     def generate_moving_obstacles(
         self,
         nb_targets: int = 2,
-        radius_min: float = Agent.RADIUS,
-        radius_max: float = Agent.RADIUS * 2,
-        min_dist: float = MARGIN,
+        radius_min: float = None,
+        radius_max: float = None,
+        min_dist: float = None,
         mode: str = "random",
     ):
         """
         Generate moving obstacles in the environment.
         """
+
+        if not radius_min:
+            radius_min = self.env_config.radius_min
+        if not radius_max:
+            radius_max = self.env_config.radius_max
+        if not min_dist:
+            min_dist = self.env_config.margin
 
         if mode == "random":
             self._random_moving_obstacles(nb_targets, radius_min, radius_max, min_dist)
@@ -114,77 +116,101 @@ class EnvironmentManager:
 
     def generate_agents(
         self,
-        nb_targets: int = 2,
-        min_dist: float = MARGIN,
+        nb_targets: int = None,
+        min_dist: float = None,
         mode: str = "random",
     ):
         """
         Generate agents in the environment.
         """
 
+        if not nb_targets:
+            nb_targets = self.env_config.nb_targets
+        if not min_dist:
+            min_dist = self.env_config.margin
+
         if mode == "random":
             self._random_agents(nb_targets, min_dist)
 
         return self.agents
 
-    def _add_walls(self):
+    def _add_walls(self, thickness: int = None):
         """
         Generate the environment border walls.
         """
+        if not thickness:
+            thickness = self.env_config.thickness
 
         top_wall = StaticEntity(
-            width=self.env_width, height=self.THICKNESS, num=len(self.static_obstacles)
+            width=self.width, height=thickness, num=len(self.static_obstacles)
         )
         top_wall.current_position = (
-            self.env_width / 2,
-            self.env_height,
+            self.width / 2,
+            self.height,
         )
 
         right_wall = StaticEntity(
-            width=self.THICKNESS, height=self.env_height, num=len(self.static_obstacles)
+            width=thickness, height=self.height, num=len(self.static_obstacles)
         )
         right_wall.current_position = (
-            self.env_width,
-            self.env_height / 2,
+            self.width,
+            self.height / 2,
         )
 
         bot_wall = StaticEntity(
-            width=self.env_width, height=self.THICKNESS, num=len(self.static_obstacles)
+            width=self.width, height=thickness, num=len(self.static_obstacles)
         )
-        bot_wall.current_position = (self.env_width / 2, 0)
+        bot_wall.current_position = (self.width / 2, 0)
 
         left_wall = StaticEntity(
-            width=self.THICKNESS, height=self.env_height, num=len(self.static_obstacles)
+            width=thickness, height=self.height, num=len(self.static_obstacles)
         )
-        left_wall.current_position = (0, self.env_height / 2)
+        left_wall.current_position = (0, self.height / 2)
 
         self.static_obstacles.extend([top_wall, right_wall, bot_wall, left_wall])
 
-    def _random_static_obstacles(self, min_dist: float):
+    def _random_static_obstacles(
+        self,
+        min_dist: float,
+        thickness: int = None,
+        max_attempts: int = None,
+        width_min: int = None,
+        width_max: int = None,
+        height_min: int = None,
+        height_max: int = None,
+    ):
         """
         Randomly generate static rectangular obstacles.
 
         Obstacles are sampled with random dimensions and
         positions while ensuring collision-free placement.
         """
-        pad = self.THICKNESS
+
+        pad = self.env_config.thickness if not thickness else thickness
+        max_attempts = (
+            self.env_config.max_attempts if not max_attempts else max_attempts
+        )
+        width_min = self.env_config.width_min if not width_min else width_min
+        width_max = self.env_config.width_max if not width_max else width_max
+        height_min = self.env_config.height_min if not height_min else height_min
+        height_max = self.env_config.height_max if not height_max else height_max
 
         for _ in range(self.nb_static_obstacles):
 
             placed = False
             attempts = 0
 
-            while not placed and attempts < self.MAX_ATTEMPTS:
-                w = np.random.randint(self.WIDTH_MIN, self.WIDTH_MAX - 1)
-                h = np.random.randint(self.HEIGHT_MIN, self.HEIGHT_MAX - 1)
+            while not placed and attempts < max_attempts:
+                w = np.random.randint(width_min, width_max - 1)
+                h = np.random.randint(height_min, height_max - 1)
                 w = w if w % 2 == 1 else w + 1
                 h = h if h % 2 == 1 else h + 1
                 obstacle = StaticEntity(
                     width=w, height=h, num=len(self.static_obstacles)
                 )
                 pos = (
-                    np.random.randint(pad, self.env_width - pad),
-                    np.random.randint(pad, self.env_height - pad),
+                    np.random.randint(pad, self.width - pad),
+                    np.random.randint(pad, self.height - pad),
                 )
 
                 obstacle.current_position = pos
@@ -213,13 +239,12 @@ class EnvironmentManager:
         - multiple target positions
         """
 
-        rdm_radius = np.random.uniform(radius_min, radius_max, self.nb_moving_obstacles)
-
         for i in range(self.nb_moving_obstacles):
-            moving_obstacle = MovingEntity(radius=rdm_radius[i], num=i + 1)
+            moving_obstacle = MovingEntity(num=i + 1)
             pos = self._set_random_position(moving_obstacle, min_dist, False)
             moving_obstacle.start_position = pos
             moving_obstacle.current_position = pos
+            moving_obstacle.radius = np.random.uniform(radius_min, radius_max)
 
             for _ in range(nb_targets):
                 moving_obstacle.target_positions.append(
@@ -238,7 +263,7 @@ class EnvironmentManager:
         """
 
         for i in range(self.nb_agents):
-            agent = Agent(i + 1)
+            agent = Agent(self.agent_config, i + 1)
             pos = self._set_random_position(agent, False)
             agent.start_position = pos
             agent.current_position = pos
@@ -248,16 +273,25 @@ class EnvironmentManager:
                     self._set_random_position(agent, min_dist, True)
                 )
 
-    def _set_random_position(self, entity: Entity, min_dist: float, for_target=False):
+    def _set_random_position(
+        self,
+        entity: Entity,
+        min_dist: float,
+        for_target=False,
+        max_attempts: int = None,
+    ):
         """
         Randomly generate positions.
         """
+        pad = self.env_config.thickness
+        if not max_attempts:
+            max_attempts = self.env_config.max_attempts
         is_free = False
         i = 0
-        while not is_free and i < self.MAX_ATTEMPTS:
+        while not is_free and i < max_attempts:
             pos = (
-                np.random.randint(self.THICKNESS, self.env_width - self.THICKNESS),
-                np.random.randint(self.THICKNESS, self.env_height - self.THICKNESS),
+                np.random.randint(pad, self.width - pad),
+                np.random.randint(pad, self.height - pad),
             )
             is_free = self._is_free(entity, pos, min_dist, for_target)
             i += 1

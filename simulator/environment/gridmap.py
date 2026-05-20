@@ -1,4 +1,7 @@
 import numpy as np
+from simulator.config import EnvConfig, AgentConfig
+from simulator.entities.static_entity import StaticEntity
+from simulator.entities.moving_entity import MovingEntity
 from simulator.entities.agent import Agent
 
 
@@ -21,12 +24,26 @@ class GridMap:
         Internal occupancy grid representation.
     """
 
-    def __init__(self, env: Environment, resolution: int = 1):
+    def __init__(
+        self,
+        env_config: EnvConfig,
+        agent_config: AgentConfig,
+        static_obstacles: list[StaticEntity],
+        moving_obstacles: list[MovingEntity],
+        agents: list[Agent],
+    ):
         """
         Builder
         """
-        self.env = env
-        self._rows, self._columns = self.env.env_height, self.env.env_width
+
+        self.env_config = env_config
+        self.agent_config = agent_config
+        self._rows, self._columns = env_config.height, env_config.width
+
+        self.static_obstacles = static_obstacles
+        self.moving_obstacles = moving_obstacles
+        self.agents = agents
+
         self._grid = self._build_grid()
 
     @property
@@ -51,7 +68,7 @@ class GridMap:
 
         grid = np.zeros((self._rows, self._columns), dtype=np.uint8)
 
-        for obstacle in self.env.static_obstacles:
+        for obstacle in self.static_obstacles:
 
             x_min, y_min, x_max, y_max = obstacle.bounds
             x_min = np.clip(x_min, 0, self._columns - 1)
@@ -80,7 +97,7 @@ class GridMap:
 
         grid = self._grid.copy()
 
-        for entity in self.env.moving_obstacles + self.env.agents:
+        for entity in self.moving_obstacles + self.agents:
 
             r, c = self.world_to_grid(entity.current_position)
 
@@ -94,7 +111,7 @@ class GridMap:
 
         return grid
 
-    def get_local_grid(self, agent: Agent, size: int = Agent.LENGTH_VIEW) -> np.ndarray:
+    def get_local_grid(self, agent: Agent, size: int) -> np.ndarray:
         """
         Return the local occupancy grid perceived by the agent.
         """

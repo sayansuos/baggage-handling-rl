@@ -1,5 +1,6 @@
 import numpy as np
 from matplotlib.patches import Rectangle
+from simulator.config import AgentConfig
 from simulator.entities.moving_entity import MovingEntity
 
 
@@ -36,19 +37,13 @@ class Agent(MovingEntity):
         State of the agent, either 'active', 'terminated' or 'truncated'.
     """
 
-    V_MIN, V_MAX = -10, 10
-    OMEGA_MIN, OMEGA_MAX = -np.pi, np.pi
-    RADIUS = 0.5
-    LENGTH_VIEW = 5
-
-    def __init__(self, num: int = None):
+    def __init__(self, agent_config: AgentConfig, num: int = None):
         """
         Builder
         """
-
-        super().__init__(radius=self.RADIUS, num=num)
-        self.length_view = self.LENGTH_VIEW
-        self.theta = np.random.uniform(-np.pi, np.pi)
+        super().__init__(num=num)
+        self.radius = agent_config.radius
+        self.length_view = agent_config.length_view
         self.state = "active"
 
     def __str__(self):

@@ -1,26 +1,26 @@
 import numpy as np
 from gymnasium import spaces
-from simulator.entities.agent import Agent
+from simulator.config import EnvConfig, AgentConfig
 
 
-def get_single_observation_space(width: int, height: int):
+def get_single_observation_space(env_config: EnvConfig, agent_config: AgentConfig):
     return spaces.Dict(
         {
             "local_map": spaces.Box(
                 low=0,
                 high=1,
-                shape=(1, Agent.LENGTH_VIEW, Agent.LENGTH_VIEW),
+                shape=(1, agent_config.length_view, AgentConfig.length_view),
                 dtype=np.float64,
             ),
             "goal_relative_position": spaces.Box(
-                low=-max(width, height),
-                high=max(width, height),
+                low=-max(env_config.width, env_config.height),
+                high=max(env_config.width, env_config.height),
                 shape=(2,),
                 dtype=np.float64,
             ),
             "motion": spaces.Box(
-                low=np.array([Agent.V_MIN, Agent.OMEGA_MIN]),
-                high=np.array([Agent.V_MAX, Agent.OMEGA_MAX]),
+                low=np.array([agent_config.v_min, agent_config.omega_min]),
+                high=np.array([agent_config.v_max, agent_config.omega_max]),
                 dtype=np.float64,
             ),
             "orientation": spaces.Box(low=-1, high=1, shape=(2,), dtype=np.float64),
@@ -28,14 +28,9 @@ def get_single_observation_space(width: int, height: int):
     )
 
 
-def get_single_action_space(
-    allowed_v_min: float,
-    allowed_v_max: float,
-    allowed_omega_min: float,
-    allowed_omega_max: float,
-):
+def get_single_action_space(env_config: EnvConfig):
     return spaces.Box(
-        low=np.array([allowed_v_min, allowed_omega_min]),
-        high=np.array([allowed_v_max, allowed_omega_max]),
+        low=np.array([env_config.v_min_allowed, env_config.omega_min_allowed]),
+        high=np.array([env_config.v_max_allowed, env_config.omega_min_allowed]),
         dtype=np.float64,
     )

@@ -1,16 +1,13 @@
 import matplotlib.pyplot as plt
+from simulator.config import EnvConfig, AgentConfig
 from simulator.environment.environment import Environment
 from simulator.utils.save_figures import *
 
 np.random.seed(1234)
 
-env = Environment(
-    nb_agents=1,
-    nb_static_obstacles=10,
-    nb_moving_obstacles=5,
-    env_width=100,
-    env_height=60,
-)
+env_config = EnvConfig()
+agent_config = AgentConfig()
+env = Environment(env_config, agent_config)
 
 save_grid(env.grid_map.current_grid, "grid.png", scale=10, show_grid=True)
 save_grid(env._get_local_grids()[0], "grid_local.png", scale=50, show_grid=True)

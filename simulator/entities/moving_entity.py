@@ -34,7 +34,7 @@ class MovingEntity(Entity, Thread):
         Position index in the path of the entity.
     """
 
-    def __init__(self, radius: float, v: float = 0, omega: float = 0, num: int = None):
+    def __init__(self, num: int = None):
         """
         Builder
         """
@@ -44,9 +44,10 @@ class MovingEntity(Entity, Thread):
         self.start_position = None
         self.target_positions = []
 
-        self.radius = radius
-        self.v = v
-        self.omega = omega
+        self.radius = 0
+        self.theta = 0
+        self.v = 0
+        self.omega = 0
 
         self.path = []
         self.path_index = 0

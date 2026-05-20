@@ -2,6 +2,7 @@ import gymnasium as gym
 import numpy as np
 import matplotlib.pyplot as plt
 from gymnasium import spaces
+from simulator.config import EnvConfig, AgentConfig
 from simulator.entities.agent import Agent
 from simulator.entities.entity import Entity
 from simulator.motion.astar import AStar
@@ -25,37 +26,33 @@ class Environment(gym.Env):
     The environment follows the Gymnasium API.
     """
 
-    ALLOWED_V_MIN, ALLOWED_V_MAX = 0, 5
-    ALLOWED_OMEGA_MIN, ALLOWED_OMEGA_MAX = -np.pi / 6, np.pi / 6
-
     metadata = {"render_modes": ["human"]}
 
-    def __init__(
-        self,
-        nb_agents: int,
-        nb_static_obstacles: int,
-        nb_moving_obstacles: int,
-        env_width: int,
-        env_height: int,
-    ):
+    def __init__(self, env_config: EnvConfig, agent_config: AgentConfig):
+        """
+        Builder
+        """
+        self.env_config = env_config
+        self.agent_config = agent_config
+
         self.fig, self.ax = plt.subplots(figsize=(10, 8))
-        self.env_width, self.env_height = env_width, env_height
-        self.nb_agents = nb_agents
+        self.width, self.height = env_config.width, env_config.height
+        self.v_min_allowed, self.v_max_allowed = (
+            env_config.v_min_allowed,
+            env_config.v_max_allowed,
+        )
+        self.omega_min_allowed, self.omega_max_allowed = (
+            env_config.omega_min_allowed,
+            env_config.omega_max_allowed,
+        )
 
         # ---------------------------------------------------------------
         # Environment Setup
         # ---------------------------------------------------------------
 
-        env_manager = EnvironmentManager(
-            self.env_width,
-            self.env_height,
-            nb_agents,
-            nb_static_obstacles,
-            nb_moving_obstacles,
-        )
+        env_manager = EnvironmentManager(env_config, agent_config)
         self.env_manager = env_manager
         self.grid_map = None
-
         self._reset_world(True)
 
         # ---------------------------------------------------------------
@@ -65,20 +62,14 @@ class Environment(gym.Env):
         self.observation_space = spaces.Dict(
             {
                 agent.id: get_single_observation_space(
-                    env_width,
-                    env_height,
+                    self.env_config, self.agent_config
                 )
                 for agent in self.agents
             }
         )
         self.action_space = spaces.Dict(
             {
-                agent.id: get_single_action_space(
-                    self.ALLOWED_V_MIN,
-                    self.ALLOWED_V_MAX,
-                    self.ALLOWED_OMEGA_MIN,
-                    self.ALLOWED_OMEGA_MAX,
-                )
+                agent.id: get_single_action_space(self.env_config)
                 for agent in self.agents
             }
         )
@@ -144,7 +135,7 @@ class Environment(gym.Env):
         """
         self.ax.clear()
         self.ax.set_aspect("equal", adjustable="box")
-        colors = plt.cm.get_cmap("tab10", self.nb_agents)
+        colors = plt.cm.get_cmap("tab10", len(self.agents))
 
         for entity in self.static_obstacles:
             entity.render(self.ax)
@@ -153,13 +144,11 @@ class Environment(gym.Env):
             entity.render(self.ax)
 
         for i, agent in enumerate(self.agents):
-            agent.render(
-                self.ax, 0, self.env_width, 0, self.env_height, color=colors(i)
-            )
+            agent.render(self.ax, 0, self.width, 0, self.height, color=colors(i))
             self.ax.scatter([], [], color=colors(i), label=f"Agent n°{agent.num}")
 
-        self.ax.set_xlim(0, self.env_width)
-        self.ax.set_ylim(0, self.env_height)
+        self.ax.set_xlim(0, self.width)
+        self.ax.set_ylim(0, self.height)
         self.ax.legend(loc="upper left")
 
     # ---------------------------------------------------------------
@@ -174,7 +163,13 @@ class Environment(gym.Env):
         self.static_obstacles = self.env_manager.generate_static_obstacles()
         self.moving_obstacles = self.env_manager.generate_moving_obstacles()
         self.agents = self.env_manager.generate_agents()
-        self.grid_map = GridMap(self)
+        self.grid_map = GridMap(
+            self.env_config,
+            self.agent_config,
+            self.static_obstacles,
+            self.moving_obstacles,
+            self.agents,
+        )
         self._compute_astar_paths(astar_for_agents)
 
     @property
@@ -202,7 +197,7 @@ class Environment(gym.Env):
         Return the paths found by A* algorithm for each moving obstacle.
         """
 
-        pathfinder = AStar(self.grid, int(Agent.RADIUS) + 1)
+        pathfinder = AStar(self.grid, int(self.agent_config.radius) + 1)
 
         if for_agents:
             entities = self.moving_obstacles + self.agents
@@ -210,7 +205,6 @@ class Environment(gym.Env):
             entities = self.moving_obstacles
 
         for entity in entities:
-            # entity.path = []
             if not entity.target_positions:
                 continue
             start = entity.start_position
@@ -257,20 +251,25 @@ class Environment(gym.Env):
             if self._is_free(obs, next_pos, 0):
                 obs.current_position = next_pos
 
-    def _get_local_grid(self, agent: Agent, size: int = Agent.LENGTH_VIEW):
+    def _get_local_grid(self, agent: Agent, size: int = None):
         """
         Return the local occupancy grid perceived by a given agent.
 
         The local grid is centered around the agent's current position
         and represents nearby occupied and free cells.
         """
+        if not size:
+            size = self.agent_config.length_view
 
         return self.grid_map.get_local_grid(agent, size)
 
-    def _get_local_grids(self, size: int = Agent.LENGTH_VIEW):
+    def _get_local_grids(self, size: int = None):
         """
         Return the local occupancy grids perceived by all agents.
         """
+
+        if not size:
+            size = self.agent_config.length_view
 
         local_grids = []
         for agent in self.agents:
