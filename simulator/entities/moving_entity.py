@@ -1,7 +1,15 @@
 import numpy as np
+
 from threading import Thread
 from matplotlib.patches import Circle
+
 from simulator.entities.entity import Entity
+from simulator.utils.get_distance import (
+    get_relative_position,
+    get_relative_distance,
+    get_distance_circle_circle,
+    get_distance_rectangle_circle,
+)
 
 
 class MovingEntity(Entity, Thread):
@@ -15,15 +23,17 @@ class MovingEntity(Entity, Thread):
     ----------
     num : int
         Unique identifier of the entity.
-    current_position : np.ndarray
+    current_position : tuple[float, float]
         Current center position of the entity.
         Format: [x, y].
-    start_position : np.ndarray
+    start_position : tuple[float, float]
         Initial position of the entity.
-    target_positions : list[np.ndarray]
+    target_positions : list[tuple[float, float]]
         List of target positions to reach.
     radius : float
         Radius of the circular entity.
+    theta : float
+        Current orientation angle in radians.
     v : float
         Linear velocity of the entity.
     omega : float
@@ -34,26 +44,35 @@ class MovingEntity(Entity, Thread):
         Position index in the path of the entity.
     """
 
-    def __init__(self, num: int = None):
+    def __init__(self, num: int | None = None):
         """
-        Builder
+        Constructor
         """
 
         super().__init__(num)
 
-        self.start_position = None
-        self.target_positions = []
+        self.start_position: tuple[float, float] | None = None
+        self.target_positions: list[tuple[float, float]] = []
 
-        self.radius = 0
-        self.theta = 0
-        self.v = 0
-        self.omega = 0
+        self.radius: float = 0
+        self.theta: float = 0
+        self.v: float = 0
+        self.omega: float = 0
 
-        self.path = []
-        self.path_index = 0
+        self.path: list[tuple[int, int]] = []
+        self.path_index: int = 0
 
     def __str__(self):
-        return f"MovingEntity_{self.num}"
+        return f"moving_entity{self.num}"
+
+    @property
+    def positions(self) -> list[tuple]:
+        """
+        Return all the main positions of the circular entity.
+        """
+
+        assert self.start_position is not None
+        return [self.start_position] + self.target_positions
 
     @property
     def bounds(self) -> tuple[float, float, float, float]:
@@ -61,8 +80,36 @@ class MovingEntity(Entity, Thread):
         Return the axis-aligned bounding box of the circular entity.
         """
 
-        x, y = self.current_position
+        assert self.current_position is not None
+        return self.bounds_at(self.current_position)
 
+    @property
+    def _goal_relative_position(self):
+        """
+        Return the relative position of the current goal.
+
+        The goal position is expressed in the world reference frame
+        relative to the agent's current position.
+        """
+        if not self.target_positions:
+            return (0, 0)
+        return self.get_relative_position(self.target_positions[0])
+
+    @property
+    def _goal_relative_distance(self):
+        """
+        Return the relative distance of the current goal.
+        """
+        if not self.target_positions:
+            return 0
+        return self.get_relative_distance(self.target_positions[0])
+
+    def bounds_at(self, pos: tuple[float, float]) -> tuple[float, float, float, float]:
+        """
+        Return the axis-aligned bounding box of the circular entity at a given position.
+        """
+
+        x, y = pos
         return (
             x - self.radius,
             y - self.radius,
@@ -70,14 +117,42 @@ class MovingEntity(Entity, Thread):
             y + self.radius,
         )
 
-    @property
-    def positions(self) -> list[tuple]:
+    def get_relative_position(self, pos: tuple[float, float]) -> tuple[float, float]:
         """
-        Return all the main positions of the circular entity.
+        Compute the relative position of a given position.
         """
-        return [self.start_position] + self.target_positions
 
-    def _step(self) -> tuple(int, int):
+        assert self.current_position is not None
+        return get_relative_position(self.current_position, pos)
+
+    def get_relative_distance(self, pos: tuple[float, float]) -> float:
+        """
+        Compute the Euclidean distance between the current
+        position and a given position.
+        """
+
+        assert self.current_position is not None
+        return get_relative_distance(self.current_position, pos)
+
+    def collides_with(
+        self,
+        other: MovingEntity | StaticEntity,
+        new_pos: tuple[float, float],
+        min_dist: float,
+    ) -> bool:
+        """
+        Check collision between this moving entity and another entity.
+
+        This method dispatches the collision logic to the appropriate
+        shape-specific implementation of the other entity.
+        """
+
+        assert other.current_position
+        return bool(
+            other._collide_circle(self, other.current_position, new_pos, min_dist)
+        )
+
+    def step(self) -> tuple[int, int] | tuple[float, float] | None:
         """
         Move the entity one step along its current path and reset it.
         """
@@ -94,63 +169,6 @@ class MovingEntity(Entity, Thread):
             self.path_index += 1
         return next_pos
 
-    def collides_with(
-        self,
-        other: Entity,
-        new_pos: np.array,
-        min_dist: float,
-    ):
-        """
-        Check collision between this moving entity and another entity.
-
-        This method dispatches the collision logic to the appropriate
-        shape-specific implementation of the other entity.
-        """
-        return other._collide_circle(self, other.current_position, new_pos, min_dist)
-
-    def _collide_circle(
-        self,
-        circle: MovingEntity,
-        pos_self: np.array,
-        pos_other: np.array,
-        min_dist: float,
-    ):
-        """
-        Check collision between this moving entity and a circular entity.
-        """
-        dist = np.linalg.norm(np.array(pos_self) - np.array(pos_other))
-        return dist < self.radius + circle.radius + min_dist
-
-    def _collide_rectangle(
-        self,
-        rect: Entity,
-        pos_self: np.array,
-        pos_other: np.array,
-        min_dist: float,
-    ):
-        """
-        Check collision between this moving entity and a rectangular entity.
-        """
-        x, y = pos_self
-        x_min, y_min, x_max, y_max = rect.get_bounds_at(pos_other)
-
-        closest_x = np.clip(x, x_min, x_max)
-        closest_y = np.clip(y, y_min, y_max)
-
-        dist = np.linalg.norm([x - closest_x, y - closest_y])
-
-        return dist < self.radius + min_dist
-
-    def get_distance_from_target(self) -> float:
-        """
-        Compute the Euclidean distance between the current
-        position and the current target position.
-        """
-
-        return np.linalg.norm(
-            np.array(self.current_position) - np.array(self.target_positions[0])
-        )
-
     def render(
         self,
         ax,
@@ -159,8 +177,9 @@ class MovingEntity(Entity, Thread):
         """
         Default render method for moving entities.
         """
-        x, y = self.current_position
 
+        assert self.current_position is not None
+        x, y = self.current_position
         circle = Circle(
             (x, y),
             self.radius,
@@ -169,7 +188,6 @@ class MovingEntity(Entity, Thread):
             linewidth=0,
         )
         ax.add_patch(circle)
-
         if self.target_positions:
             for pos in self.target_positions:
                 tx, ty = pos
@@ -182,9 +200,43 @@ class MovingEntity(Entity, Thread):
                     alpha=0.1,
                 )
                 ax.add_patch(target)
-
         if hasattr(self, "path"):
             if len(self.path) >= 2:
                 xs = [p[0] for p in self.path[self.path_index :]]
                 ys = [p[1] for p in self.path[self.path_index :]]
                 ax.plot(xs, ys, "--", color=color, alpha=0.2, linewidth=1)
+
+    def _collide_circle(
+        self,
+        circle: MovingEntity,
+        pos_self: tuple[float, float],
+        pos_other: tuple[float, float],
+        min_dist: float,
+    ) -> bool:
+        """
+        Check collision between this moving entity and a circular entity.
+        """
+
+        cx1, cy1 = pos_self
+        radius1 = self.radius
+        cx2, cy2 = pos_other
+        radius2 = circle.radius
+        dist = get_distance_circle_circle(cx1, cy1, radius1, cx2, cy2, radius2)
+        return dist <= min_dist
+
+    def _collide_rectangle(
+        self,
+        rect: StaticEntity,
+        pos_self: tuple[float, float],
+        pos_other: tuple[float, float],
+        min_dist: float,
+    ) -> bool:
+        """
+        Check collision between this moving entity and a rectangular entity.
+        """
+
+        x_min, y_min, x_max, y_max = rect.get_bounds_at(pos_other)
+        cx, cy = pos_self
+        radius = self.radius
+        dist = get_distance_rectangle_circle(x_min, y_min, x_max, y_max, cx, cy, radius)
+        return dist <= min_dist

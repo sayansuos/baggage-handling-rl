@@ -1,5 +1,7 @@
 import numpy as np
+
 from matplotlib.patches import Rectangle
+
 from simulator.config import AgentConfig
 from simulator.entities.moving_entity import MovingEntity
 
@@ -15,102 +17,64 @@ class Agent(MovingEntity):
 
     Attributes
     ----------
+    Attributes
+    ----------
     num : int
-        Unique identifier of the agent.
-    current_position : np.ndarray
-        Current center position of the agent.
-    start_position : np.ndarray | None
-        Initial position of the agent.
-    target_positions : list[np.ndarray]
+        Unique identifier of the entity.
+    current_position : tuple[float, float]
+        Current center position of the entity.
+        Format: [x, y].
+    start_position : tuple[float, float]
+        Initial position of the entity.
+    target_positions : list[tuple[float, float]]
         List of target positions to reach.
     radius : float
-        Radius of the circular agent.
-    v : float
-        Linear velocity of the agent.
-    omega : float
-        Angular velocity of the agent.
+        Radius of the circular entity.
     theta : float
         Current orientation angle in radians.
+    v : float
+        Linear velocity of the entity.
+    omega : float
+        Angular velocity of the entity.
+    path : list[tuple]
+        Path of the entity.
+    path_index : int
+        Position index in the path of the entity.
     length_view : int
         Perception range around the agent.
     state : bool
         State of the agent, either 'active', 'terminated' or 'truncated'.
     """
 
-    def __init__(self, agent_config: AgentConfig, num: int = None):
+    def __init__(self, agent_config: AgentConfig, num: int | None = None):
         """
         Builder
         """
         super().__init__(num=num)
         self.radius = agent_config.radius
-        self.length_view = agent_config.length_view
-        self.state = "active"
+        self.length_view: int = agent_config.length_view
+        self.state: str = "active"
 
     def __str__(self):
-        return f"Agent n°{self.num}"
-
-    @property
-    def id(self):
         return f"agent_{self.num}"
 
     @property
-    def _goal_relative_position(self):
+    def id(self) -> str:
         """
-        Return the relative position of the current goal.
-
-        The goal position is expressed in the world reference frame
-        relative to the agent's current position.
+        Return the identifier of the agent.
         """
 
-        x, y = self.current_position
-
-        if self.target_positions:
-            gx, gy = self.target_positions[0]
-            goal = np.array([gx - x, gy - y], dtype=np.float64)
-        else:
-            goal = np.zeros(2, dtype=np.float64)
-
-        return goal
-
-    @property
-    def _motion(self):
-        """
-        Return the current motion state of the agent.
-
-        The motion state contains the linear and angular velocities.
-        """
-        return np.array([self.v, self.omega], dtype=np.float64)
-
-    @property
-    def _orientation(self):
-        """
-        Return the current orientation of the agent.
-
-        The orientation is encoded using the cosine and sine
-        of the heading angle in order to avoid angular
-        discontinuities.
-        """
-
-        return np.array([np.cos(self.theta), np.sin(self.theta)], dtype=np.float64)
+        return f"agent_{self.num}"
 
     def move(self, v: float, omega: float, dt: float = 1):
         """
         Update the agent's position regarding a given velocity.
         """
 
-        self.theta = omega * dt
-        self.current_position = self._get_next_pos(v, omega, dt)
+        self.theta += omega * dt
+        self.current_position = self._get_next_pos(v, dt)
 
-    def _get_next_pos(self, v: float, omega: float, dt: float = 1):
-        """
-        Regarding the agent's next position regarding its velocity.
-        """
-
-        x = v * np.cos(self.theta) * dt
-        y = np.sin(self.theta) * dt
-        return x, y
-
-    def _step(self) -> tuple(int, int):
+    def step(self) -> tuple[int, int] | tuple[float, float] | None:
         """
         Move the entity one step along its current path and reset it.
         """
@@ -140,8 +104,8 @@ class Agent(MovingEntity):
         bounding box centered on the agent.
         """
 
+        assert self.current_position is not None
         x, y = self.current_position
-
         x_min = np.clip(
             x - self.length_view / 2,
             width_min,
@@ -178,7 +142,6 @@ class Agent(MovingEntity):
         """
 
         super().render(ax, color=color)
-
         x_min, y_min, x_max, y_max = self.get_vision_field(
             width_min, width_max, height_min, height_max
         )
@@ -190,3 +153,35 @@ class Agent(MovingEntity):
             alpha=0.1,
         )
         ax.add_patch(rect)
+
+    @property
+    def _motion(self) -> np.ndarray:
+        """
+        Return the current motion state of the agent.
+
+        The motion state contains the linear and angular velocities.
+        """
+        return np.array([self.v, self.omega])
+
+    @property
+    def _orientation(self) -> np.ndarray:
+        """
+        Return the current orientation of the agent.
+
+        The orientation is encoded using the cosine and sine
+        of the heading angle in order to avoid angular
+        discontinuities.
+        """
+
+        return np.array([np.cos(self.theta), np.sin(self.theta)])
+
+    def _get_next_pos(self, v: float, dt: float = 1) -> tuple[float, float]:
+        """
+        Regarding the agent's next position regarding its velocity.
+        """
+
+        assert self.current_position is not None
+        x, y = self.current_position
+        x += v * np.cos(self.theta) * dt
+        y += np.sin(self.theta) * dt
+        return x, y

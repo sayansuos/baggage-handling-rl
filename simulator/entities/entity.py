@@ -1,4 +1,3 @@
-import numpy as np
 from abc import ABC, abstractmethod
 
 
@@ -11,18 +10,18 @@ class Entity(ABC):
     ----------
     num : int
         Unique identifier of the object.
-    current_position : np.ndarray
+    current_position : tuple
         Current center position of the object.
     """
 
-    def __init__(self, num: int = None):
+    def __init__(self, num: int | None = None):
         """
-        Builder
+        Constructor
         """
 
         super().__init__()
         self.num = num
-        self.current_position = None
+        self.current_position: tuple[float, float] | None = None
 
     @property
     @abstractmethod
@@ -36,10 +35,10 @@ class Entity(ABC):
     def collides_with(
         self,
         other: Entity,
-        pos_self: np.array,
-        pos_other: np.array,
-        margin: float = 0.0,
-    ):
+        pos_self: tuple[float, float],
+        pos_other: tuple[float, float],
+        min_dist: float = 0.0,
+    ) -> bool:
         """
         Check collision between this entity and another entity.
 
@@ -48,7 +47,8 @@ class Entity(ABC):
         """
         pass
 
-    def render(self, ax):
+    @abstractmethod
+    def render(self, ax) -> None:
         """
         Default render method.
         """

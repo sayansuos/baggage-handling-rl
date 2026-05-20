@@ -228,7 +228,7 @@ class Environment(gym.Env):
         """
 
         for agent in self.agents:
-            next_pos = agent._step()
+            next_pos = agent.step()
             if self._is_free(agent, next_pos, 0):
                 agent.current_position = next_pos
                 agent.path_index += 1
@@ -247,7 +247,7 @@ class Environment(gym.Env):
         """
 
         for obs in self.moving_obstacles:
-            next_pos = obs._step()
+            next_pos = obs.step()
             if self._is_free(obs, next_pos, 0):
                 obs.current_position = next_pos
 
