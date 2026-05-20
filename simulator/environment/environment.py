@@ -2,7 +2,7 @@ import gymnasium as gym
 import numpy as np
 import matplotlib.pyplot as plt
 from gymnasium import spaces
-from simulator.config import EnvConfig, AgentConfig
+from simulator.utils.config import EnvConfig, AgentConfig
 from simulator.entities.agent import Agent
 from simulator.entities.entity import Entity
 from simulator.motion.astar import AStar

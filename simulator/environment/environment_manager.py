@@ -1,5 +1,5 @@
 import numpy as np
-from simulator.config import EnvConfig, AgentConfig
+from simulator.utils.config import EnvConfig, AgentConfig
 from simulator.entities.agent import Agent
 from simulator.entities.entity import Entity
 from simulator.entities.static_entity import StaticEntity

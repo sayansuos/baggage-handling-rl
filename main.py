@@ -1,7 +1,8 @@
+import numpy as np
 import matplotlib.pyplot as plt
-from simulator.config import EnvConfig, AgentConfig
+from simulator.utils.config import EnvConfig, AgentConfig
 from simulator.environment.environment import Environment
-from simulator.utils.save_figures import *
+from simulator.utils.save_figures import save_grid, save_animation
 
 np.random.seed(1234)
 
