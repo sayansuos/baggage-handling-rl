@@ -1,14 +1,8 @@
 import numpy as np
 import heapq
+
+from simulator.utils.get_distance import get_relative_distance
 from simulator.entities.node import Node
-
-
-def get_distance(pos1: tuple, pos2: tuple) -> float:
-    """
-    Compute Euclidean distance between two positions.
-    """
-
-    return np.linalg.norm(np.array(pos1) - np.array(pos2))
 
 
 class AStar:
@@ -28,29 +22,35 @@ class AStar:
         Occupancy grid used for navigation.
     """
 
-    def __init__(self, grid: np.ndarray, radius: int = None):
+    def __init__(self, grid: np.ndarray, margin: int | None = None):
         """
-        Builder
+        Constructor
         """
         self.grid = grid
-        if radius:
-            self.inflate_obstacles(radius)
+        if margin:
+            self.inflate_obstacles(margin)
 
-    def inflate_obstacles(self, radius: int):
-        """ """
+    def inflate_obstacles(self, margin: int):
+        """
+        Inflate all obstacle cells in the occupancy grid.
+
+        Neighboring cells around each obstacle are marked as occupied
+        in order to create a safety margin for path planning.
+        """
+
         inflated = self.grid.copy()
         rows, cols = inflated.shape
         obstacle_cells = np.argwhere(self.grid == 1)
         for r, c in obstacle_cells:
-            for dr in range(-radius, radius + 1):
-                for dc in range(-radius, radius + 1):
+            for dr in range(-margin, margin + 1):
+                for dc in range(-margin, margin + 1):
                     nr = r + dr
                     nc = c + dc
                     if 0 <= nr < rows and 0 <= nc < cols:
                         inflated[nr, nc] = 1
         self.grid = inflated
 
-    def get_valid_neighbors(self, pos: tuple) -> list[tuple]:
+    def get_valid_neighbors(self, pos: tuple[int, int]) -> list[tuple[int, int]]:
         """
         Return valid neighboring cells.
 
@@ -77,7 +77,7 @@ class AStar:
                 valid_moves.append((r, c))
         return valid_moves
 
-    def reconstruct_path(self, target: Node) -> list[tuple]:
+    def reconstruct_path(self, target: Node) -> list[tuple[int, int]]:
         """
         Reconstruct path from target node.
         """
@@ -89,12 +89,14 @@ class AStar:
             current = current.parent
         return path[::-1]
 
-    def find_path(self, start_pos: tuple, target_pos: tuple):
+    def find_path(
+        self, start_pos: tuple[int, int], target_pos: tuple[int, int]
+    ) -> list[tuple[int, int]]:
         """
         Find the shortest path between two positions using A*.
         """
 
-        start_node = Node(start_pos, 0, get_distance(start_pos, target_pos))
+        start_node = Node(start_pos, 0, get_relative_distance(start_pos, target_pos))
         open_list = []
         heapq.heappush(open_list, start_node)
         open_dict = {start_pos: start_node}
@@ -104,7 +106,7 @@ class AStar:
             current_node = heapq.heappop(open_list)
             current_pos = current_node.position
 
-            if get_distance(current_pos, target_pos) < 1e-6:
+            if get_relative_distance(current_pos, target_pos) < 1e-6:
                 return self.reconstruct_path(current_node)
 
             closed_set.add(current_pos)
@@ -112,12 +114,14 @@ class AStar:
             for neighbor_pos in self.get_valid_neighbors(current_pos):
                 if neighbor_pos in closed_set:
                     continue
-                new_g = current_node.g + get_distance(current_pos, neighbor_pos)
+                new_g = current_node.g + get_relative_distance(
+                    current_pos, neighbor_pos
+                )
                 if neighbor_pos not in open_dict:
                     neighbor_node = Node(
                         neighbor_pos,
                         new_g,
-                        get_distance(neighbor_pos, target_pos),
+                        get_relative_distance(neighbor_pos, target_pos),
                         parent=current_node,
                     )
                     heapq.heappush(open_list, neighbor_node)

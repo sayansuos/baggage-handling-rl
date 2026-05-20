@@ -24,9 +24,11 @@ class Node:
         Total estimated cost of the node.
     """
 
-    def __init__(self, pos: tuple, g: float, h: float, parent: dict = None):
+    def __init__(
+        self, pos: tuple[int, int], g: float, h: float, parent: dict | None = None
+    ):
         """
-        Builder
+        Constructor
         """
         self.position = pos
         self.g = g
@@ -48,5 +50,4 @@ class Node:
         """
         Total estimated cost of the node.
         """
-
         return self.g + self.h

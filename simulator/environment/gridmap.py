@@ -1,4 +1,5 @@
 import numpy as np
+
 from simulator.utils.config import EnvConfig, AgentConfig
 from simulator.entities.static_entity import StaticEntity
 from simulator.entities.moving_entity import MovingEntity
@@ -7,21 +8,33 @@ from simulator.entities.agent import Agent
 
 class GridMap:
     """
-    Occupancy grid representation of a continuous environment.
+    Occupancy grid representation of the environment.
 
-    This class converts a continuous 2D environment into a discrete grid
-    suitable for path planning algorithms such as A*.
+    This class converts the continuous simulation world into a
+    discrete 2D occupancy grid.
 
-    The grid encodes:
-    - 0 → free space
-    - 1 → occupied space (static obstacles)
+    The occupancy grid uses the following convention:
+    - 0 → free cell
+    - 1 → occupied cell
 
     Attributes
     ----------
-    env : Environment
-        The simulation environment containing obstacles and dimensions.
+    env_config : EnvConfig
+        Environment configuration parameters.
+    agent_config : AgentConfig
+        Agent configuration parameters.
+    static_obstacles : list[StaticEntity]
+        List of static obstacles in the environment.
+    moving_obstacles : list[MovingEntity]
+        List of dynamic obstacles in the environment.
+    agents : list[Agent]
+        List of agents in the environment.
+    _rows : int
+        Number of rows in the occupancy grid.
+    _columns : int
+        Number of columns in the occupancy grid.
     _grid : np.ndarray
-        Internal occupancy grid representation.
+        Static occupancy grid containing only static obstacles.
     """
 
     def __init__(
@@ -33,37 +46,43 @@ class GridMap:
         agents: list[Agent],
     ):
         """
-        Builder
+        Constructor
         """
 
         self.env_config = env_config
         self.agent_config = agent_config
-        self._rows, self._columns = env_config.height, env_config.width
 
         self.static_obstacles = static_obstacles
         self.moving_obstacles = moving_obstacles
         self.agents = agents
 
+        self._rows, self._columns = env_config.height, env_config.width
         self._grid = self._build_grid()
 
     @property
     def grid(self) -> np.ndarray:
+        """
+        Return the static occupancy grid.
+        """
         return self._grid
 
     @property
-    def shape(self) -> tuple:
+    def shape(self) -> tuple[int, int]:
+        """
+        Return the shape of the occupancy grid.
+        """
         return self._grid.shape
 
     @property
     def current_grid(self) -> np.ndarray:
+        """
+        Return the current occupancy grid.
+        """
         return self._update_grid()
 
     def _build_grid(self) -> np.ndarray:
         """
-        Build the occupancy grid from the environment.
-
-        Static obstacles are projected into grid cells by converting
-        their world-space bounding boxes into grid indices.
+        Build the static occupancy grid.
         """
 
         grid = np.zeros((self._rows, self._columns), dtype=np.uint8)
@@ -91,14 +110,15 @@ class GridMap:
 
     def _update_grid(self) -> np.ndarray:
         """
-        Return the current occupancy grid including
-        moving obstacles and agents.
+        Update the occupancy grid with dynamic entities.
         """
 
         grid = self._grid.copy()
 
         for entity in self.moving_obstacles + self.agents:
 
+            if not entity.current_position:
+                continue
             r, c = self.world_to_grid(entity.current_position)
 
             pad = int(round(entity.radius))
@@ -111,16 +131,19 @@ class GridMap:
 
         return grid
 
-    def get_local_grid(self, agent: Agent, size: int) -> np.ndarray:
+    def get_local_grid(self, agent: Agent, size: int) -> np.ndarray | None | ValueError:
         """
         Return the local occupancy grid perceived by the agent.
         """
+
         if not size % 2 == 1:
             return ValueError("The size must be impair.")
 
         grid = self.current_grid.copy()
         half = size // 2
 
+        if not agent.current_position:
+            return
         cx, cy = agent.current_position
         r, c = self.world_to_grid((cx, cy))
 
@@ -132,14 +155,9 @@ class GridMap:
 
         return grid[r_min : r_max + 1, c_min : c_max + 1]
 
-    def _safe_cell(self, r: int, c: int):
+    def _safe_cell(self, r: int, c: int) -> tuple[int, int]:
         """
         Clamp grid coordinates to valid grid boundaries.
-
-        This method ensures that a pair of grid indices stays inside
-        the occupancy grid limits by clipping:
-        - rows to [0, self._rows - 1]
-        - columns to [0, self._columns - 1]
         """
 
         r = np.clip(r, 0, self._rows - 1)

@@ -80,7 +80,7 @@ class StaticEntity(Entity):
             other._collide_rectangle(self, other.current_position, new_pos, min_dist)
         )
 
-    def render(self, ax, color="black"):
+    def render(self, ax, color: str | tuple[float, float, float, float] = "black"):
         """
         Default render method for static entities.
         """

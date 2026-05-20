@@ -135,7 +135,7 @@ class Agent(MovingEntity):
         width_max: float,
         height_min: float,
         height_max: float,
-        color="red",
+        color: str | tuple[float, float, float, float] = "red",
     ):
         """
         Default render method for moving agents.

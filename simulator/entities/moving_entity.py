@@ -59,7 +59,7 @@ class MovingEntity(Entity, Thread):
         self.v: float = 0
         self.omega: float = 0
 
-        self.path: list[tuple[int, int]] = []
+        self.path: list[tuple[int, int] | tuple[float, float]] = []
         self.path_index: int = 0
 
     def __str__(self):
@@ -172,7 +172,7 @@ class MovingEntity(Entity, Thread):
     def render(
         self,
         ax,
-        color="black",
+        color: str | tuple[float, float, float, float] = "black",
     ):
         """
         Default render method for moving entities.
