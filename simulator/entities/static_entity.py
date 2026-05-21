@@ -62,6 +62,12 @@ class StaticEntity(Entity):
             y + self.height / 2,
         )
 
+    def get_distance(self, other: StaticEntity | MovingEntity) -> float:
+        """
+        Compute the Euclidean distance between this circular entity and another one.
+        """
+        return other._get_distance_rectangle(self)
+
     def collides_with(
         self,
         other: StaticEntity | MovingEntity,
@@ -94,6 +100,32 @@ class StaticEntity(Entity):
             linewidth=0,
         )
         ax.add_patch(rect)
+
+    def _get_distance_circle(self, circle: MovingEntity) -> float:
+        """
+        Compute the Euclidean distance between a circular entity and a
+        rectangular one.
+        """
+
+        assert circle.current_position is not None
+        assert self.current_position is not None
+        x_min, y_min, x_max, y_max = self.get_bounds_at(self.current_position)
+        cx, cy = circle.current_position
+        radius = circle.radius
+        return get_distance_rectangle_circle(x_min, y_min, x_max, y_max, cx, cy, radius)
+
+    def _get_distance_rectangle(self, rect: MovingEntity) -> float:
+        """
+        Compute the Euclidean distance between two rectangular entities.
+        """
+
+        assert rect.current_position is not None
+        assert self.current_position is not None
+        x1_min, y1_min, x1_max, y1_max = self.get_bounds_at(self.current_position)
+        x2_min, y2_min, x2_max, y2_max = rect.get_bounds_at(rect.current_position)
+        return get_distance_rectangle_rectangle(
+            x1_min, y1_min, x1_max, y1_max, x2_min, y2_min, x2_max, y2_max
+        )
 
     def _collide_circle(
         self,

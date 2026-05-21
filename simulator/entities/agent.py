@@ -24,6 +24,8 @@ class Agent(MovingEntity):
     current_position : tuple[float, float]
         Current center position of the entity.
         Format: [x, y].
+    old_position : tuple[int, int]
+        Previous center position of the entity.
     start_position : tuple[float, float]
         Initial position of the entity.
     target_positions : list[tuple[float, float]]
@@ -73,22 +75,6 @@ class Agent(MovingEntity):
 
         self.theta += omega * dt
         self.current_position = self._get_next_pos(v, dt)
-
-    def step(self) -> tuple[int, int] | tuple[float, float] | None:
-        """
-        Move the entity one step along its current path and reset it.
-        """
-
-        if self.path_index == len(self.path) - 1:
-            next_pos = self.current_position
-            self.path = self.path[::-1]
-            self.path_index = 0
-            all_positions = self.positions[::-1]
-            self.start_position = all_positions[0]
-            self.target_positions = all_positions[1:]
-        else:
-            next_pos = self.path[self.path_index]
-        return next_pos
 
     def get_vision_field(
         self,

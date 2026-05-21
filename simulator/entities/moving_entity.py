@@ -26,6 +26,8 @@ class MovingEntity(Entity, Thread):
     current_position : tuple[float, float]
         Current center position of the entity.
         Format: [x, y].
+    old_position : tuple[int, int]
+        Previous center position of the entity.
     start_position : tuple[float, float]
         Initial position of the entity.
     target_positions : list[tuple[float, float]]
@@ -42,6 +44,8 @@ class MovingEntity(Entity, Thread):
         Path of the entity.
     path_index : int
         Position index in the path of the entity.
+    target_index : int
+        Position index to reach in the targets' list of the entity.
     """
 
     def __init__(self, num: int | None = None):
@@ -50,7 +54,7 @@ class MovingEntity(Entity, Thread):
         """
 
         super().__init__(num)
-
+        self.old_position: tuple[float, float] | None = None
         self.start_position: tuple[float, float] | None = None
         self.target_positions: list[tuple[float, float]] = []
 
@@ -61,6 +65,7 @@ class MovingEntity(Entity, Thread):
 
         self.path: list[tuple[int, int] | tuple[float, float]] = []
         self.path_index: int = 0
+        self.target_index: int = 0
 
     def __str__(self):
         return f"moving_entity{self.num}"
@@ -93,7 +98,7 @@ class MovingEntity(Entity, Thread):
         """
         if not self.target_positions:
             return (0, 0)
-        return self.get_relative_position(self.target_positions[0])
+        return self.get_relative_position(self.target_positions[self.target_index])
 
     @property
     def _goal_relative_distance(self):
@@ -102,7 +107,19 @@ class MovingEntity(Entity, Thread):
         """
         if not self.target_positions:
             return 0
-        return self.get_relative_distance(self.target_positions[0])
+        return self.get_relative_distance(self.target_positions[self.target_index])
+
+    @property
+    def _old_goal_relative_distance(self):
+        """
+        Return the relative distance of the current goal.
+        """
+        assert self.old_position is not None
+        if not self.target_positions:
+            return 0
+        return get_relative_distance(
+            self.old_position, self.target_positions[self.target_index]
+        )
 
     def bounds_at(self, pos: tuple[float, float]) -> tuple[float, float, float, float]:
         """
@@ -134,6 +151,12 @@ class MovingEntity(Entity, Thread):
         assert self.current_position is not None
         return get_relative_distance(self.current_position, pos)
 
+    def get_distance(self, other: StaticEntity | MovingEntity) -> float:
+        """
+        Compute the Euclidean distance between this circular entity and another one.
+        """
+        return other._get_distance_circle(self)
+
     def collides_with(
         self,
         other: MovingEntity | StaticEntity,
@@ -157,17 +180,29 @@ class MovingEntity(Entity, Thread):
         Move the entity one step along its current path and reset it.
         """
 
-        if self.path_index == len(self.path) - 1:
-            next_pos = self.current_position
-            self.path = self.path[::-1]
-            self.path_index = 0
-            all_positions = self.positions[::-1]
-            self.start_position = all_positions[0]
-            self.target_positions = all_positions[1:]
-        else:
-            next_pos = self.path[self.path_index]
-            self.path_index += 1
-        return next_pos
+        assert self.start_position is not None
+
+        self.path_index += 1
+        self.old_position = self.current_position
+
+        if self.target_positions[self.target_index] == self.current_position:
+            self.target_index += 1
+
+            if self.path_index >= len(self.path) - 1:
+                self.path = self.path[::-1]
+                self.path_index = 0
+
+            if self.target_index >= len(self.target_positions):
+                self.target_positions = self.target_positions[::-1]
+                self.target_positions.append(self.start_position)
+                self.start_position = self.target_positions.pop(0)
+                self.target_index = 0
+
+            self.old_position = self.path[self.path_index]
+
+        self.current_position = self.path[self.path_index]
+
+        return None
 
     def render(
         self,
@@ -178,6 +213,17 @@ class MovingEntity(Entity, Thread):
         Default render method for moving entities.
         """
 
+        assert self.start_position is not None
+        x, y = self.start_position
+        circle = Circle(
+            (x, y),
+            0.5,
+            facecolor=color,
+            edgecolor=color,
+            linewidth=0,
+            alpha=0.1,
+        )
+        ax.add_patch(circle)
         assert self.current_position is not None
         x, y = self.current_position
         circle = Circle(
@@ -205,6 +251,31 @@ class MovingEntity(Entity, Thread):
                 xs = [p[0] for p in self.path[self.path_index :]]
                 ys = [p[1] for p in self.path[self.path_index :]]
                 ax.plot(xs, ys, "--", color=color, alpha=0.2, linewidth=1)
+
+    def _get_distance_circle(self, circle: MovingEntity) -> float:
+        """
+        Compute the Euclidean distance between two circular entity.
+        """
+        assert self.current_position is not None
+        assert circle.current_position is not None
+        cx1, cy1 = self.current_position
+        radius1 = self.radius
+        cx2, cy2 = circle.current_position
+        radius2 = circle.radius
+        return get_distance_circle_circle(cx1, cy1, radius1, cx2, cy2, radius2)
+
+    def _get_distance_rectangle(self, rect: StaticEntity) -> float:
+        """
+        Compute the Euclidean distance between a circular entity and a
+        rectangular one.
+        """
+
+        assert self.current_position is not None
+        assert rect.current_position is not None
+        x_min, y_min, x_max, y_max = rect.get_bounds_at(rect.current_position)
+        cx, cy = self.current_position
+        radius = self.radius
+        return get_distance_rectangle_circle(x_min, y_min, x_max, y_max, cx, cy, radius)
 
     def _collide_circle(
         self,

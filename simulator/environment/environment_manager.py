@@ -273,6 +273,7 @@ class EnvironmentManager:
             pos = self._set_random_position(agent, min_dist, max_attempts, False)
             agent.start_position = pos
             agent.current_position = pos
+            agent.old_position = pos
             self.agents.append(agent)
             for _ in range(nb_targets):
                 agent.target_positions.append(
