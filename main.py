@@ -1,11 +1,14 @@
-import json
 import time
 import imageio
 import numpy as np
 import matplotlib.pyplot as plt
+
+from tqdm import tqdm
+
 from simulator.utils.config import EnvConfig, AgentConfig, RewardConfig
 from simulator.environment.environment import Environment
 from simulator.utils.save_figures import save_grid
+from simulator.utils.save_logs import save_as_df
 
 
 def run_simulation(env: Environment, nb_episode: int = 1000, save_occurence: int = 100):
@@ -14,25 +17,25 @@ def run_simulation(env: Environment, nb_episode: int = 1000, save_occurence: int
     """
 
     start = time.perf_counter()
-    while env.episode <= nb_episode:
+    histories = []
+    for _ in tqdm(range(1, nb_episode + 1), desc="Simulation"):
         history = []
         done = False
         while not done:
-            obs, reward, terminated, truncated, info = env.step()
+            _, _, terminated, truncated, info = env.step()
             history.append(info)
             done = all(terminated[a] or truncated[a] for a in terminated.keys())
+            if env.episode % save_occurence == 0:
+                histories.extend(history)
+                save_grid(
+                    env.grid_map.current_grid,
+                    f"grid_{env.episode}.png",
+                    scale=10,
+                    show_grid=True,
+                    path="logs/",
+                )
         env.reset()
-        if env.episode % save_occurence == 0:
-            print(f"Episode {env.episode}/{nb_episode}")
-            with open(f"logs/episode_{env.episode}.json", "w") as f:
-                json.dump(history, f, indent=2)
-            save_grid(
-                env.grid_map.current_grid,
-                f"grid_{env.episode}.png",
-                scale=10,
-                show_grid=True,
-                path="logs/",
-            )
+        save_as_df(histories, "logs.csv")
     end = time.perf_counter()
     print(f"Execution time : {end - start:.6f} s")
 
@@ -94,7 +97,7 @@ if __name__ == "__main__":
 
     np.random.seed(123)
 
-    env_config = EnvConfig()
+    env_config = EnvConfig(nb_agents=2)
     agent_config = AgentConfig()
     reward_config = RewardConfig()
     env = Environment(env_config, agent_config, reward_config)

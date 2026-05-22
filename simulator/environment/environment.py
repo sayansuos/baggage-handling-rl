@@ -59,8 +59,8 @@ class Environment(gym.Env):
         self.info: dict = {}
 
         self.episode = 1
-        self.step_count = 0
-        self.total_step = 0
+        self.step_count = 1
+        self.total_step = 1
 
     # ---------------------------------------------------------------
     # GYM API
@@ -90,7 +90,7 @@ class Environment(gym.Env):
         """
 
         info = {}
-        info["episode"] = self.episode
+        info["episode"] = self.episode + 1
         info["step_count"] = self.step_count
         info["reward"] = self.reward
         info["agents"] = {}
@@ -99,6 +99,11 @@ class Environment(gym.Env):
                 "state": agent.state,
                 "goal_relative_distance": agent._goal_relative_distance,
                 "action": agent._motion.tolist(),
+                "time_travel": (
+                    self.step_count
+                    if agent.state == "active"
+                    else self.info["agents"][agent.id]["time_travel"]
+                ),
             }
         self.info = info
         return info
@@ -247,28 +252,37 @@ class Environment(gym.Env):
         safety_threshold = self.reward_config.safety_threshold
 
         for agent in self.agents:
-            reward = 0
 
-            # Goal reached/progress reward
-            current = agent._goal_relative_distance
-            progress = agent._old_goal_relative_distance - agent._goal_relative_distance
-            reward += beta1 * (goal_bonus if current < 0.05 else progress)
-            # Abrupt rotations penalty
-            omega = abs(agent.omega)
-            reward += beta2 * (angular_malus * omega if omega > omega_threshold else 0)
-            # Non-respect of safety distance penalty
-            closest_dist = (
-                safety_threshold - self._closest[agent.id]["closest_distance"]
-            )
-            reward += beta3 * (
-                safety_malus1 * np.exp(safety_malus2 * closest_dist)
-                if closest_dist > 0
-                else 0
-            )
-            # Collision penalty
-            reward += beta4 * (collision_malus if agent.state == "collided" else 0)
+            if agent.state in ["truncated", "terminated"]:
+                rewards[agent.id] = 0
 
-            rewards[agent.id] = reward
+            else:
+                reward = 0
+
+                # Goal reached/progress reward
+                current = agent._goal_relative_distance
+                progress = (
+                    agent._old_goal_relative_distance - agent._goal_relative_distance
+                )
+                reward += beta1 * (goal_bonus if current < 0.05 else progress)
+                # Abrupt rotations penalty
+                omega = abs(agent.omega)
+                reward += beta2 * (
+                    angular_malus * omega if omega > omega_threshold else 0
+                )
+                # Non-respect of safety distance penalty
+                closest_dist = (
+                    safety_threshold - self._closest[agent.id]["closest_distance"]
+                )
+                reward += beta3 * (
+                    safety_malus1 * np.exp(safety_malus2 * closest_dist)
+                    if closest_dist > 0
+                    else 0
+                )
+                # Collision penalty
+                reward += beta4 * (collision_malus if agent.state == "collided" else 0)
+
+                rewards[agent.id] = reward
 
         self.reward = rewards
 
