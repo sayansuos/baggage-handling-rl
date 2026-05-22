@@ -29,22 +29,3 @@ def save_grid(
             cv2.line(img, (0, y), (W * scale, y), (200, 200, 200), 1)
 
     imageio.imwrite(path + file_name, img)
-
-
-def save_animation(
-    env: Environment,
-    file_name: str,
-    path: str = "figures/",
-    step: int = 300,
-    fps: int = 30,
-):
-    writer = imageio.get_writer(path + file_name, fps=fps)
-
-    for _ in range(step):
-        env.step()
-        env.render()
-        env.fig.canvas.draw()
-        frame = np.asarray(env.fig.canvas.renderer.buffer_rgba())
-        writer.append_data(frame)
-
-    writer.close()

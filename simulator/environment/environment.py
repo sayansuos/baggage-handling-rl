@@ -50,7 +50,17 @@ class Environment(gym.Env):
         self.fig, self.ax = plt.subplots(figsize=(10, 8))
 
         self._build_environment()  # Build simulation states
-        self._build_environment_spaces()  # Define Gym spaces
+        self.observation_space, self.action_space = (
+            self._build_environment_spaces()
+        )  # Define Gym spaces
+
+        self._closest = self._compute_closest()  # Get entities interaction
+        self.reward: dict = {agent.id: 0 for agent in self.agents}
+        self.info: dict = {}
+
+        self.episode = 1
+        self.step_count = 0
+        self.total_step = 0
 
     # ---------------------------------------------------------------
     # GYM API
@@ -80,30 +90,36 @@ class Environment(gym.Env):
         """
 
         info = {}
-        closest = self._compute_closest()
+        info["episode"] = self.episode
+        info["step_count"] = self.step_count
+        info["reward"] = self.reward
+        info["agents"] = {}
         for agent in self.agents:
-            closest_entity = closest[agent.id]["closest_entity"]
-            closest_distance = closest[agent.id]["closest_distance"]
-            info[agent.id] = {
-                "closest_entity": closest_entity,
-                "closest_distance": closest_distance,
-                "collision": agent.state in ["truncated", "collided"],
-                "terminated": agent.state == "terminated",
+            info["agents"][agent.id] = {
+                "state": agent.state,
+                "goal_relative_distance": agent._goal_relative_distance,
+                "action": agent._motion.tolist(),
             }
+        self.info = info
         return info
 
-    def reset(self, seed=None, options=None) -> (dict, dict):
+    def reset(self, seed=None, options=None) -> tuple[dict, dict]:
         """
         Reset the environment to an initial state.
         """
 
         super().reset(seed=seed)
+        self.env_manager.reset()
         self._reset()
         obs = self._get_obs()
         info = self._get_info()
+
+        self.step_count = 0
+        self.episode += 1
+
         return obs, info
 
-    def step(self, action=None) -> (dict, dict, dict, dict, dict):
+    def step(self, action=None) -> tuple[dict, dict, dict, dict, dict]:
         """
         Advance the environment by one simulation step.
         """
@@ -114,7 +130,10 @@ class Environment(gym.Env):
         terminated = self._compute_terminated()
         truncated = self._compute_truncated()
         info = self._get_info()
-        print(reward)
+
+        self.step_count += 1
+        self.total_step += 1
+
         return obs, reward, terminated, truncated, info
 
     def render(self):
@@ -150,6 +169,7 @@ class Environment(gym.Env):
         self._update_obstacles()
         if not action:
             self._update_agents()
+        self._closest = self._compute_closest()
         # TODO : add other behavior for agents
 
     def _update_agents(self):
@@ -201,9 +221,10 @@ class Environment(gym.Env):
         """
         Compute the truncation state of all agents.
         """
-        return {
-            agent.id: agent.state in ["truncated", "collided"] for agent in self.agents
-        }
+        for agent in self.agents:
+            if agent.state == "collided":
+                agent.state = "truncated"
+        return {agent.id: agent.state in ["truncated"] for agent in self.agents}
 
     def _compute_reward(self) -> dict[str, float]:
         """
@@ -211,7 +232,6 @@ class Environment(gym.Env):
         """
 
         rewards = {}
-        closest = self._compute_closest()
 
         beta1 = self.reward_config.beta1
         beta2 = self.reward_config.beta2
@@ -228,57 +248,31 @@ class Environment(gym.Env):
 
         for agent in self.agents:
             reward = 0
-            rewards[agent.id] = {}
 
             # Goal reached/progress reward
             current = agent._goal_relative_distance
             progress = agent._old_goal_relative_distance - agent._goal_relative_distance
             reward += beta1 * (goal_bonus if current < 0.05 else progress)
-            # # Abrupt rotations penalty
-            # omega = abs(agent.omega)
-            # reward += beta2 * (angular_malus * omega if omega > omega_threshold else 0)
-            # # Non-respect of safety distance penalty
-            # closest_dist = safety_threshold - closest[agent.id]["closest_distance"]
-            # reward += beta3 * (
-            #     safety_malus1 * np.exp(safety_malus2 * closest_dist)
-            #     if closest_dist > 0
-            #     else 0
-            # )
-            # # Collision penalty
-            # reward += beta4 * (collision_malus if agent.state == "collided" else 0)
+            # Abrupt rotations penalty
+            omega = abs(agent.omega)
+            reward += beta2 * (angular_malus * omega if omega > omega_threshold else 0)
+            # Non-respect of safety distance penalty
+            closest_dist = (
+                safety_threshold - self._closest[agent.id]["closest_distance"]
+            )
+            reward += beta3 * (
+                safety_malus1 * np.exp(safety_malus2 * closest_dist)
+                if closest_dist > 0
+                else 0
+            )
+            # Collision penalty
+            reward += beta4 * (collision_malus if agent.state == "collided" else 0)
 
-            rewards[agent.id]["R"] = reward
-            rewards[agent.id]["targets"] = agent.target_positions
-            rewards[agent.id]["path_idx"] = agent.path_index
+            rewards[agent.id] = reward
+
+        self.reward = rewards
 
         return rewards
-
-    def _compute_closest(self) -> dict:
-        """
-        Compute the closest surrounding entity for each agent.
-
-        The closest entity is determined using the Euclidean
-        distance between entities.
-        """
-
-        metrics = {}
-        entities = self.static_obstacles + self.moving_obstacles + self.agents
-        for agent in self.agents:
-            min_distance = np.inf
-            closest_entity = None
-            for other in entities:
-                if other == agent or other.current_position is None:
-                    continue
-                dist = agent.get_distance(other)
-                if dist < min_distance:
-                    min_distance = dist
-                    closest_entity = other
-
-            metrics[agent.id] = {
-                "closest_distance": min_distance,
-                "closest_entity": closest_entity,
-            }
-        return metrics
 
     # ---------------------------------------------------------------
     # CREATE
@@ -312,12 +306,12 @@ class Environment(gym.Env):
         self.env_manager = env_manager
         self._reset()
 
-    def _build_environment_spaces(self):
+    def _build_environment_spaces(self) -> tuple[spaces.Dict, spaces.Dict]:
         """
         Define observation and action spaces for each agent.
         """
 
-        self.observation_space = spaces.Dict(
+        observation_space = spaces.Dict(
             {
                 agent.id: get_single_observation_space(
                     self.env_config, self.agent_config
@@ -325,18 +319,48 @@ class Environment(gym.Env):
                 for agent in self.agents
             }
         )
-        self.action_space = spaces.Dict(
+        action_space = spaces.Dict(
             {
                 agent.id: get_single_action_space(self.env_config)
                 for agent in self.agents
             }
         )
 
+        return observation_space, action_space
+
+    def _compute_closest(self) -> dict:
+        """
+        Compute the closest surrounding entity for each agent.
+
+        The closest entity is determined using the Euclidean
+        distance between entities.
+        """
+
+        metrics = {}
+        entities = self.static_obstacles + self.moving_obstacles + self.agents
+        for agent in self.agents:
+            min_distance = np.inf
+            closest_entity = None
+            for other in entities:
+                if other == agent or other.current_position is None:
+                    continue
+                dist = agent.get_distance(other)
+                if dist < min_distance:
+                    min_distance = dist
+                    closest_entity = other
+                if dist < 1e-3:
+                    agent.state = "collided"
+
+            metrics[agent.id] = {
+                "closest_distance": min_distance,
+                "closest_entity": closest_entity,
+            }
+        return metrics
+
     def _reset(self):
         """
         Regenerate the full environment state.
         """
-
         self.static_obstacles = self.env_manager.generate_static_obstacles()
         self.moving_obstacles = self.env_manager.generate_moving_obstacles()
         self.agents = self.env_manager.generate_agents()
@@ -383,6 +407,9 @@ class Environment(gym.Env):
                 start_grid = self._to_grid(start)
                 goal_grid = self._to_grid(goal)
                 path = pathfinder.find_path(start_grid, goal_grid)
-                path = [self._from_grid(pos) for pos in path]
-                entity.path.extend(path)
-                start = goal
+                if path:
+                    path = [self._from_grid(pos) for pos in path]
+                    entity.path.extend(path)
+                    start = goal
+                else:
+                    path = [entity.current_position]

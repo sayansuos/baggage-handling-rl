@@ -67,6 +67,11 @@ class EnvironmentManager:
     # GLOBAL GENERATE
     # ---------------------------------------------------------------
 
+    def reset(self):
+        self.agents = []
+        self.static_obstacles = []
+        self.moving_obstacles = []
+
     def generate_static_obstacles(self) -> list[StaticEntity]:
         """
         Generate static obstacles in the environment.

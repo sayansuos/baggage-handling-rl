@@ -182,25 +182,24 @@ class MovingEntity(Entity, Thread):
 
         assert self.start_position is not None
 
-        self.path_index += 1
         self.old_position = self.current_position
+        self.path_index += 1
 
-        if self.target_positions[self.target_index] == self.current_position:
-            self.target_index += 1
+        if self.path_index >= len(self.path):
 
-            if self.path_index >= len(self.path) - 1:
-                self.path = self.path[::-1]
-                self.path_index = 0
-
-            if self.target_index >= len(self.target_positions):
-                self.target_positions = self.target_positions[::-1]
-                self.target_positions.append(self.start_position)
-                self.start_position = self.target_positions.pop(0)
-                self.target_index = 0
-
-            self.old_position = self.path[self.path_index]
+            self.path = self.path[::-1]
+            self.target_positions = self.target_positions[::-1]
+            self.target_positions.append(self.start_position)
+            self.start_position = self.target_positions.pop(0)
+            self.path_index = 1
+            self.target_index = 0
 
         self.current_position = self.path[self.path_index]
+        current_target = self.target_positions[self.target_index]
+
+        if self.current_position == current_target:
+            if self.target_index <= len(self.target_positions):
+                self.target_index += 1
 
         return None
 

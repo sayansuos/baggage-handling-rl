@@ -4,15 +4,15 @@ import numpy as np
 
 @dataclass
 class EnvConfig:
-    width: int = 100
-    height: int = 60
+    width: int = 96
+    height: int = 48
 
     agent_mode: str = "random"
     env_mode: str = "random"
 
     nb_agents: int = 1
-    nb_static_obstacles: int = 20
-    nb_moving_obstacles: int = 3
+    nb_static_obstacles: int = 10
+    nb_moving_obstacles: int = 5
     nb_targets: int = 2
 
     v_min_allowed: float = 0.0
@@ -26,8 +26,8 @@ class EnvConfig:
     height_max: int = 20
     thickness: int = 1
     radius_min: float = 0.5
-    radius_max: float = 2
-    margin: int = 4
+    radius_max: float = 1
+    margin: int = 3
     max_attempts: int = 100
 
 

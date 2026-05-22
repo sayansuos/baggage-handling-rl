@@ -76,6 +76,34 @@ class Agent(MovingEntity):
         self.theta += omega * dt
         self.current_position = self._get_next_pos(v, dt)
 
+    def step(self) -> tuple[int, int] | tuple[float, float] | None:
+        """
+        Move the entity one step along its current path and reset it.
+        """
+
+        assert self.start_position is not None
+
+        self.old_position = self.current_position
+        self.path_index += 1
+
+        if self.path_index >= len(self.path):
+            self.path = self.path[::-1]
+            self.path_index = 0
+            self.state = "terminated" if self.state == "active" else self.state
+
+        if self.target_positions[self.target_index] == self.current_position:
+            self.target_index += 1
+
+            if self.target_index >= len(self.target_positions):
+                self.target_positions = self.target_positions[::-1]
+                self.target_positions.append(self.start_position)
+                self.start_position = self.target_positions.pop(0)
+                self.target_index = 0
+
+        self.current_position = self.path[self.path_index]
+
+        return None
+
     def get_vision_field(
         self,
         width_min: float,
