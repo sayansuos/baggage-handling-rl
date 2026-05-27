@@ -46,6 +46,8 @@ class Agent(MovingEntity):
         Perception range around the agent.
     state : bool
         State of the agent, either 'active', 'terminated' or 'truncated'.
+    travel_time : int
+        Travel time of the agent (in seconds).
     """
 
     def __init__(self, agent_config: AgentConfig, num: int | None = None):
@@ -56,6 +58,7 @@ class Agent(MovingEntity):
         self.radius = agent_config.radius
         self.length_view: int = agent_config.length_view
         self.state: str = "active"
+        self.travel_time: int = 0
 
     def __str__(self):
         return f"agent_{self.num}"
@@ -89,7 +92,8 @@ class Agent(MovingEntity):
         if self.path_index >= len(self.path):
             self.path = self.path[::-1]
             self.path_index = 0
-            self.state = "terminated" if self.state == "active" else self.state
+            if self.state == "active":
+                self.state = "terminated"
 
         if self.target_positions[self.target_index] == self.current_position:
             self.target_index += 1

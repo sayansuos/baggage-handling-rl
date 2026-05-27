@@ -39,10 +39,13 @@ class Environment(gym.Env):
         env_config: EnvConfig,
         agent_config: AgentConfig,
         reward_config: RewardConfig,
+        env_id: int = 1,
+        debug: bool = False,
     ):
         """
         Constructor
         """
+        self.env_id = env_id
 
         self.env_config = env_config
         self.agent_config = agent_config
@@ -54,13 +57,10 @@ class Environment(gym.Env):
             self._build_environment_spaces()
         )  # Define Gym spaces
 
-        self._closest = self._compute_closest()  # Get entities interaction
-        self.reward: dict = {agent.id: 0 for agent in self.agents}
-        self.info: dict = {}
-
         self.episode = 1
-        self.step_count = 1
-        self.total_step = 1
+        self.step_count = 0
+        self.total_step = 0
+        self.debug = debug
 
     # ---------------------------------------------------------------
     # GYM API
@@ -89,22 +89,19 @@ class Environment(gym.Env):
         Return auxiliary information for all agents.
         """
 
-        info = {}
-        info["episode"] = self.episode
-        info["step_count"] = self.step_count
-        info["reward"] = self.reward
-        info["agents"] = {}
-        for agent in self.agents:
-            info["agents"][agent.id] = {
-                "state": agent.state,
-                "goal_relative_distance": agent._goal_relative_distance,
-                "action": agent._motion.tolist(),
-                "time_travel": (
-                    self.step_count
-                    if agent.state == "active"
-                    else self.info["agents"][agent.id]["time_travel"]
-                ),
-            }
+        _return, _mean_time_travel, _success_rate, _collision_rate, _debug = (
+            self._update_info()
+        )
+        info = {
+            "environment": self.env_id,
+            "episode": self.episode,
+            "return": _return,
+            "mean_time_travel": _mean_time_travel,
+            "success_rate": _success_rate,
+            "collision_rate": _collision_rate,
+            "total_step": self.total_step,
+            "debug": _debug,
+        }
         self.info = info
         return info
 
@@ -112,6 +109,8 @@ class Environment(gym.Env):
         """
         Reset the environment to an initial state.
         """
+        if seed is not None:
+            np.random.seed(seed)
 
         super().reset(seed=seed)
         self.env_manager.reset()
@@ -128,6 +127,8 @@ class Environment(gym.Env):
         """
         Advance the environment by one simulation step.
         """
+        self.step_count += 1
+        self.total_step += 1
 
         self._simulate(action)
         obs = self._get_obs()
@@ -135,9 +136,6 @@ class Environment(gym.Env):
         terminated = self._compute_terminated()
         truncated = self._compute_truncated()
         info = self._get_info()
-
-        self.step_count += 1
-        self.total_step += 1
 
         return obs, reward, terminated, truncated, info
 
@@ -190,6 +188,8 @@ class Environment(gym.Env):
 
         for agent in self.agents:
             agent.step()
+            if agent.state == "active":
+                agent.travel_time += 1
 
     def _update_obstacles(self):
         """
@@ -201,6 +201,58 @@ class Environment(gym.Env):
 
         for obs in self.moving_obstacles:
             obs.step()
+
+    def _update_info(self) -> tuple[float, float, float, float, list]:
+        """
+        Return auxiliary information for all agents.
+        """
+
+        n = len(self.agents)
+
+        if self.info == {}:
+            self._return = 0
+            self._mean_time_travel = 0
+            self._success_rate = 0
+            self._collision_rate = 0
+            self._debug = []
+
+        else:
+            self._return += sum(r for _, r in self.reward.items())
+            self._mean_time_travel = sum([agent.travel_time for agent in self.agents])
+            self._success_rate = sum(
+                [agent.state == "terminated" for agent in self.agents]
+            )
+            self._collision_rate = sum(
+                [agent.state == "truncated" for agent in self.agents]
+            )
+
+        if self.debug:
+            debug = {
+                "step": self.step_count,
+                "agents": {},
+            }
+            for agent in self.agents:
+                debug["agents"][agent.id] = {
+                    "state": agent.state,
+                    "old_pos": agent.old_position,
+                    "current_pos": agent.current_position,
+                    "goal_relative_distance": agent._goal_relative_distance,
+                    "travel_time": agent.travel_time,
+                    "reward": self.reward[agent.id],
+                    "action": agent._motion.tolist(),
+                    "closest_obstacle_distance": self._closest[agent.id][
+                        "closest_distance"
+                    ],
+                }
+            self._debug.append(debug)
+
+        return (
+            self._return,
+            self._mean_time_travel / n,
+            self._success_rate / n,
+            self._collision_rate / n,
+            self._debug,
+        )
 
     def _get_local_grid(
         self, agent: Agent, size: int | None = None
@@ -291,6 +343,9 @@ class Environment(gym.Env):
     # ---------------------------------------------------------------
     # CREATE
     # ---------------------------------------------------------------
+
+    def _set_debug(self, to: bool):
+        self.debug = to
 
     @property
     def grid(self) -> np.ndarray:
@@ -386,6 +441,10 @@ class Environment(gym.Env):
             self.agents,
         )
         self._compute_astar_paths()
+
+        self._closest = self._compute_closest()  # Get entities interaction
+        self.reward: dict = {agent.id: 0 for agent in self.agents}
+        self.info: dict = {}
 
     def _is_free(
         self,
