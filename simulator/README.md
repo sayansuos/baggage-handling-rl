@@ -15,12 +15,12 @@
 **In progress:**
 
 - [ ] Fix reward function
-- [ ] Add collision detection logic
+- [x] Add collision detection logic
 
 **TODO before SAC integration:**
 
-- [ ] Define termination conditions
-- [ ] Compute average time travel
+- [x] Define termination conditions
+- [x] Compute average time travel
 - [ ] Validate observation space, action space, and reward function.
 - [ ] Set pre-defined environment configurations
 - [ ] Add logs
