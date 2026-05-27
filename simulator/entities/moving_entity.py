@@ -1,6 +1,3 @@
-import numpy as np
-
-from threading import Thread
 from matplotlib.patches import Circle
 
 from simulator.entities.entity import Entity
@@ -12,7 +9,7 @@ from simulator.utils.get_distance import (
 )
 
 
-class MovingEntity(Entity, Thread):
+class MovingEntity(Entity):
     """
     Represents a moving entity in the environment.
 

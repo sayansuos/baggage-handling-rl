@@ -25,15 +25,15 @@ def run_simulation(env: Environment, nb_episode: int = 1000, save_occurence: int
             _, _, terminated, truncated, info = env.step()
             history.append(info)
             done = all(terminated[a] or truncated[a] for a in terminated.keys())
-            if env.episode % save_occurence == 0:
-                histories.extend(history)
-                save_grid(
-                    env.grid_map.current_grid,
-                    f"grid_{env.episode}.png",
-                    scale=10,
-                    show_grid=True,
-                    path="logs/",
-                )
+        if env.episode % save_occurence == 0:
+            histories.extend(history)
+            save_grid(
+                env.grid_map.current_grid,
+                f"grid_{env.episode}.png",
+                scale=10,
+                show_grid=True,
+                path="logs/",
+            )
         env.reset()
         save_as_df(histories, "logs.csv")
     end = time.perf_counter()
@@ -50,7 +50,7 @@ def run_test(env: Environment):
     while not done:
         _, _, terminated, truncated, _ = env.step()
         env.render()
-        plt.pause(0.05)
+        plt.pause(0.01)
         done = all(terminated[a] or truncated[a] for a in terminated.keys())
     plt.ioff
 

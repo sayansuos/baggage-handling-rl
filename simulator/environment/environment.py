@@ -90,7 +90,7 @@ class Environment(gym.Env):
         """
 
         info = {}
-        info["episode"] = self.episode + 1
+        info["episode"] = self.episode
         info["step_count"] = self.step_count
         info["reward"] = self.reward
         info["agents"] = {}
