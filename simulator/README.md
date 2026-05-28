@@ -22,5 +22,5 @@
 - [x] Define termination conditions
 - [x] Compute average time travel
 - [ ] Validate observation space, action space, and reward function.
-- [ ] Set pre-defined environment configurations
+- [x] Set pre-defined environment configurations
 - [x] Add logs
