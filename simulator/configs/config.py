@@ -15,6 +15,9 @@ class EnvConfig:
     nb_moving_obstacles: int = 5
     nb_targets: int = 2
 
+    margin: int = 3
+    max_attempts: int = 100
+
     v_min_allowed: float = 0.0
     v_max_allowed: float = 5.0
     omega_min_allowed: float = -np.pi / 6
@@ -27,8 +30,6 @@ class EnvConfig:
     thickness: int = 1
     radius_min: float = 0.5
     radius_max: float = 1
-    margin: int = 3
-    max_attempts: int = 100
 
 
 @dataclass

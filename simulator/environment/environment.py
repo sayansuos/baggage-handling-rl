@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 
 from gymnasium import spaces
 
-from simulator.utils.config import EnvConfig, AgentConfig, RewardConfig
+from simulator.configs.config import EnvConfig, AgentConfig, RewardConfig
 from simulator.utils.environment_space import (
     get_single_observation_space,
     get_single_action_space,
@@ -46,21 +46,14 @@ class Environment(gym.Env):
         Constructor
         """
         self.env_id = env_id
+        self.debug = debug
 
         self.env_config = env_config
         self.agent_config = agent_config
         self.reward_config = reward_config
         self.fig, self.ax = plt.subplots(figsize=(10, 8))
 
-        self._build_environment()  # Build simulation states
-        self.observation_space, self.action_space = (
-            self._build_environment_spaces()
-        )  # Define Gym spaces
-
-        self.episode = 1
-        self.step_count = 0
-        self.total_step = 0
-        self.debug = debug
+        self.build_environment()
 
     # ---------------------------------------------------------------
     # GYM API
@@ -109,12 +102,14 @@ class Environment(gym.Env):
         """
         Reset the environment to an initial state.
         """
+
         if seed is not None:
             np.random.seed(seed)
-
         super().reset(seed=seed)
-        self.env_manager.reset()
-        self._reset()
+
+        self.moving_obstacles, self.agents = self.env_manager.reset()
+        self._update_environment()
+
         obs = self._get_obs()
         info = self._get_info()
 
@@ -366,14 +361,24 @@ class Environment(gym.Env):
         """
         return self.grid_map.grid_to_world(pos)
 
-    def _build_environment(self):
+    def build_environment(self):
         """
-        Create or reset the full simulation world.
+        Create the full simulation world.
         """
 
         env_manager = EnvironmentManager(self.env_config, self.agent_config)
         self.env_manager = env_manager
-        self._reset()
+        self.static_obstacles, self.moving_obstacles, self.agents = (
+            self.env_manager.generate()
+        )
+        self._update_environment()
+        self.observation_space, self.action_space = (
+            self._build_environment_spaces()
+        )  # Define Gym spaces
+
+        self.episode = 1
+        self.step_count = 0
+        self.total_step = 0
 
     def _build_environment_spaces(self) -> tuple[spaces.Dict, spaces.Dict]:
         """
@@ -426,13 +431,11 @@ class Environment(gym.Env):
             }
         return metrics
 
-    def _reset(self):
+    def _update_environment(self):
         """
         Regenerate the full environment state.
         """
-        self.static_obstacles = self.env_manager.generate_static_obstacles()
-        self.moving_obstacles = self.env_manager.generate_moving_obstacles()
-        self.agents = self.env_manager.generate_agents()
+
         self.grid_map = GridMap(
             self.env_config,
             self.agent_config,
@@ -441,7 +444,6 @@ class Environment(gym.Env):
             self.agents,
         )
         self._compute_astar_paths()
-
         self._closest = self._compute_closest()  # Get entities interaction
         self.reward: dict = {agent.id: 0 for agent in self.agents}
         self.info: dict = {}

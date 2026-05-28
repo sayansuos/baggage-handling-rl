@@ -2,7 +2,7 @@ import numpy as np
 
 from matplotlib.patches import Rectangle
 
-from simulator.utils.config import AgentConfig
+from simulator.configs.config import AgentConfig
 from simulator.entities.moving_entity import MovingEntity
 
 

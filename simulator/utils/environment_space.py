@@ -1,6 +1,6 @@
 import numpy as np
 from gymnasium import spaces
-from simulator.utils.config import EnvConfig, AgentConfig
+from simulator.configs.config import EnvConfig, AgentConfig
 
 
 def get_single_observation_space(

@@ -1,0 +1,13 @@
+width: 96
+height: 48
+
+env_mode: warehouse
+agent_mode: random
+
+nb_agents: 1
+nb_static_obstacles: 10
+nb_moving_obstacles: 5
+nb_targets: 2
+
+margin: 1
+max_attempts: 100

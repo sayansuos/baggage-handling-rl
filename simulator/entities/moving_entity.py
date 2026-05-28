@@ -188,7 +188,7 @@ class MovingEntity(Entity):
             self.target_positions = self.target_positions[::-1]
             self.target_positions.append(self.start_position)
             self.start_position = self.target_positions.pop(0)
-            self.path_index = 1
+            self.path_index = 0
             self.target_index = 0
 
         self.current_position = self.path[self.path_index]

@@ -6,14 +6,15 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 from multiprocessing import Pool, cpu_count
 
-from simulator.utils.config import EnvConfig, AgentConfig, RewardConfig
+from simulator.configs.config import EnvConfig, AgentConfig, RewardConfig
 from simulator.environment.environment import Environment
 from simulator.utils.save_figures import save_grid
 from simulator.utils.save_logs import save_as_df
-
-
-from simulator.environment.environment import Environment
-import numpy as np
+from simulator.utils.load_config import (
+    load_env_config,
+    load_agent_config,
+    load_reward_config,
+)
 
 
 def run_worker(args, save=True):
@@ -97,21 +98,32 @@ def run_test(
     env_config: EnvConfig,
     agent_config: AgentConfig,
     reward_config: RewardConfig,
+    nb_episode: int = 3,
 ):
     """
-    Run one episode and plot at each step.
+    Run some episodes and plot at each step.
     """
 
     np.random.seed(1234)
     env = Environment(env_config, agent_config, reward_config)
 
-    done = False
     plt.ion
-    while not done:
-        _, _, terminated, truncated, _ = env.step()
+    for i in range(nb_episode):
         env.render()
+        env.ax.set_title(
+            f"Simulation test -- Episode {i+1}/{nb_episode} -- Step {env.step_count}"
+        )
         plt.pause(0.01)
-        done = all(terminated[a] or truncated[a] for a in terminated.keys())
+        done = False
+        while not done:
+            _, _, terminated, truncated, _ = env.step()
+            env.render()
+            env.ax.set_title(
+                f"Simulation test -- Episode {i+1}/{nb_episode} -- Step {env.step_count}"
+            )
+            plt.pause(0.01)
+            done = all(terminated[a] or truncated[a] for a in terminated.keys())
+        env.reset()
     plt.ioff
 
 
@@ -145,11 +157,15 @@ def run_save(
     )
 
     writer = imageio.get_writer(path + file_name, fps=fps)
+    env.render()
+    env.ax.set_title(f"Simulation test -- Step {env.step_count}")
+    plt.pause(0.01)
     done = False
     while not done:
         _, _, terminated, truncated, _ = env.step()
         done = all(terminated[a] or truncated[a] for a in terminated.keys())
         env.render()
+        env.ax.set_title(f"Simulation test  -- Step {env.step_count}")
         env.fig.canvas.draw()
         frame = np.asarray(env.fig.canvas.renderer.buffer_rgba())
         writer.append_data(frame)
@@ -158,11 +174,11 @@ def run_save(
 
 if __name__ == "__main__":
 
-    MODE = "simulation"
+    MODE = "test"
 
-    env_config = EnvConfig(nb_agents=2)
-    agent_config = AgentConfig()
-    reward_config = RewardConfig()
+    env_config = load_env_config("simulator/configs/env_config/crossing_hard.yaml")
+    agent_config = load_agent_config()
+    reward_config = load_reward_config()
 
     if MODE == "simulation":
         run_simulation(env_config, agent_config, reward_config, 1000)

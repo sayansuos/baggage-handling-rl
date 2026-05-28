@@ -23,4 +23,4 @@
 - [x] Compute average time travel
 - [ ] Validate observation space, action space, and reward function.
 - [ ] Set pre-defined environment configurations
-- [ ] Add logs
+- [x] Add logs
