@@ -39,19 +39,23 @@ class Environment(gym.Env):
         env_config: EnvConfig,
         agent_config: AgentConfig,
         reward_config: RewardConfig,
+        name: str,
         env_id: int = 1,
         debug: bool = False,
     ):
         """
         Constructor
         """
+        self.name = name
         self.env_id = env_id
         self.debug = debug
 
         self.env_config = env_config
         self.agent_config = agent_config
         self.reward_config = reward_config
-        self.fig, self.ax = plt.subplots(figsize=(10, 8))
+        # self.fig, self.ax = plt.subplots(figsize=(10, 8))
+        self.fig = plt.gcf()
+        self.ax = plt.gca()
 
         self.build_environment()
 
@@ -86,7 +90,7 @@ class Environment(gym.Env):
             self._update_info()
         )
         info = {
-            "environment": self.env_id,
+            "environment": f"{self.name}_{self.env_id}",
             "episode": self.episode,
             "return": _return,
             "mean_time_travel": _mean_time_travel,
@@ -163,7 +167,10 @@ class Environment(gym.Env):
     # ---------------------------------------------------------------
 
     def _simulate(self, action=None):
-        """ """
+        """
+        Advance the simulation by one step.
+        """
+
         self._update_obstacles()
         if not action:
             self._update_agents()

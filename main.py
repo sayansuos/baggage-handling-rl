@@ -5,8 +5,9 @@ import matplotlib.pyplot as plt
 
 from tqdm import tqdm
 from multiprocessing import Pool, cpu_count
+from itertools import chain
 
-from simulator.configs.config import EnvConfig, AgentConfig, RewardConfig
+from simulator.configs.config import EnvConfig, AgentConfig, RewardConfig, Experiment
 from simulator.environment.environment import Environment
 from simulator.utils.save_figures import save_grid
 from simulator.utils.save_logs import save_as_df
@@ -14,90 +15,91 @@ from simulator.utils.load_config import (
     load_env_config,
     load_agent_config,
     load_reward_config,
+    load_experiments,
 )
 
 
-def run_worker(args, save=True):
+def run_worker(exp: Experiment, worker_id: int, save=True) -> tuple[list[dict], int]:
     """
     One process handles multiple episodes on a single environment.
     """
 
-    env_config, agent_config, reward_config, n_episodes, worker_id = args
-    np.random.seed(1234 + worker_id)
-    env = Environment(env_config, agent_config, reward_config, worker_id)
+    env = Environment(
+        exp.env_config, exp.agent_config, exp.reward_config, exp.name, worker_id
+    )
 
-    if save:
+    if save and worker_id == 0:
         save_grid(
-            env.grid_map._grid,
-            f"grid_{worker_id}.png",
+            env.grid_map.grid,
+            f"grid_{exp.name}.png",
             path="logs/",
             scale=10,
             show_grid=True,
         )
 
     histories = []
-    for i in range(n_episodes):
-        if i == n_episodes - 1:
+    steps = 0
+    for i in range(exp.n_episodes):
+        if i == exp.n_episodes - 1 and worker_id == 0:
             env._set_debug(True)
         done = False
         while not done:
             _, _, terminated, truncated, info = env.step()
             done = all(terminated[a] or truncated[a] for a in terminated.keys())
         histories.append(info)
+        steps += env.total_step
         env.reset(seed=1234 + worker_id + i + 1)
 
-    return histories
+    return histories, steps
 
 
-def run_simulation(
-    env_config: EnvConfig,
-    agent_config: AgentConfig,
-    reward_config: RewardConfig,
-    nb_episode: int = 1000,
-):
+def run_simulation(experiments: list[Experiment]):
     """
     Run multiple episodes in parallel.
     """
-    n_workers = cpu_count()
-    episodes_per_worker = nb_episode // n_workers
-    remainder = nb_episode % n_workers
-
-    print(
-        f"INFO: {n_workers} workers -- {episodes_per_worker} episodes per worker (+ {remainder})"
-    )
 
     start = time.perf_counter()
-    tasks = [
-        (
-            env_config,
-            agent_config,
-            reward_config,
-            episodes_per_worker + (1 if i < remainder else 0),
-            i + 1,
-        )
-        for i in range(n_workers)
-    ]
-    with Pool(processes=cpu_count()) as pool:
-        results = list(
-            tqdm(
-                pool.imap(run_worker, tasks),
-                total=len(tasks),
-                desc="Simulation",
-            )
-        )
     histories = []
-    for history in results:
-        histories.extend(history)
+    total_eps = 0
+    total_steps = 0
+    print(f"\nINFO: Starting simulation with {len(experiments)} experiments\n")
+    for k, exp in enumerate(experiments, start=1):
+        print("=" * 60)
+        print(f"INFO: Experiment {k}/{len(experiments)}")
+        print(f"INFO: Name        : {exp.name}")
+        print(f"INFO: Environments: {exp.n_envs}")
+        print(f"INFO: Episodes    : {exp.n_episodes}")
+        print("=" * 60)
+        tasks = []
+        worker_id = 0
+        total_eps += exp.n_envs * exp.n_episodes
+        for _ in range(exp.n_envs):
+            tasks.append((exp, worker_id))
+            worker_id += 1
+        n_processes = min(cpu_count(), len(tasks))
+        with Pool(processes=n_processes) as pool:
+            results = list(
+                tqdm(
+                    pool.starmap(run_worker, tasks),
+                    total=len(tasks),
+                    desc=f"Simulation -- {exp.name}",
+                )
+            )
+        for h, s in results:
+            histories.extend(h)
+            total_steps += s
     end = time.perf_counter()
 
+    print(f"\nINFO: Starting simulation with {len(experiments)} experiments:")
+    print(
+        f"INFO: Resulting in {"{:,}".format(total_eps)} episodes and {"{:,}".format(total_steps)} steps.\n"
+    )
     print(f"Execution time : {end - start:.6f} s")
     save_as_df(histories, "logs")
 
 
 def run_test(
-    env_config: EnvConfig,
-    agent_config: AgentConfig,
-    reward_config: RewardConfig,
+    experiments: list[Experiment],
     nb_episode: int = 3,
 ):
     """
@@ -105,92 +107,77 @@ def run_test(
     """
 
     np.random.seed(1234)
-    env = Environment(env_config, agent_config, reward_config)
 
-    plt.ion
-    for i in range(nb_episode):
-        env.render()
-        env.ax.set_title(
-            f"Simulation test -- Episode {i+1}/{nb_episode} -- Step {env.step_count}"
-        )
-        plt.pause(0.01)
-        done = False
-        while not done:
-            _, _, terminated, truncated, _ = env.step()
+    plt.figure(figsize=(10, 8))
+    plt.ion()
+    for exp in experiments:
+        env = Environment(exp.env_config, exp.agent_config, exp.reward_config, exp.name)
+        for i in range(nb_episode):
             env.render()
             env.ax.set_title(
-                f"Simulation test -- Episode {i+1}/{nb_episode} -- Step {env.step_count}"
+                f"SIMULATION TEST {env.name} -- Episode {i+1}/{nb_episode} -- Step {env.step_count}"
             )
             plt.pause(0.01)
-            done = all(terminated[a] or truncated[a] for a in terminated.keys())
-        env.reset()
-    plt.ioff
+            done = False
+            while not done:
+                _, _, terminated, truncated, _ = env.step()
+                env.render()
+                env.ax.set_title(
+                    f"SIMULATION TEST {env.name} -- Episode {i+1}/{nb_episode} -- Step {env.step_count}"
+                )
+                plt.pause(0.01)
+                done = all(terminated[a] or truncated[a] for a in terminated.keys())
+            env.reset()
+    plt.ioff()
 
 
 def run_save(
-    env_config: EnvConfig,
-    agent_config: AgentConfig,
-    reward_config: RewardConfig,
+    experiments: list[Experiment],
     file_name: str = "anim.mp4",
     path: str = "figures/",
     done: bool = False,
-    fps: int = 30,
+    fps: int = 20,
 ):
     """
     Run one episode and save the corresponding figures.
     """
 
     np.random.seed(1234)
-    env = Environment(env_config, agent_config, reward_config)
-
-    save_grid(
-        env.grid_map.current_grid,
-        f"grid.png",
-        scale=10,
-        show_grid=True,
-    )
-    save_grid(
-        env._get_local_grid(env.agents[0]),
-        f"grid_local.png",
-        scale=50,
-        show_grid=True,
-    )
-
     writer = imageio.get_writer(path + file_name, fps=fps)
-    env.render()
-    env.ax.set_title(f"Simulation test -- Step {env.step_count}")
-    plt.pause(0.01)
-    done = False
-    while not done:
-        _, _, terminated, truncated, _ = env.step()
-        done = all(terminated[a] or truncated[a] for a in terminated.keys())
+    for exp in experiments:
+        env = Environment(exp.env_config, exp.agent_config, exp.reward_config, exp.name)
+        save_grid(
+            env.grid_map.current_grid,
+            f"grid_{exp.name}.png",
+            scale=10,
+            show_grid=True,
+        )
         env.render()
-        env.ax.set_title(f"Simulation test  -- Step {env.step_count}")
-        env.fig.canvas.draw()
-        frame = np.asarray(env.fig.canvas.renderer.buffer_rgba())
-        writer.append_data(frame)
+        env.ax.set_title(f"SIMULATION TEST {env.name} -- Step {env.step_count}")
+        done = False
+        while not done:
+            _, _, terminated, truncated, _ = env.step()
+            done = all(terminated[a] or truncated[a] for a in terminated.keys())
+            env.render()
+            env.ax.set_title(f"SIMULATION TEST {env.name} -- Step {env.step_count}")
+            env.fig.canvas.draw()
+            frame = np.asarray(env.fig.canvas.renderer.buffer_rgba())
+            writer.append_data(frame)
     writer.close()
 
 
 if __name__ == "__main__":
 
-    MODE = "test"
+    MODE = "save"
 
     env_config = load_env_config("simulator/configs/env_config/crossing_hard.yaml")
     agent_config = load_agent_config()
     reward_config = load_reward_config()
+    experiments = load_experiments()
 
     if MODE == "simulation":
-        run_simulation(env_config, agent_config, reward_config, 1000)
+        run_simulation(experiments)
     elif MODE == "test":
-        run_test(
-            env_config,
-            agent_config,
-            reward_config,
-        )
+        run_test(experiments)
     elif MODE == "save":
-        run_save(
-            env_config,
-            agent_config,
-            reward_config,
-        )
+        run_save(experiments)

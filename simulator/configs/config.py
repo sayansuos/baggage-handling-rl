@@ -57,3 +57,13 @@ class RewardConfig:
     safety_malus1: float = -0.1
     safety_malus2: float = 1
     safety_threshold: float = 1
+
+
+@dataclass
+class Experiment:
+    name: str
+    env_config: EnvConfig
+    agent_config: AgentConfig
+    reward_config: RewardConfig
+    n_envs: int
+    n_episodes: int

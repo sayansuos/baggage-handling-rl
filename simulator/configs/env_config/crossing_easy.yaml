@@ -9,5 +9,5 @@ nb_static_obstacles: 0
 nb_moving_obstacles: 9
 nb_targets: 1
 
-margin: 5
+margin: 2
 max_attempts: 100

@@ -1,0 +1,42 @@
+experiments:
+  - name: random_easy
+    env_config_path: simulator/configs/env_config/random_easy.yaml
+    agent_config_path: null
+    reward_config_path: null
+    n_envs: 50
+    n_episodes: 1000
+
+  - name: random_hard
+    env_config_path: simulator/configs/env_config/random_hard.yaml
+    agent_config_path: null
+    reward_config_path: null
+    n_envs: 50
+    n_episodes: 100
+
+  - name: warehouse_easy
+    env_config_path: simulator/configs/env_config/warehouse_easy.yaml
+    agent_config_path: null
+    reward_config_path: null
+    n_envs: 10
+    n_episodes: 500
+
+  - name: warehouse_hard
+    env_config_path: simulator/configs/env_config/warehouse_hard.yaml
+    agent_config_path: null
+    reward_config_path: null
+    n_envs: 10
+    n_episodes: 500
+
+  - name: crossing_easy
+    env_config_path: simulator/configs/env_config/crossing_easy.yaml
+    agent_config_path: null
+    reward_config_path: null
+    n_envs: 1
+    n_episodes: 100
+
+  - name: crossing_hard
+    env_config_path: simulator/configs/env_config/crossing_hard.yaml
+    agent_config_path: null
+    reward_config_path: null
+    n_envs: 10
+    n_episodes: 100
