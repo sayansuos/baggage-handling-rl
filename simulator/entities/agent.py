@@ -89,11 +89,11 @@ class Agent(MovingEntity):
         self.old_position = self.current_position
         self.path_index += 1
 
-        if self.path_index >= len(self.path):
+        if self.path_index >= len(self.path) - 1:
             self.path = self.path[::-1]
             self.path_index = 0
             if self.state == "active":
-                self.state = "terminated"
+                self.state = "reached"
 
         if self.target_positions[self.target_index] == self.current_position:
             self.target_index += 1
@@ -104,7 +104,13 @@ class Agent(MovingEntity):
                 self.start_position = self.target_positions.pop(0)
                 self.target_index = 0
 
-        self.current_position = self.path[self.path_index]
+        try:
+            self.current_position = self.path[self.path_index]
+
+        except IndexError:
+            print(f"path length = {len(self.path)}")
+            print(f"path_index = {self.path_index}")
+            raise
 
         return None
 

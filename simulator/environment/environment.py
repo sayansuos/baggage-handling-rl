@@ -274,6 +274,9 @@ class Environment(gym.Env):
         """
         Compute the termination state of all agents.
         """
+        for agent in self.agents:
+            if agent.state == "reached":
+                agent.state = "terminated"
         return {agent.id: agent.state == "terminated" for agent in self.agents}
 
     def _compute_truncated(self) -> dict:
@@ -283,7 +286,7 @@ class Environment(gym.Env):
         for agent in self.agents:
             if agent.state == "collided":
                 agent.state = "truncated"
-        return {agent.id: agent.state in ["truncated"] for agent in self.agents}
+        return {agent.id: agent.state == "truncated" for agent in self.agents}
 
     def _compute_reward(self) -> dict[str, float]:
         """
@@ -318,7 +321,7 @@ class Environment(gym.Env):
                 progress = (
                     agent._old_goal_relative_distance - agent._goal_relative_distance
                 )
-                reward += beta1 * (goal_bonus if current < 0.05 else progress)
+                reward += beta1 * (goal_bonus if current < 0.5 else progress)
                 # Abrupt rotations penalty
                 omega = abs(agent.omega)
                 reward += beta2 * (

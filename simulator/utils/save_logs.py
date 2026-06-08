@@ -1,7 +1,7 @@
 import pandas as pd
 
 
-def save_as_df(history: list[dict], file_name: str, path="logs/"):
+def save_as_df(history: list[dict], file_name: str, path: str):
     rows_info = []
     rows_debug = []
 
@@ -41,8 +41,8 @@ def save_as_df(history: list[dict], file_name: str, path="logs/"):
                 )
 
     df = pd.DataFrame(rows_info)
-    df.to_csv(path + file_name + ".csv", index=False)
+    df.to_csv(f"{path}/{file_name}.csv", index=False)
     df_debug = pd.DataFrame(rows_debug)
-    df_debug.to_csv(path + file_name + "_debug.csv", index=False)
+    df_debug.to_csv(f"{path}/{file_name}_debug.csv", index=False)
 
-    return df
+    return df, df_debug
