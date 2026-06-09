@@ -75,9 +75,11 @@ class Environment(gym.Env):
         for agent in self.agents:
             obs[agent.id] = {
                 "local_map": self._get_local_grid(agent)[np.newaxis, :, :],
-                "goal_relative_distance": agent._goal_relative_distance,
-                "motion": agent._motion,
-                "orientation": agent._orientation,
+                "goal_relative_position": np.array(
+                    list(agent._goal_relative_position), dtype=np.float32
+                ),
+                "motion": np.array(list(agent._motion), dtype=np.float32),
+                "orientation": np.array(list(agent._orientation), dtype=np.float32),
             }
         return obs
 
