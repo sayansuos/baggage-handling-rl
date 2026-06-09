@@ -137,24 +137,28 @@ class GridMap:
         """
 
         if not size % 2 == 1:
-            raise ValueError("The size must be impair.")
+            raise ValueError("The size must be odd.")
 
-        grid = self.current_grid.copy()
         half = size // 2
 
-        if not agent.current_position:
-            return np.zeros((size, size), dtype=np.float32)
+        local = np.ones((size, size), dtype=np.float32)
+
+        if agent.current_position is None:
+            return local
 
         cx, cy = agent.current_position
-        r, c = self.world_to_grid((cx, cy))
+        center_r, center_c = self.world_to_grid((cx, cy))
 
-        r_min, r_max = r - half, r + half
-        c_min, c_max = c - half, c + half
+        for local_r in range(size):
+            for local_c in range(size):
 
-        r_min, c_min = self._safe_cell(r_min, c_min)
-        r_max, c_max = self._safe_cell(r_max, c_max)
+                grid_r = center_r + local_r - half
+                grid_c = center_c + local_c - half
 
-        return grid[r_min : r_max + 1, c_min : c_max + 1].astype(np.float32)
+                if 0 <= grid_r < self._rows and 0 <= grid_c < self._columns:
+                    local[local_r, local_c] = self.current_grid[grid_r, grid_c]
+
+        return local
 
     def _safe_cell(self, r: int, c: int) -> tuple[int, int]:
         """

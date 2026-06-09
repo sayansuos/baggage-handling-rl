@@ -10,6 +10,8 @@ from simulator.configs.config import Experiment
 from simulator.environment.environment import Environment
 from simulator.utils.save_figures import save_grid, save_rewards
 from simulator.utils.save_logs import save_as_df
+from rl.SAC.sac import run_sac
+from rl.utils import save_training_metrics
 
 
 def run_worker(exp: Experiment, worker_id: int, save=True) -> tuple[list[dict], int]:
@@ -35,10 +37,8 @@ def run_worker(exp: Experiment, worker_id: int, save=True) -> tuple[list[dict], 
     for i in range(exp.n_episodes):
         if i == exp.n_episodes - 1 and worker_id == 0:
             env._set_debug(True)
-        done = False
-        while not done:
-            _, _, terminated, truncated, info = env.step()
-            done = all(terminated[a] or truncated[a] for a in terminated.keys())
+        while not env.done:
+            _, _, _, _, info = env.step()
         histories.append(info)
         steps += env.total_step
         env.reset(seed=1234 + worker_id + i + 1)
@@ -113,14 +113,12 @@ def run_test(experiments: list[Experiment], render: bool = False):
             env.render()
             env.ax.set_title(f"TEST {env.name} -- STEP {env.step_count}")
             plt.pause(0.001)
-        done = False
-        while not done:
-            _, _, terminated, truncated, info = env.step()
+        while not env.done:
+            _, _, _, _, info = env.step()
             if render:
                 env.render()
                 env.ax.set_title(f"TEST {env.name} -- STEP {env.step_count}")
                 plt.pause(0.001)
-            done = all(terminated[a] or truncated[a] for a in terminated.keys())
         histories.append(info)
         env.reset()
     plt.ioff()
@@ -135,7 +133,6 @@ def run_save(
     experiments: list[Experiment],
     file_name: str = "anim.mp4",
     path: str = "figures/",
-    done: bool = False,
     fps: int = 20,
 ):
     """
@@ -156,10 +153,8 @@ def run_save(
         )
         env.render()
         env.ax.set_title(f"TEST {env.name} -- STEP {env.step_count}")
-        done = False
-        while not done:
-            _, _, terminated, truncated, _ = env.step()
-            done = all(terminated[a] or truncated[a] for a in terminated.keys())
+        while not env.done:
+            _, _, _, _, _ = env.step()
             env.render()
             env.ax.set_title(f"TEST {env.name} -- STEP {env.step_count}")
             env.fig.canvas.draw()
@@ -167,3 +162,39 @@ def run_save(
             writer.append_data(frame)
     writer.close()
     print(f"\nINFO: Ending SAVE with {len(experiments)} experiments.\n")
+
+
+def run_train(
+    experiments: list[Experiment],
+    n_episodes: int | None = None,
+):
+    """
+    Train a SAC agent on each experiment.
+    """
+    start = time.perf_counter()
+    print(f"\nINFO: Starting TRAINING with {len(experiments)} experiments\n")
+
+    for exp in experiments:
+        print("\n" + "=" * 60)
+        print(f"TRAINING {exp.name}")
+        print("=" * 60)
+
+        history, metrics, best_score, _ = run_sac(
+            exp=exp,
+            worker_id=1,
+            n_episodes=n_episodes or exp.n_episodes,
+        )
+
+        print("INFO: Saving files...")
+        save_training_metrics(
+            metrics,
+            f"{exp.name}_training",
+            path="logs/training",
+        )
+
+        print(f"INFO: {exp.name} finished " f"(best score = {best_score:.3f})")
+
+    end = time.perf_counter()
+    print(f"\nINFO: Ending SIMULATION with {len(experiments)} experiments:")
+    print(f"INFO: Execution time: {end - start:.6f} s")
+    print("\nINFO: TASK COMPLETED!\n")

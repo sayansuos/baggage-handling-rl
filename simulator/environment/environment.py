@@ -173,38 +173,21 @@ class Environment(gym.Env):
         Advance the simulation by one step.
         """
 
-        self._update_obstacles()
-        if not action:
-            self._update_agents()
-        self._closest = self._compute_closest()
-        # TODO : add other behavior for agents
+        # Update obstacles
+        for obs in self.moving_obstacles:
+            obs.step()
 
-    def _update_agents(self):
-        """
-        Update the positions of all moving agents.
-
-        Each moving obstacle computes its next position according
-        to its internal motion model or predefined path.
-
-        The new position is applied only if a valid next position
-        is returned.
-        """
-
+        # Update agents
         for agent in self.agents:
-            agent.step()
+            if action is not None and action[agent.id] is not None:
+                v, omega = action[agent.id]
+                agent.move(v, omega)
+            else:
+                agent.step()
             if agent.state == "active":
                 agent.travel_time += 1
 
-    def _update_obstacles(self):
-        """
-        Update the positions of all moving obstacles.
-
-        Each moving obstacle computes its next position according
-        to its internal motion model or predefined path.
-        """
-
-        for obs in self.moving_obstacles:
-            obs.step()
+        self._closest = self._compute_closest()
 
     def _update_info(self) -> tuple[float, float, float, float, list]:
         """
@@ -353,6 +336,23 @@ class Environment(gym.Env):
 
     def _set_debug(self, to: bool):
         self.debug = to
+
+    def is_done(self, agent_id: str):
+        terminated = self._compute_terminated()
+        truncated = self._compute_truncated()
+        step_max = self.env_config.max_attempts
+        return (
+            terminated[agent_id] or truncated[agent_id] or self.step_count >= step_max
+        )
+
+    @property
+    def done(self):
+        terminated = self._compute_terminated()
+        truncated = self._compute_truncated()
+        step_max = self.env_config.max_attempts
+        return all(terminated[a] or truncated[a] for a in terminated.keys()) or (
+            self.step_count >= step_max
+        )
 
     @property
     def grid(self) -> np.ndarray:
