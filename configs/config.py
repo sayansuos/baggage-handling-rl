@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+
 import numpy as np
 
 
@@ -17,6 +18,7 @@ class EnvConfig:
 
     margin: int = 3
     max_attempts: int = 100
+    max_steps: int = 100
 
     v_min_allowed: float = 0.0
     v_max_allowed: float = 5.0
@@ -45,18 +47,18 @@ class AgentConfig:
 
 @dataclass
 class RewardConfig:
-    beta1: float = 5
+    beta1: float = 10
     beta2: float = 0.1
-    beta3: float = 1
-    beta4: float = 1
+    beta3: float = 0.01
+    beta4: float = 2
 
-    goal_bonus: float = 2
-    collision_malus: float = -10
+    goal_bonus: float = 20
+    collision_malus: float = -20
     angular_malus: float = -0.1
-    omega_threshold: float = np.pi / 12
-    safety_malus1: float = -0.1
-    safety_malus2: float = 0.5
-    safety_threshold: float = 3
+    omega_threshold: float = np.pi / 6
+    safety_malus1: float = -0.5
+    safety_malus2: float = 0.2
+    safety_threshold: float = 2
 
 
 @dataclass

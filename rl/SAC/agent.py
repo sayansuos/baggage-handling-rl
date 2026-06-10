@@ -1,5 +1,6 @@
 import torch
-from rl.SAC import networks, memory
+
+from rl.sac import memory, networks
 
 
 class SACAgent(torch.nn.Module):

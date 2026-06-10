@@ -1,9 +1,9 @@
 import yaml
 
-from simulator.configs.config import EnvConfig, AgentConfig, RewardConfig, Experiment
+from configs.config import AgentConfig, EnvConfig, Experiment, RewardConfig
 
 
-def load_experiments(path="simulator/configs/experiments.yaml") -> list[Experiment]:
+def load_experiments(path="configs/experiments.yaml") -> list[Experiment]:
     """
     Load a list of experiment configurations from a YAML file.
     """

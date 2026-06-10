@@ -1,9 +1,9 @@
 from matplotlib.patches import Rectangle
 
 from simulator.entities.entity import Entity
-from simulator.utils.get_distance import (
-    get_distance_rectangle_rectangle,
+from simulator.geometry import (
     get_distance_rectangle_circle,
+    get_distance_rectangle_rectangle,
 )
 
 

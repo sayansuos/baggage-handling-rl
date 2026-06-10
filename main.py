@@ -1,9 +1,9 @@
-from simulator.runner import run_simulation, run_test, run_save, run_train
-from simulator.utils.load_config import load_experiments
+from runner import run_save, run_simulation, run_test, run_train
+from utils.config_loader import load_experiments
 
 if __name__ == "__main__":
 
-    MODE = "save"
+    MODE = "simulation"
     experiments = load_experiments()
 
     if MODE == "simulation":
@@ -13,4 +13,4 @@ if __name__ == "__main__":
     elif MODE == "save":
         run_save(experiments=experiments)
     elif MODE == "train":
-        run_train(experiments=experiments[:1])
+        run_train(experiments=experiments[:1], n_episodes=100)

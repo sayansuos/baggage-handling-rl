@@ -1,9 +1,9 @@
 import numpy as np
 
-from simulator.configs.config import EnvConfig, AgentConfig
-from simulator.entities.static_entity import StaticEntity
-from simulator.entities.moving_entity import MovingEntity
+from configs.config import AgentConfig, EnvConfig
 from simulator.entities.agent import Agent
+from simulator.entities.moving_entity import MovingEntity
+from simulator.entities.static_entity import StaticEntity
 
 
 class EnvironmentManager:
@@ -171,27 +171,19 @@ class EnvironmentManager:
         Generate the environment border walls.
         """
 
-        top_wall = StaticEntity(
-            width=self.width, height=pad, num=len(self.static_obstacles)
-        )
+        top_wall = StaticEntity(width=self.width, height=pad, num=1)
         top_wall.current_position = (
             self.width / 2,
             self.height,
         )
-        right_wall = StaticEntity(
-            width=pad, height=self.height, num=len(self.static_obstacles)
-        )
+        right_wall = StaticEntity(width=pad, height=self.height, num=2)
         right_wall.current_position = (
             self.width,
             self.height / 2,
         )
-        bot_wall = StaticEntity(
-            width=self.width, height=pad, num=len(self.static_obstacles)
-        )
+        bot_wall = StaticEntity(width=self.width, height=pad, num=3)
         bot_wall.current_position = (self.width / 2, 0)
-        left_wall = StaticEntity(
-            width=pad, height=self.height, num=len(self.static_obstacles)
-        )
+        left_wall = StaticEntity(width=pad, height=self.height, num=4)
         left_wall.current_position = (0, self.height / 2)
 
         self.static_obstacles.extend([top_wall, right_wall, bot_wall, left_wall])
@@ -222,7 +214,7 @@ class EnvironmentManager:
                 w = w if w % 2 == 1 else w + 1
                 h = h if h % 2 == 1 else h + 1
                 obstacle = StaticEntity(
-                    width=w, height=h, num=len(self.static_obstacles)
+                    width=w, height=h, num=len(self.static_obstacles) + 1
                 )
                 pos = (
                     np.random.randint(pad, self.width - pad),
@@ -252,7 +244,7 @@ class EnvironmentManager:
                 obstacle = StaticEntity(
                     width=w,
                     height=h,
-                    num=len(self.static_obstacles),
+                    num=len(self.static_obstacles) + 1,
                 )
                 obstacle.current_position = (i, j)
                 self.static_obstacles.append(obstacle)
@@ -276,7 +268,7 @@ class EnvironmentManager:
             obstacle = StaticEntity(
                 width=2,
                 height=2,
-                num=len(self.static_obstacles),
+                num=len(self.static_obstacles) + 1,
             )
             obstacle.current_position = pos
             self.static_obstacles.append(obstacle)

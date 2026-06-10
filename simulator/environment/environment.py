@@ -1,20 +1,19 @@
 import gymnasium as gym
-import numpy as np
 import matplotlib.pyplot as plt
-
+import numpy as np
 from gymnasium import spaces
 
-from simulator.configs.config import EnvConfig, AgentConfig, RewardConfig
-from simulator.utils.environment_space import (
-    get_single_observation_space,
-    get_single_action_space,
-)
+from configs.config import AgentConfig, EnvConfig, RewardConfig
+from simulator.entities.agent import Agent
+from simulator.entities.moving_entity import MovingEntity
+from simulator.entities.static_entity import StaticEntity
 from simulator.environment.environment_manager import EnvironmentManager
 from simulator.environment.gridmap import GridMap
-from simulator.entities.static_entity import StaticEntity
-from simulator.entities.moving_entity import MovingEntity
-from simulator.entities.agent import Agent
 from simulator.motion.astar import AStar
+from simulator.spaces import (
+    get_single_action_space,
+    get_single_observation_space,
+)
 
 
 class Environment(gym.Env):
@@ -53,9 +52,7 @@ class Environment(gym.Env):
         self.env_config = env_config
         self.agent_config = agent_config
         self.reward_config = reward_config
-        # self.fig, self.ax = plt.subplots(figsize=(10, 8))
-        self.fig = plt.gcf()
-        self.ax = plt.gca()
+        self.fig, self.ax = None, None
 
         self.build_environment()
 
@@ -72,9 +69,12 @@ class Environment(gym.Env):
         """
 
         obs = {}
+        current_grid = self.grid
         for agent in self.agents:
             obs[agent.id] = {
-                "local_map": self._get_local_grid(agent)[np.newaxis, :, :],
+                "local_map": self._get_local_grid(agent, current_grid)[
+                    np.newaxis, :, :
+                ],
                 "goal_relative_position": np.array(
                     list(agent._goal_relative_position), dtype=np.float32
                 ),
@@ -92,7 +92,8 @@ class Environment(gym.Env):
             self._update_info()
         )
         info = {
-            "environment": f"{self.name}_{self.env_id}",
+            "environment": self.name,
+            "worker": self.env_id,
             "episode": self.episode,
             "return": _return,
             "mean_time_travel": _mean_time_travel,
@@ -138,12 +139,21 @@ class Environment(gym.Env):
         truncated = self._compute_truncated()
         info = self._get_info()
 
+        max_steps = self.env_config.max_steps
+        self.dones = {
+            a.id: terminated[a.id] or truncated[a.id] or self.step_count >= max_steps
+            for a in self.agents
+        }
+
         return obs, reward, terminated, truncated, info
 
     def render(self):
         """
         Default render method for the global environment.
         """
+
+        if self.fig is None or self.ax is None:
+            self.fig, self.ax = plt.subplots(figsize=(10, 8))
 
         self.ax.clear()
         self.ax.set_aspect("equal", adjustable="box")
@@ -205,12 +215,14 @@ class Environment(gym.Env):
 
         else:
             self._return += sum(r for _, r in self.reward.items())
-            self._mean_time_travel = sum([agent.travel_time for agent in self.agents])
-            self._success_rate = sum(
-                [agent.state == "terminated" for agent in self.agents]
+            self._mean_time_travel = (
+                sum([agent.travel_time for agent in self.agents]) / n
             )
-            self._collision_rate = sum(
-                [agent.state == "truncated" for agent in self.agents]
+            self._success_rate = (
+                sum([agent.state == "terminated" for agent in self.agents]) / n
+            )
+            self._collision_rate = (
+                sum([agent.state == "truncated" for agent in self.agents]) / n
             )
 
         if self.debug:
@@ -235,14 +247,14 @@ class Environment(gym.Env):
 
         return (
             self._return,
-            self._mean_time_travel / n,
-            self._success_rate / n,
-            self._collision_rate / n,
+            self._mean_time_travel,
+            self._success_rate,
+            self._collision_rate,
             self._debug,
         )
 
     def _get_local_grid(
-        self, agent: Agent, size: int | None = None
+        self, agent: Agent, current_grid: np.ndarray, size: int | None = None
     ) -> np.ndarray | None | ValueError:
         """
         Return the local occupancy grid perceived by a given agent.
@@ -253,7 +265,7 @@ class Environment(gym.Env):
 
         if not size:
             size = self.agent_config.length_view
-        return self.grid_map.get_local_grid(agent, size)
+        return self.grid_map.get_local_grid(agent, current_grid, size)
 
     def _compute_terminated(self) -> dict:
         """
@@ -338,21 +350,11 @@ class Environment(gym.Env):
         self.debug = to
 
     def is_done(self, agent_id: str):
-        terminated = self._compute_terminated()
-        truncated = self._compute_truncated()
-        step_max = self.env_config.max_attempts
-        return (
-            terminated[agent_id] or truncated[agent_id] or self.step_count >= step_max
-        )
+        return self.dones[agent_id]
 
     @property
     def done(self):
-        terminated = self._compute_terminated()
-        truncated = self._compute_truncated()
-        step_max = self.env_config.max_attempts
-        return all(terminated[a] or truncated[a] for a in terminated.keys()) or (
-            self.step_count >= step_max
-        )
+        return all(done for done in self.dones.values())
 
     @property
     def grid(self) -> np.ndarray:
@@ -388,7 +390,7 @@ class Environment(gym.Env):
             self._build_environment_spaces()
         )  # Define Gym spaces
 
-        self.episode = 1
+        self.episode = 0
         self.step_count = 0
         self.total_step = 0
 
@@ -459,6 +461,8 @@ class Environment(gym.Env):
         self._closest = self._compute_closest()  # Get entities interaction
         self.reward: dict = {agent.id: 0 for agent in self.agents}
         self.info: dict = {}
+
+        self.dones: dict = {agent.id: False for agent in self.agents}
 
     def _is_free(
         self,

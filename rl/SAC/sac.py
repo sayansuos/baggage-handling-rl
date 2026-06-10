@@ -1,14 +1,15 @@
 import warnings
+
 import numpy as np
 
-from rl.SAC.agent import SACAgent
-from simulator.configs.config import Experiment
+from configs.config import Experiment
+from rl.sac.agent import SACAgent
 from simulator.environment.environment import Environment
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 
-def run_sac(exp: Experiment, worker_id: int = 1, n_episodes: int = 1000):
+def run_sac(exp: Experiment, worker_id, n_episodes: int = 1000):
 
     env = Environment(
         exp.env_config,
@@ -33,47 +34,70 @@ def run_sac(exp: Experiment, worker_id: int = 1, n_episodes: int = 1000):
         batch_size=256,
         lr=3e-4,
         gamma=0.99,
-        feature_size=256,
-        hidden_size=128,
+        feature_size=64,
+        hidden_size=64,
         mem_size=100_000,
     )
 
-    best_score = -np.inf
     history = []
+
+    best_score = -np.inf
+    best_mean_time_travel = np.inf
+    best_success_rate = 0
+    scores = []
+    mean_time_travels = []
+    success_rates = []
     metrics = []
+
+    steps = 0
 
     for episode in range(n_episodes):
 
         state, _ = env.reset()
-        done = False
         score = 0.0
+
+        if episode == n_episodes - 1:
+            env._set_debug(True)
+        else:
+            env._set_debug(False)
+
         while not env.is_done(trained_agent_id):
             actions = {}
             actions[trained_agent_id] = agent.choose_action(state[trained_agent_id])
             for amr in env.agents:
                 if amr.id != trained_agent_id:
                     actions[amr.id] = None
-            next_state, rewards, terminated, truncated, info = env.step(actions)
-            done = terminated[trained_agent_id] or truncated[trained_agent_id]
+            next_state, rewards, _, _, info = env.step(actions)
 
             agent.store_transition(
                 state[trained_agent_id],
                 actions[trained_agent_id],
                 rewards[trained_agent_id],
                 next_state[trained_agent_id],
-                done,
+                env.is_done(trained_agent_id),
             )
 
             agent.learn()
             score += rewards[trained_agent_id]
             state = next_state
 
-        history.append(score)
-        avg_score = np.mean(history[-100:])
+        history.append(info)
+        steps += env.step_count
+
+        scores.append(score)
+        mean_time_travels.append(info["mean_time_travel"])
+        success_rates.append(info["success_rate"])
+        avg_score = np.mean(scores[-100:])
+        avg_mean_time_travel = np.mean(mean_time_travels[-100:])
+        avg_success_rate = np.mean(success_rates[-100:])
 
         if avg_score > best_score:
             best_score = avg_score
             agent.save_checkpoints()
+        if avg_mean_time_travel < best_mean_time_travel:
+            best_mean_time_travel = avg_mean_time_travel
+        if avg_success_rate > best_success_rate:
+            best_success_rate = avg_success_rate
 
         metrics.append(
             {
@@ -83,6 +107,12 @@ def run_sac(exp: Experiment, worker_id: int = 1, n_episodes: int = 1000):
                 "return": score,
                 "average_return": avg_score,
                 "best_return": best_score,
+                "mean_time_travel": info["mean_time_travel"],
+                "average_mean_time_travel": avg_mean_time_travel,
+                "best_mean_time_travel": best_mean_time_travel,
+                "success_rate": info["success_rate"],
+                "average_success_rate": avg_success_rate,
+                "best_success_rate": best_success_rate,
             }
         )
 
@@ -94,4 +124,4 @@ def run_sac(exp: Experiment, worker_id: int = 1, n_episodes: int = 1000):
             end="\r",
         )
 
-    return history, metrics, best_score, agent
+    return history, scores, metrics, best_score, agent, steps

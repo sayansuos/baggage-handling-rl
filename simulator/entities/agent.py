@@ -1,8 +1,7 @@
 import numpy as np
-
 from matplotlib.patches import Rectangle
 
-from simulator.configs.config import AgentConfig
+from configs.config import AgentConfig
 from simulator.entities.moving_entity import MovingEntity
 
 
@@ -75,7 +74,8 @@ class Agent(MovingEntity):
         """
         Update the agent's position regarding a given velocity.
         """
-
+        self.v = v
+        self.omega = omega
         self.theta += omega * dt
         self.current_position = self._get_next_pos(v, dt)
 

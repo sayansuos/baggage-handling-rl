@@ -1,9 +1,9 @@
 import numpy as np
 
-from simulator.configs.config import EnvConfig, AgentConfig
-from simulator.entities.static_entity import StaticEntity
-from simulator.entities.moving_entity import MovingEntity
+from configs.config import AgentConfig, EnvConfig
 from simulator.entities.agent import Agent
+from simulator.entities.moving_entity import MovingEntity
+from simulator.entities.static_entity import StaticEntity
 
 
 class GridMap:
@@ -131,7 +131,9 @@ class GridMap:
 
         return grid
 
-    def get_local_grid(self, agent: Agent, size: int) -> np.ndarray | None | ValueError:
+    def get_local_grid(
+        self, agent: Agent, current_grid: np.ndarray, size: int
+    ) -> np.ndarray | None | ValueError:
         """
         Return the local occupancy grid perceived by the agent.
         """
@@ -156,7 +158,7 @@ class GridMap:
                 grid_c = center_c + local_c - half
 
                 if 0 <= grid_r < self._rows and 0 <= grid_c < self._columns:
-                    local[local_r, local_c] = self.current_grid[grid_r, grid_c]
+                    local[local_r, local_c] = current_grid[grid_r, grid_c]
 
         return local
 

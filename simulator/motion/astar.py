@@ -1,8 +1,9 @@
-import numpy as np
 import heapq
 
-from simulator.utils.get_distance import get_relative_distance
+import numpy as np
+
 from simulator.entities.node import Node
+from simulator.geometry import get_relative_distance
 
 
 class AStar:

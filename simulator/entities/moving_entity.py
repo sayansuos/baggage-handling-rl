@@ -1,11 +1,11 @@
 from matplotlib.patches import Circle
 
 from simulator.entities.entity import Entity
-from simulator.utils.get_distance import (
-    get_relative_position,
-    get_relative_distance,
+from simulator.geometry import (
     get_distance_circle_circle,
     get_distance_rectangle_circle,
+    get_relative_distance,
+    get_relative_position,
 )
 
 
