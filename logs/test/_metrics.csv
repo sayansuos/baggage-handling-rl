@@ -1,0 +1,7 @@
+environment,worker,episode,return,mean_time_travel,success_rate,collision_rate
+random_easy,1,1,320.0,11.0,1.0,0.0
+random_hard,1,1,1004.7038559048793,80.0,1.0,0.0
+warehouse_easy,1,1,1104.4791017705143,81.0,1.0,0.0
+warehouse_hard,1,1,1174.673377987126,91.0,1.0,0.0
+crossing_easy,1,1,199.34475331957555,26.0,0.0,1.0
+crossing_hard,1,1,177.99087501154358,16.0,0.0,1.0
