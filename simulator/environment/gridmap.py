@@ -133,7 +133,7 @@ class GridMap:
 
     def get_local_grid(
         self, agent: Agent, current_grid: np.ndarray, size: int
-    ) -> np.ndarray | None | ValueError:
+    ) -> np.ndarray | ValueError:
         """
         Return the local occupancy grid perceived by the agent.
         """

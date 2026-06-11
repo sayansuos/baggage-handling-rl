@@ -42,7 +42,7 @@ class AgentConfig:
     omega_max: float = np.pi / 6
 
     radius: float = 0.5
-    length_view: int = 5
+    length_view: int = 11
 
 
 @dataclass

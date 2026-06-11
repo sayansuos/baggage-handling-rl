@@ -179,13 +179,13 @@ class Agent(MovingEntity):
         ax.add_patch(rect)
 
     @property
-    def _motion(self) -> np.ndarray:
+    def _motion(self) -> tuple[float, float]:
         """
         Return the current motion state of the agent.
 
         The motion state contains the linear and angular velocities.
         """
-        return np.array([self.v, self.omega])
+        return (self.v, self.omega)
 
     @property
     def _orientation(self) -> np.ndarray:

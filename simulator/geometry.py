@@ -1,6 +1,24 @@
 import numpy as np
 
 
+def get_normalized_position(
+    pos: tuple[float, float], env_width: int, env_height: int
+) -> np.ndarray:
+    """ """
+    x, y = pos
+    norm_x, norm_y = x / env_width, y / env_height
+    return np.array([norm_x, norm_y], dtype=np.float32)
+
+
+def get_normalized_motion(
+    motion: tuple[float, float], v_max: float, omega_max: float
+) -> np.ndarray:
+    """ """
+    v, omega = motion
+    norm_v, norm_omega = v / v_max, omega / omega_max
+    return np.array([norm_v, norm_omega], dtype=np.float32)
+
+
 def get_relative_position(
     pos1: tuple[float, float], pos2: tuple[float, float]
 ) -> tuple[float, float]:

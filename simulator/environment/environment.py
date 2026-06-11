@@ -9,6 +9,7 @@ from simulator.entities.moving_entity import MovingEntity
 from simulator.entities.static_entity import StaticEntity
 from simulator.environment.environment_manager import EnvironmentManager
 from simulator.environment.gridmap import GridMap
+from simulator.geometry import get_normalized_motion, get_normalized_position
 from simulator.motion.astar import AStar
 from simulator.spaces import (
     get_single_action_space,
@@ -75,10 +76,16 @@ class Environment(gym.Env):
                 "local_map": self._get_local_grid(agent, current_grid)[
                     np.newaxis, :, :
                 ],
-                "goal_relative_position": np.array(
-                    list(agent._goal_relative_position), dtype=np.float32
+                "goal_relative_position": get_normalized_position(
+                    agent._goal_relative_position,
+                    self.env_config.width,
+                    self.env_config.height,
                 ),
-                "motion": np.array(list(agent._motion), dtype=np.float32),
+                "motion": get_normalized_motion(
+                    agent._motion,
+                    self.env_config.v_max_allowed,
+                    self.env_config.omega_max_allowed,
+                ),
                 "orientation": np.array(list(agent._orientation), dtype=np.float32),
             }
         return obs
@@ -196,6 +203,8 @@ class Environment(gym.Env):
                 agent.step()
             if agent.state == "active":
                 agent.travel_time += 1
+                if agent._goal_relative_distance < 0.5:
+                    agent.state = "reached"
 
         self._closest = self._compute_closest()
 
@@ -238,7 +247,7 @@ class Environment(gym.Env):
                     "goal_relative_distance": agent._goal_relative_distance,
                     "travel_time": agent.travel_time,
                     "reward": self.reward[agent.id],
-                    "action": agent._motion.tolist(),
+                    "action": list(agent._motion),
                     "closest_obstacle_distance": self._closest[agent.id][
                         "closest_distance"
                     ],
@@ -255,7 +264,7 @@ class Environment(gym.Env):
 
     def _get_local_grid(
         self, agent: Agent, current_grid: np.ndarray, size: int | None = None
-    ) -> np.ndarray | None | ValueError:
+    ) -> np.ndarray | ValueError:
         """
         Return the local occupancy grid perceived by a given agent.
 
@@ -313,28 +322,36 @@ class Environment(gym.Env):
             else:
                 reward = 0
 
-                # Goal reached/progress reward
-                current = agent._goal_relative_distance
-                progress = (
+                reward += (
                     agent._old_goal_relative_distance - agent._goal_relative_distance
                 )
-                reward += beta1 * (goal_bonus if current < 0.5 else progress)
-                # Abrupt rotations penalty
-                omega = abs(agent.omega)
-                reward += beta2 * (
-                    angular_malus * omega if omega > omega_threshold else 0
-                )
-                # Non-respect of safety distance penalty
-                closest_dist = (
-                    safety_threshold - self._closest[agent.id]["closest_distance"]
-                )
-                reward += beta3 * (
-                    safety_malus1 * np.exp(safety_malus2 * closest_dist)
-                    if closest_dist > 0
-                    else 0
-                )
-                # Collision penalty
-                reward += beta4 * (collision_malus if agent.state == "collided" else 0)
+                reward -= 0.1
+                reward += 100 if agent._goal_relative_distance < 2 else 0
+                reward -= 100 if agent.state == "collided" else 0
+                reward -= 100 if self.step_count == self.env_config.max_steps else 0
+
+                # # Goal reached/progress reward
+                # current = agent._goal_relative_distance
+                # progress = (
+                #     agent._old_goal_relative_distance - agent._goal_relative_distance
+                # )
+                # reward += beta1 * (goal_bonus if current < 0.5 else progress)
+                # # Abrupt rotations penalty
+                # omega = abs(agent.omega)
+                # reward += beta2 * (
+                #     angular_malus * omega if omega > omega_threshold else 0
+                # )
+                # # Non-respect of safety distance penalty
+                # closest_dist = (
+                #     safety_threshold - self._closest[agent.id]["closest_distance"]
+                # )
+                # reward += beta3 * (
+                #     safety_malus1 * np.exp(safety_malus2 * closest_dist)
+                #     if closest_dist > 0
+                #     else 0
+                # )
+                # # Collision penalty
+                # reward += beta4 * (collision_malus if agent.state == "collided" else 0)
 
                 rewards[agent.id] = reward
 

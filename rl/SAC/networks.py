@@ -1,5 +1,5 @@
-import torch
 import numpy as np
+import torch
 
 
 class FeatureExtractor(torch.nn.Module):
@@ -24,16 +24,19 @@ class FeatureExtractor(torch.nn.Module):
         self.cnn = torch.nn.Sequential(
             torch.nn.Conv2d(map_channels, 8, kernel_size=3, padding=1),
             torch.nn.ReLU(),
+            torch.nn.MaxPool2d(kernel_size=2),
             torch.nn.Conv2d(8, 16, kernel_size=3, padding=1),
             torch.nn.ReLU(),
-            torch.nn.Conv2d(16, 32, kernel_size=3, padding=1),
-            torch.nn.ReLU(),
+            # torch.nn.MaxPool2d(kernel_size=2),
+            # torch.nn.Conv2d(16, 32, kernel_size=3, padding=1),
+            # torch.nn.ReLU(),
+            torch.nn.AdaptiveAvgPool2d((4, 4)),
             torch.nn.Flatten(),
         )
 
         with torch.no_grad():
             dummy = torch.zeros(1, *map_shape)
-            cnn_output_size = self.cnn(dummy).shape[1]
+            cnn_output_size = self.cnn(dummy).shape[1]  # 16 * 4 * 4 = 256
 
         self.fc = torch.nn.Sequential(
             torch.nn.Linear(cnn_output_size + obs_size, feature_size),
@@ -94,11 +97,11 @@ class ActorNetwork(torch.nn.Module):
         self.features = FeatureExtractor(map_shape, feature_size=feature_size)
 
         self.actor = torch.nn.Sequential(
-            torch.nn.Linear(feature_size, feature_size // 2),
+            torch.nn.Linear(feature_size, hidden_size),
             torch.nn.ReLU(),
-            torch.nn.Linear(feature_size // 2, feature_size // 2),
-            torch.nn.ReLU(),
-            torch.nn.Linear(feature_size // 2, hidden_size),
+            # torch.nn.Linear(hidden_size, hidden_size),
+            # torch.nn.ReLU(),
+            torch.nn.Linear(hidden_size, hidden_size),
             torch.nn.ReLU(),
         )
 
@@ -202,9 +205,9 @@ class CriticNetwork(torch.nn.Module):
         self.features = FeatureExtractor(map_shape, feature_size=feature_size)
 
         self.critic = torch.nn.Sequential(
-            torch.nn.Linear(feature_size + n_actions, (feature_size + n_actions) // 2),
+            torch.nn.Linear(feature_size + n_actions, hidden_size),
             torch.nn.ReLU(),
-            torch.nn.Linear((feature_size + n_actions) // 2, hidden_size),
+            torch.nn.Linear(hidden_size, hidden_size),
             torch.nn.ReLU(),
             torch.nn.Linear(hidden_size, 1),
         )
