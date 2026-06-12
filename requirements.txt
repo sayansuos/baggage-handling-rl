@@ -1,2 +1,7 @@
 gymnasium
 numpy
+pandas
+matplotlib
+torch
+tqdm
+imageio
