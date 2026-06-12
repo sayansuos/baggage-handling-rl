@@ -165,7 +165,7 @@ class Environment(gym.Env):
             "environment": self.name,
             "worker": self.env_id,
             "episode": self.episode,
-            "return": sum(self.rewards.values()),
+            "return": self.sum_rewards,
             "mean_time_travel": mean_time_travel,
             "success_rate": success_rate,
             "collision_rate": collision_rate,
@@ -218,6 +218,7 @@ class Environment(gym.Env):
 
         self.dones: dict = {agent.id: False for agent in self.agents}
         self.rewards: dict = {agent.id: 0 for agent in self.agents}
+        self.sum_rewards = 0
         self._debug = []
         obs = self._get_obs()
         info = self._get_info()
@@ -268,6 +269,7 @@ class Environment(gym.Env):
             timeout=self.timeout,
         )
         self.rewards = rewards
+        self.sum_rewards += sum(rewards.values())
         terminated, truncated, self.dones = compute_dones(
             agents=self.agents, timeout=self.timeout
         )

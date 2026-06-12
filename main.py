@@ -3,7 +3,7 @@ from utils.config_loader import load_experiments
 
 if __name__ == "__main__":
 
-    MODE = "train"
+    MODE = "simulation"
     experiments = load_experiments()
 
     if MODE == "simulation":

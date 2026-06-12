@@ -22,11 +22,11 @@ class FeatureExtractor(torch.nn.Module):
         """
         super().__init__()
         self.cnn = torch.nn.Sequential(
-            torch.nn.Conv2d(map_channels, 8, kernel_size=3, padding=1),
+            torch.nn.Conv2d(map_channels, 4, kernel_size=3, padding=1),
             torch.nn.ReLU(),
-            torch.nn.MaxPool2d(kernel_size=2),
-            torch.nn.Conv2d(8, 16, kernel_size=3, padding=1),
-            torch.nn.ReLU(),
+            # torch.nn.MaxPool2d(kernel_size=2),
+            # torch.nn.Conv2d(8, 16, kernel_size=3, padding=1),
+            # torch.nn.ReLU(),
             # torch.nn.MaxPool2d(kernel_size=2),
             # torch.nn.Conv2d(16, 32, kernel_size=3, padding=1),
             # torch.nn.ReLU(),
@@ -36,7 +36,7 @@ class FeatureExtractor(torch.nn.Module):
 
         with torch.no_grad():
             dummy = torch.zeros(1, *map_shape)
-            cnn_output_size = self.cnn(dummy).shape[1]  # 16 * 4 * 4 = 256
+            cnn_output_size = self.cnn(dummy).shape[1]  # 8 * 2 * 2 = 64
 
         self.fc = torch.nn.Sequential(
             torch.nn.Linear(cnn_output_size + obs_size, feature_size),
