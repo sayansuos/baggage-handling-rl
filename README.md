@@ -8,7 +8,7 @@ This project is developed as part of an internship focused on optimizing baggage
 To address this problem, we first consider a more general autonomous navigation framework based on Autonomous Mobile Robots (AMRs). This approach allows us to study and validate reinforcement learning methods in a less constrained environment before progressively adapting them to the specific requirements of airport baggage handling systems.
 
 <p align="center">
-  <img src="figures/test/_anim.gif" width="800">
+  <img src="figures/test/_anim.gif" width="60%">
   <br>
   <em>Examples of a random, warehouse and crossing scenarios with agents and static and dynamic obstacles.</em>
 </p>
