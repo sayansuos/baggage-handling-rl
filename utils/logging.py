@@ -28,6 +28,7 @@ def log_metrics(
     os.makedirs(path, exist_ok=True)
 
     rows = []
+
     for ep in metrics:
         rows.append(
             {
@@ -40,6 +41,7 @@ def log_metrics(
                 "collision_rate": ep["collision_rate"],
             }
         )
+
     df = pd.DataFrame(rows)
     df.to_csv(f"{path}/{file_name}_metrics.csv", index=False)
 
@@ -55,9 +57,12 @@ def log_metrics_debug(
     rows = []
 
     for ep in metrics:
+
         debug_steps = ep.get("debug", [])
+
         for step in debug_steps:
             agents = step.get("agents", {})
+
             for agent_id, agent_data in agents.items():
                 rows.append(
                     {

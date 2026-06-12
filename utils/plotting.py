@@ -76,7 +76,7 @@ def plot_rewards(
 
         data = df[df["environment"] == exp].copy()
         success_steps = (
-            data.loc[data["state"] == "terminated"]
+            data.loc[data["goal_distance"] < 0.5]
             .groupby("agent", as_index=False)["step"]
             .min()
         )["step"].tolist()
@@ -122,7 +122,7 @@ def plot_rewards(
             ax_reward.axvline(s, color="red", alpha=0.7)
         for s in success_steps:
             ax_reward.axvline(s, color="green", alpha=0.7)
-        ax_reward.set_title(f"REWARD - {exp}")
+        ax_reward.set_title(f"Reward Function | {exp}")
         ax_reward.set_xlabel("Step")
         ax_reward.set_ylabel("Reward")
         ax_reward.legend()
@@ -134,7 +134,7 @@ def plot_rewards(
         for s in success_steps:
             ax_cumsum.axvline(s, color="green", alpha=0.7)
 
-        ax_cumsum.set_title(f"CUMULATIVE REWARD - {exp}")
+        ax_cumsum.set_title(f"Cumulative Reward Function | {exp}")
         ax_cumsum.set_xlabel("Step")
         ax_cumsum.legend()
         ax_cumsum.grid(True)
@@ -160,7 +160,7 @@ def plot_training_metrics(
     ax.plot(df["episode"], df["average_return"], label="Average return")
     ax.plot(df["episode"], df["best_return"], label="Best return", linestyle="--")
 
-    ax.set_title(f"SAC training - {file_name}")
+    ax.set_title(f"SAC training | {file_name}")
     ax.set_xlabel("Episode")
     ax.set_ylabel("Score")
     ax.legend()

@@ -1,20 +1,15 @@
 import gymnasium as gym
 import matplotlib.pyplot as plt
 import numpy as np
-from gymnasium import spaces
 
 from configs.config import AgentConfig, EnvConfig, RewardConfig
-from simulator.entities.agent import Agent
-from simulator.entities.moving_entity import MovingEntity
-from simulator.entities.static_entity import StaticEntity
-from simulator.environment.environment_manager import EnvironmentManager
 from simulator.environment.gridmap import GridMap
+from simulator.environment.manager import Manager
+from simulator.environment.pathfinding import compute_astar_paths
+from simulator.environment.rewards import compute_rewards
+from simulator.environment.terminations import compute_closest, compute_dones
 from simulator.geometry import get_normalized_motion, get_normalized_position
-from simulator.motion.astar import AStar
-from simulator.spaces import (
-    get_single_action_space,
-    get_single_observation_space,
-)
+from simulator.spaces import get_multi_spaces
 
 
 class Environment(gym.Env):
@@ -46,16 +41,56 @@ class Environment(gym.Env):
         """
         Constructor
         """
-        self.name = name
-        self.env_id = env_id
-        self.debug = debug
 
+        # Initialization
+
+        # self.fig, self.ax = None, None
         self.env_config = env_config
         self.agent_config = agent_config
-        self.reward_config = reward_config
-        self.fig, self.ax = None, None
+        self.rewards_config = reward_config
+        self.env_manager = Manager(self.env_config, self.agent_config)
 
-        self.build_environment()
+        # Build environment
+
+        self.name = name
+        self.env_id = env_id
+        self.episode = 0
+        self.total_step = 0
+        self.step_count = 0
+        self.debug = debug
+
+        self.observation_space, self.action_space = get_multi_spaces(
+            nb_agents=self.env_config.nb_agents,
+            env_config=self.env_config,
+            agent_config=self.agent_config,
+        )
+
+        # Get global structures
+
+        self.static_obstacles = self.env_manager.generate_static_obstacles()
+
+    # ---------------------------------------------------------------
+    # PROPERTIES
+    # ---------------------------------------------------------------
+
+    @property
+    def timeout(self):
+        """"""
+        return self.step_count >= self.env_config.max_steps
+
+    @property
+    def grid(self) -> np.ndarray:
+        """
+        Return the static occupancy grid of the environment.
+        """
+        return self.grid_map.grid
+
+    def done(self, agent_id: str | None = None) -> bool:
+        """"""
+        if not agent_id:
+            return all(done for done in self.dones.values())
+        else:
+            return self.dones[agent_id]
 
     # ---------------------------------------------------------------
     # GYM API
@@ -64,30 +99,35 @@ class Environment(gym.Env):
     def _get_obs(self) -> dict:
         """
         Compute the decentralized observation of all agents.
-
-        The observation only contains information locally
-        available to the agent.
         """
 
         obs = {}
         current_grid = self.grid
+
         for agent in self.agents:
+
+            local_map = self.grid_map.get_local_grid(
+                agent, current_grid, self.agent_config.length_view
+            )[np.newaxis, :, :]
+            goal_relative_position = get_normalized_position(
+                agent._goal_relative_position,
+                self.env_config.width,
+                self.env_config.height,
+            )
+            motion = get_normalized_motion(
+                agent._motion,
+                self.env_config.v_max_allowed,
+                self.env_config.omega_max_allowed,
+            )
+            orientation = np.array(list(agent._orientation), dtype=np.float32)
+
             obs[agent.id] = {
-                "local_map": self._get_local_grid(agent, current_grid)[
-                    np.newaxis, :, :
-                ],
-                "goal_relative_position": get_normalized_position(
-                    agent._goal_relative_position,
-                    self.env_config.width,
-                    self.env_config.height,
-                ),
-                "motion": get_normalized_motion(
-                    agent._motion,
-                    self.env_config.v_max_allowed,
-                    self.env_config.omega_max_allowed,
-                ),
-                "orientation": np.array(list(agent._orientation), dtype=np.float32),
+                "local_map": local_map,
+                "goal_relative_position": goal_relative_position,
+                "motion": motion,
+                "orientation": orientation,
             }
+
         return obs
 
     def _get_info(self) -> dict:
@@ -95,144 +135,11 @@ class Environment(gym.Env):
         Return auxiliary information for all agents.
         """
 
-        _return, _mean_time_travel, _success_rate, _collision_rate, _debug = (
-            self._update_info()
-        )
-        info = {
-            "environment": self.name,
-            "worker": self.env_id,
-            "episode": self.episode,
-            "return": _return,
-            "mean_time_travel": _mean_time_travel,
-            "success_rate": _success_rate,
-            "collision_rate": _collision_rate,
-            "total_step": self.total_step,
-            "debug": _debug,
-        }
-        self.info = info
-        return info
-
-    def reset(self, seed=None, options=None) -> tuple[dict, dict]:
-        """
-        Reset the environment to an initial state.
-        """
-
-        if seed is not None:
-            np.random.seed(seed)
-        super().reset(seed=seed)
-
-        self.moving_obstacles, self.agents = self.env_manager.reset()
-        self._update_environment()
-
-        obs = self._get_obs()
-        info = self._get_info()
-
-        self.step_count = 0
-        self.episode += 1
-
-        return obs, info
-
-    def step(self, action=None) -> tuple[dict, dict, dict, dict, dict]:
-        """
-        Advance the environment by one simulation step.
-        """
-        self.step_count += 1
-        self.total_step += 1
-
-        self._simulate(action)
-        obs = self._get_obs()
-        reward = self._compute_reward()
-        terminated = self._compute_terminated()
-        truncated = self._compute_truncated()
-        info = self._get_info()
-
-        max_steps = self.env_config.max_steps
-        self.dones = {
-            a.id: terminated[a.id] or truncated[a.id] or self.step_count >= max_steps
-            for a in self.agents
-        }
-
-        return obs, reward, terminated, truncated, info
-
-    def render(self):
-        """
-        Default render method for the global environment.
-        """
-
-        if self.fig is None or self.ax is None:
-            self.fig, self.ax = plt.subplots(figsize=(10, 8))
-
-        self.ax.clear()
-        self.ax.set_aspect("equal", adjustable="box")
-        colors = plt.cm.get_cmap("tab10", len(self.agents))
-        W, H = self.env_config.width, self.env_config.height
-
-        for entity in self.static_obstacles:
-            entity.render(self.ax)
-
-        for i, entity in enumerate(self.moving_obstacles):
-            entity.render(self.ax)
-
-        for i, agent in enumerate(self.agents):
-            agent.render(self.ax, 0, W, 0, H, color=colors(i))
-            self.ax.scatter([], [], color=colors(i), label=agent.id)
-
-        self.ax.set_xlim(0, W)
-        self.ax.set_ylim(0, H)
-        self.ax.legend(loc="upper left")
-
-    # ---------------------------------------------------------------
-    # UPDATE
-    # ---------------------------------------------------------------
-
-    def _simulate(self, action=None):
-        """
-        Advance the simulation by one step.
-        """
-
-        # Update obstacles
-        for obs in self.moving_obstacles:
-            obs.step()
-
-        # Update agents
-        for agent in self.agents:
-            if action is not None and action[agent.id] is not None:
-                v, omega = action[agent.id]
-                agent.move(v, omega)
-            else:
-                agent.step()
-            if agent.state == "active":
-                agent.travel_time += 1
-                if agent._goal_relative_distance < 0.5:
-                    agent.state = "reached"
-
-        self._closest = self._compute_closest()
-
-    def _update_info(self) -> tuple[float, float, float, float, list]:
-        """
-        Return auxiliary information for all agents.
-        """
-
         n = len(self.agents)
 
-        if self.info == {}:
-            self._return = 0
-            self._mean_time_travel = 0
-            self._success_rate = 0
-            self._collision_rate = 0
-            self._debug = []
-
-        else:
-            self._return += sum(r for _, r in self.reward.items())
-            self._mean_time_travel = (
-                sum([agent.travel_time for agent in self.agents]) / n
-            )
-            self._success_rate = (
-                sum([agent.state == "terminated" for agent in self.agents]) / n
-            )
-            self._collision_rate = (
-                sum([agent.state == "truncated" for agent in self.agents]) / n
-            )
+        mean_time_travel = sum(agent.travel_time for agent in self.agents) / n
+        success_rate = sum(agent.state == "terminated" for agent in self.agents) / n
+        collision_rate = sum(agent.state == "truncated" for agent in self.agents) / n
 
         if self.debug:
             debug = {
@@ -245,8 +152,8 @@ class Environment(gym.Env):
                     "old_pos": agent.old_position,
                     "current_pos": agent.current_position,
                     "goal_relative_distance": agent._goal_relative_distance,
+                    "reward": self.rewards[agent.id],
                     "travel_time": agent.travel_time,
-                    "reward": self.reward[agent.id],
                     "action": list(agent._motion),
                     "closest_obstacle_distance": self._closest[agent.id][
                         "closest_distance"
@@ -254,219 +161,37 @@ class Environment(gym.Env):
                 }
             self._debug.append(debug)
 
-        return (
-            self._return,
-            self._mean_time_travel,
-            self._success_rate,
-            self._collision_rate,
-            self._debug,
-        )
+        info = {
+            "environment": self.name,
+            "worker": self.env_id,
+            "episode": self.episode,
+            "return": sum(self.rewards.values()),
+            "mean_time_travel": mean_time_travel,
+            "success_rate": success_rate,
+            "collision_rate": collision_rate,
+            "total_step": self.total_step,
+            "debug": self._debug,
+        }
 
-    def _get_local_grid(
-        self, agent: Agent, current_grid: np.ndarray, size: int | None = None
-    ) -> np.ndarray | ValueError:
-        """
-        Return the local occupancy grid perceived by a given agent.
+        return info
 
-        The local grid is centered around the agent's current position
-        and represents nearby occupied and free cells.
+    def reset(self, seed=None, options=None) -> tuple[dict, dict]:
         """
-
-        if not size:
-            size = self.agent_config.length_view
-        return self.grid_map.get_local_grid(agent, current_grid, size)
-
-    def _compute_terminated(self) -> dict:
-        """
-        Compute the termination state of all agents.
-        """
-        for agent in self.agents:
-            if agent.state == "reached":
-                agent.state = "terminated"
-        return {agent.id: agent.state == "terminated" for agent in self.agents}
-
-    def _compute_truncated(self) -> dict:
-        """
-        Compute the truncation state of all agents.
-        """
-        for agent in self.agents:
-            if agent.state == "collided":
-                agent.state = "truncated"
-        return {agent.id: agent.state == "truncated" for agent in self.agents}
-
-    def _compute_reward(self) -> dict[str, float]:
-        """
-        Compute the rewards associated with all agents.
+        Reset the environment to an initial state.
         """
 
-        rewards = {}
+        if seed is not None:
+            np.random.seed(seed)
+        super().reset(seed=seed)
 
-        beta1 = self.reward_config.beta1
-        beta2 = self.reward_config.beta2
-        beta3 = self.reward_config.beta3
-        beta4 = self.reward_config.beta4
+        # Reset episode number and step count
 
-        goal_bonus = self.reward_config.goal_bonus
-        collision_malus = self.reward_config.collision_malus
-        angular_malus = self.reward_config.angular_malus
-        safety_malus1 = self.reward_config.safety_malus1
-        safety_malus2 = self.reward_config.safety_malus2
-        omega_threshold = self.reward_config.omega_threshold
-        safety_threshold = self.reward_config.safety_threshold
-
-        for agent in self.agents:
-
-            if agent.state in ["truncated", "terminated"]:
-                rewards[agent.id] = 0
-
-            else:
-                reward = 0
-
-                reward += (
-                    agent._old_goal_relative_distance - agent._goal_relative_distance
-                )
-                reward -= 0.1
-                reward += 100 if agent._goal_relative_distance < 2 else 0
-                reward -= 100 if agent.state == "collided" else 0
-                reward -= 100 if self.step_count == self.env_config.max_steps else 0
-
-                # # Goal reached/progress reward
-                # current = agent._goal_relative_distance
-                # progress = (
-                #     agent._old_goal_relative_distance - agent._goal_relative_distance
-                # )
-                # reward += beta1 * (goal_bonus if current < 0.5 else progress)
-                # # Abrupt rotations penalty
-                # omega = abs(agent.omega)
-                # reward += beta2 * (
-                #     angular_malus * omega if omega > omega_threshold else 0
-                # )
-                # # Non-respect of safety distance penalty
-                # closest_dist = (
-                #     safety_threshold - self._closest[agent.id]["closest_distance"]
-                # )
-                # reward += beta3 * (
-                #     safety_malus1 * np.exp(safety_malus2 * closest_dist)
-                #     if closest_dist > 0
-                #     else 0
-                # )
-                # # Collision penalty
-                # reward += beta4 * (collision_malus if agent.state == "collided" else 0)
-
-                rewards[agent.id] = reward
-
-        self.reward = rewards
-
-        return rewards
-
-    # ---------------------------------------------------------------
-    # CREATE
-    # ---------------------------------------------------------------
-
-    def _set_debug(self, to: bool):
-        self.debug = to
-
-    def is_done(self, agent_id: str):
-        return self.dones[agent_id]
-
-    @property
-    def done(self):
-        return all(done for done in self.dones.values())
-
-    @property
-    def grid(self) -> np.ndarray:
-        """
-        Return the static occupancy grid of the environment.
-        """
-        return self.grid_map.grid
-
-    def _to_grid(self, pos: tuple[float, float]) -> tuple[int, int]:
-        """
-        Convert world coordinates to grid coordinates.
-        """
-        return self.grid_map.world_to_grid(pos)
-
-    def _from_grid(self, pos: tuple[int, int]) -> tuple[float, float]:
-        """
-        Convert grid coordinates back to world coordinates.
-        """
-        return self.grid_map.grid_to_world(pos)
-
-    def build_environment(self):
-        """
-        Create the full simulation world.
-        """
-
-        env_manager = EnvironmentManager(self.env_config, self.agent_config)
-        self.env_manager = env_manager
-        self.static_obstacles, self.moving_obstacles, self.agents = (
-            self.env_manager.generate()
-        )
-        self._update_environment()
-        self.observation_space, self.action_space = (
-            self._build_environment_spaces()
-        )  # Define Gym spaces
-
-        self.episode = 0
         self.step_count = 0
-        self.total_step = 0
+        self.episode += 1
 
-    def _build_environment_spaces(self) -> tuple[spaces.Dict, spaces.Dict]:
-        """
-        Define observation and action spaces for each agent.
-        """
+        # Change moving entities setups and compute paths
 
-        observation_space = spaces.Dict(
-            {
-                agent.id: get_single_observation_space(
-                    self.env_config, self.agent_config
-                )
-                for agent in self.agents
-            }
-        )
-        action_space = spaces.Dict(
-            {
-                agent.id: get_single_action_space(self.env_config)
-                for agent in self.agents
-            }
-        )
-
-        return observation_space, action_space
-
-    def _compute_closest(self) -> dict:
-        """
-        Compute the closest surrounding entity for each agent.
-
-        The closest entity is determined using the Euclidean
-        distance between entities.
-        """
-
-        metrics = {}
-        entities = self.static_obstacles + self.moving_obstacles + self.agents
-        for agent in self.agents:
-            min_distance = np.inf
-            closest_entity = None
-            for other in entities:
-                if other == agent or other.current_position is None:
-                    continue
-                dist = agent.get_distance(other)
-                if dist < min_distance:
-                    min_distance = dist
-                    closest_entity = other
-                if dist < 1e-3:
-                    agent.state = "collided"
-
-            metrics[agent.id] = {
-                "closest_distance": min_distance,
-                "closest_entity": closest_entity,
-            }
-        return metrics
-
-    def _update_environment(self):
-        """
-        Regenerate the full environment state.
-        """
-
+        self.moving_obstacles, self.agents = self.env_manager.reset()
         self.grid_map = GridMap(
             self.env_config,
             self.agent_config,
@@ -474,50 +199,122 @@ class Environment(gym.Env):
             self.moving_obstacles,
             self.agents,
         )
-        self._compute_astar_paths()
-        self._closest = self._compute_closest()  # Get entities interaction
-        self.reward: dict = {agent.id: 0 for agent in self.agents}
-        self.info: dict = {}
+        compute_astar_paths(
+            grid_map=self.grid_map,
+            radius_max=self.env_config.radius_max,
+            moving_obstacles=self.moving_obstacles,
+            agents=self.agents,
+        )
+
+        # Get entities interactions
+
+        self._closest = compute_closest(
+            static_obstacles=self.static_obstacles,
+            moving_obstacles=self.moving_obstacles,
+            agents=self.agents,
+        )
+
+        # Reset metrics
 
         self.dones: dict = {agent.id: False for agent in self.agents}
+        self.rewards: dict = {agent.id: 0 for agent in self.agents}
+        self._debug = []
+        obs = self._get_obs()
+        info = self._get_info()
 
-    def _is_free(
-        self,
-        entity: StaticEntity | MovingEntity | Agent,
-        pos: tuple[int, int] | tuple[float, float],
-        min_dist: float,
-    ) -> bool:
-        """
-        Check whether a position is collision-free.
-        """
+        return obs, info
 
-        for other in self.static_obstacles + self.moving_obstacles + self.agents:
-            if other is entity:
-                continue
-            if other.current_position is None:
-                continue
-            if entity.collides_with(other, pos, min_dist):
-                return False
-        return True
-
-    def _compute_astar_paths(self):
+    def step(self, action=None) -> tuple[dict, dict, dict, dict, dict]:
         """
-        Return the paths found by A* algorithm for each moving obstacle.
+        Advance the environment by one simulation step.
         """
 
-        pathfinder = AStar(self.grid, int(self.env_config.radius_max) // 2 + 1)
+        # Update step counts
 
-        for entity in list(self.moving_obstacles + self.agents):
-            if not entity.target_positions or not entity.start_position:
-                continue
-            start = entity.start_position
-            for goal in entity.target_positions:
-                start_grid = self._to_grid(start)
-                goal_grid = self._to_grid(goal)
-                path = pathfinder.find_path(start_grid, goal_grid)
-                if path:
-                    path = [self._from_grid(pos) for pos in path]
-                    entity.path.extend(path)
-                    start = goal
-                else:
-                    path = [entity.current_position]
+        self.step_count += 1
+        self.total_step += 1
+
+        # Update obstacles
+
+        for obs in self.moving_obstacles:
+            obs.step()
+
+        # Update agents
+
+        for agent in self.agents:
+            if action is not None and action[agent.id] is not None:
+                v, omega = action[agent.id]
+                agent.move(v, omega)
+            else:
+                agent.step()
+            if agent.state == "active":
+                agent.travel_time += 1
+                final_target = agent.target_positions[-1]
+                if agent.get_relative_distance(final_target) < 0.5:
+                    agent.state = "reached"
+
+        # Get all metrics
+
+        self._closest = compute_closest(
+            static_obstacles=self.static_obstacles,
+            moving_obstacles=self.moving_obstacles,
+            agents=self.agents,
+        )
+        obs = self._get_obs()
+        rewards = compute_rewards(
+            reward_config=self.rewards_config,
+            agents=self.agents,
+            closest=self._closest,
+            timeout=self.timeout,
+        )
+        self.rewards = rewards
+        terminated, truncated, self.dones = compute_dones(
+            agents=self.agents, timeout=self.timeout
+        )
+        info = self._get_info()
+
+        return obs, rewards, terminated, truncated, info
+
+    def render(self, ax=None):
+        """
+        Default render method for the global environment.
+        """
+
+        if ax is None:
+            _, ax = plt.subplots(figsize=(10, 8))
+
+        ax.clear()
+        ax.set_aspect("equal", adjustable="box")
+
+        colors = plt.colormaps["tab10"]
+        W, H = self.env_config.width, self.env_config.height
+
+        for entity in self.static_obstacles:
+            entity.render(ax)
+
+        for i, entity in enumerate(self.moving_obstacles):
+            entity.render(ax)
+
+        handles = []
+        labels = []
+        for i, agent in enumerate(self.agents):
+            agent.render(ax, 0, W, 0, H, color=colors(i))
+            handles.append(
+                plt.Line2D(
+                    [],
+                    [],
+                    marker="o",
+                    linestyle="",
+                    color=colors(i),
+                    label=agent.id,
+                )
+            )
+            labels.append(agent.id)
+            ax.scatter([], [], color=colors(i), label=agent.id)
+
+        ax.set_xlim(0, W)
+        ax.set_ylim(0, H)
+        ax.set_xlabel("x")
+        ax.set_ylabel("y")
+        ax.set_title(f"{self.name} | episode {self.episode} | step {self.step_count}")
+        ax.legend(handles=handles, labels=labels, loc="upper left")

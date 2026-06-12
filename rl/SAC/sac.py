@@ -57,11 +57,11 @@ def run_sac(exp: Experiment, worker_id, n_episodes: int = 1000):
         score = 0.0
 
         if episode == n_episodes - 1:
-            env._set_debug(True)
+            env.debug = True
         else:
-            env._set_debug(False)
+            env.debug = False
 
-        while not env.is_done(trained_agent_id):
+        while not env.dones[trained_agent_id]:
             actions = {}
             actions[trained_agent_id] = agent.choose_action(state[trained_agent_id])
             for amr in env.agents:
@@ -74,7 +74,7 @@ def run_sac(exp: Experiment, worker_id, n_episodes: int = 1000):
                 actions[trained_agent_id],
                 rewards[trained_agent_id],
                 next_state[trained_agent_id],
-                env.is_done(trained_agent_id),
+                env.dones[trained_agent_id],
             )
 
             agent.learn()

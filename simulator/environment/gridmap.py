@@ -1,3 +1,5 @@
+import warnings
+
 import numpy as np
 
 from configs.config import AgentConfig, EnvConfig
@@ -133,17 +135,21 @@ class GridMap:
 
     def get_local_grid(
         self, agent: Agent, current_grid: np.ndarray, size: int
-    ) -> np.ndarray | ValueError:
+    ) -> np.ndarray:
         """
         Return the local occupancy grid perceived by the agent.
         """
 
+        local = np.ones((size, size), dtype=np.float32)
+
         if not size % 2 == 1:
-            raise ValueError("The size must be odd.")
+            warnings.warn(
+                f"Local grid size must be odd. Using {size - 1} instead.",
+                UserWarning,
+            )
+            size -= 1
 
         half = size // 2
-
-        local = np.ones((size, size), dtype=np.float32)
 
         if agent.current_position is None:
             return local

@@ -92,8 +92,8 @@ class Agent(MovingEntity):
         if self.path_index >= len(self.path) - 1:
             self.path = self.path[::-1]
             self.path_index = 0
-            if self.state == "active":
-                self.state = "reached"
+            # if self.state == "active":
+            #     self.state = "reached"
 
         if self.target_positions[self.target_index] == self.current_position:
             self.target_index += 1
@@ -188,7 +188,7 @@ class Agent(MovingEntity):
         return (self.v, self.omega)
 
     @property
-    def _orientation(self) -> np.ndarray:
+    def _orientation(self) -> tuple[float, float]:
         """
         Return the current orientation of the agent.
 
@@ -197,7 +197,7 @@ class Agent(MovingEntity):
         discontinuities.
         """
 
-        return np.array([np.cos(self.theta), np.sin(self.theta)])
+        return np.cos(self.theta), np.sin(self.theta)
 
     def _get_next_pos(self, v: float, dt: float = 1) -> tuple[float, float]:
         """

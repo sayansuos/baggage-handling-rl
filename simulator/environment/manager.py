@@ -1,12 +1,10 @@
 import numpy as np
 
 from configs.config import AgentConfig, EnvConfig
-from simulator.entities.agent import Agent
-from simulator.entities.moving_entity import MovingEntity
-from simulator.entities.static_entity import StaticEntity
+from simulator.entities import agent, moving_entity, static_entity
 
 
-class EnvironmentManager:
+class Manager:
     """
     Environment entity generation manager.
 
@@ -58,15 +56,21 @@ class EnvironmentManager:
         self.nb_static_obstacles: int = env_config.nb_static_obstacles
         self.nb_moving_obstacles: int = env_config.nb_moving_obstacles
 
-        self.agents: list[Agent] = []
-        self.static_obstacles: list[StaticEntity] = []
-        self.moving_obstacles: list[MovingEntity] = []
+        self.agents: list[agent.Agent] = []
+        self.static_obstacles: list[static_entity.StaticEntity] = []
+        self.moving_obstacles: list[moving_entity.MovingEntity] = []
 
     # ---------------------------------------------------------------
     # GLOBAL GENERATE
     # ---------------------------------------------------------------
 
-    def generate(self) -> tuple[list[StaticEntity], list[MovingEntity], list[Agent]]:
+    def generate(
+        self,
+    ) -> tuple[
+        list[static_entity.StaticEntity],
+        list[moving_entity.MovingEntity],
+        list[agent.Agent],
+    ]:
         """"""
 
         static_obstacles = self.generate_static_obstacles()
@@ -75,7 +79,7 @@ class EnvironmentManager:
 
         return static_obstacles, moving_obstacles, agents
 
-    def reset(self) -> tuple[list[MovingEntity], list[Agent]]:
+    def reset(self) -> tuple[list[moving_entity.MovingEntity], list[agent.Agent]]:
         """"""
 
         self.moving_obstacles = []
@@ -84,7 +88,7 @@ class EnvironmentManager:
         agents = self.generate_agents()
         return moving_obstacles, agents
 
-    def generate_static_obstacles(self) -> list[StaticEntity]:
+    def generate_static_obstacles(self) -> list[static_entity.StaticEntity]:
         """
         Generate static obstacles in the environment.
 
@@ -122,7 +126,7 @@ class EnvironmentManager:
 
         return self.static_obstacles
 
-    def generate_moving_obstacles(self) -> list[MovingEntity]:
+    def generate_moving_obstacles(self) -> list[moving_entity.MovingEntity]:
         """
         Generate moving obstacles in the environment.
         """
@@ -144,7 +148,7 @@ class EnvironmentManager:
 
         return self.moving_obstacles
 
-    def generate_agents(self) -> list[Agent]:
+    def generate_agents(self) -> list[agent.Agent]:
         """
         Generate agents in the environment.
         """
@@ -171,19 +175,19 @@ class EnvironmentManager:
         Generate the environment border walls.
         """
 
-        top_wall = StaticEntity(width=self.width, height=pad, num=1)
+        top_wall = static_entity.StaticEntity(width=self.width, height=pad, num=1)
         top_wall.current_position = (
             self.width / 2,
             self.height,
         )
-        right_wall = StaticEntity(width=pad, height=self.height, num=2)
+        right_wall = static_entity.StaticEntity(width=pad, height=self.height, num=2)
         right_wall.current_position = (
             self.width,
             self.height / 2,
         )
-        bot_wall = StaticEntity(width=self.width, height=pad, num=3)
+        bot_wall = static_entity.StaticEntity(width=self.width, height=pad, num=3)
         bot_wall.current_position = (self.width / 2, 0)
-        left_wall = StaticEntity(width=pad, height=self.height, num=4)
+        left_wall = static_entity.StaticEntity(width=pad, height=self.height, num=4)
         left_wall.current_position = (0, self.height / 2)
 
         self.static_obstacles.extend([top_wall, right_wall, bot_wall, left_wall])
@@ -213,7 +217,7 @@ class EnvironmentManager:
                 h = np.random.randint(height_min, height_max - 1)
                 w = w if w % 2 == 1 else w + 1
                 h = h if h % 2 == 1 else h + 1
-                obstacle = StaticEntity(
+                obstacle = static_entity.StaticEntity(
                     width=w, height=h, num=len(self.static_obstacles) + 1
                 )
                 pos = (
@@ -241,7 +245,7 @@ class EnvironmentManager:
 
         for i in x:
             for j in y:
-                obstacle = StaticEntity(
+                obstacle = static_entity.StaticEntity(
                     width=w,
                     height=h,
                     num=len(self.static_obstacles) + 1,
@@ -265,7 +269,7 @@ class EnvironmentManager:
             positions.append((x, y))
 
         for pos in positions:
-            obstacle = StaticEntity(
+            obstacle = static_entity.StaticEntity(
                 width=2,
                 height=2,
                 num=len(self.static_obstacles) + 1,
@@ -295,7 +299,7 @@ class EnvironmentManager:
         """
 
         for i in range(self.nb_moving_obstacles):
-            moving_obstacle = MovingEntity(num=i + 1)
+            moving_obstacle = moving_entity.MovingEntity(num=i + 1)
             pos = self._set_random_position(
                 moving_obstacle, min_dist, max_attempts, False
             )
@@ -317,7 +321,7 @@ class EnvironmentManager:
         """"""
 
         for i in range(self.nb_moving_obstacles):
-            moving_obstacle = MovingEntity(num=i + 1)
+            moving_obstacle = moving_entity.MovingEntity(num=i + 1)
             pos, target = self._set_circular_position(
                 moving_obstacle, min_dist, max_attempts
             )
@@ -343,30 +347,30 @@ class EnvironmentManager:
         """
 
         for i in range(self.nb_agents):
-            agent = Agent(self.agent_config, i + 1)
-            pos = self._set_random_position(agent, min_dist, max_attempts, False)
-            agent.start_position = pos
-            agent.current_position = pos
-            agent.old_position = pos
-            self.agents.append(agent)
+            a = agent.Agent(self.agent_config, i + 1)
+            pos = self._set_random_position(a, min_dist, max_attempts, False)
+            a.start_position = pos
+            a.current_position = pos
+            a.old_position = pos
+            self.agents.append(a)
             for _ in range(nb_targets):
-                agent.target_positions.append(
-                    self._set_random_position(agent, min_dist, max_attempts, True)
+                a.target_positions.append(
+                    self._set_random_position(a, min_dist, max_attempts, True)
                 )
 
     def _crossing_agents(self, min_dist: float, max_attempts: int):
         """"""
 
         for i in range(self.nb_agents):
-            agent = Agent(self.agent_config, i + 1)
-            pos, target = self._set_circular_position(agent, min_dist, max_attempts)
-            agent.start_position = pos
-            agent.current_position = pos
-            agent.old_position = pos
-            agent.radius = self.agent_config.radius
-            agent.target_positions.append(target)
+            a = agent.Agent(self.agent_config, i + 1)
+            pos, target = self._set_circular_position(a, min_dist, max_attempts)
+            a.start_position = pos
+            a.current_position = pos
+            a.old_position = pos
+            a.radius = self.agent_config.radius
+            a.target_positions.append(target)
 
-            self.agents.append(agent)
+            self.agents.append(a)
 
     # ---------------------------------------------------------------
     # SET POSITIONS
@@ -374,7 +378,7 @@ class EnvironmentManager:
 
     def _set_random_position(
         self,
-        entity: StaticEntity | MovingEntity | Agent,
+        entity: static_entity.StaticEntity | moving_entity.MovingEntity | agent.Agent,
         min_dist: float,
         max_attempts: int,
         for_target=False,
@@ -397,7 +401,7 @@ class EnvironmentManager:
 
     def _set_circular_position(
         self,
-        entity: StaticEntity | MovingEntity | Agent,
+        entity: static_entity.StaticEntity | moving_entity.MovingEntity | agent.Agent,
         min_dist: float,
         max_attempts: int,
     ) -> tuple[tuple[int, int], tuple[int, int]]:
@@ -427,7 +431,7 @@ class EnvironmentManager:
 
     def _is_free(
         self,
-        new: StaticEntity | MovingEntity | Agent,
+        new: static_entity.StaticEntity | moving_entity.MovingEntity | agent.Agent,
         pos: tuple[int, int],
         min_dist: float,
         for_target: bool,

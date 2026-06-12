@@ -4,6 +4,26 @@ from gymnasium import spaces
 from configs.config import AgentConfig, EnvConfig
 
 
+def get_multi_spaces(
+    nb_agents: int, env_config: EnvConfig, agent_config: AgentConfig
+) -> tuple[spaces.Dict, spaces.Dict]:
+    """
+    Define observation and action spaces for each agent.
+    """
+
+    observation_space = spaces.Dict(
+        {
+            f"agent_{i+1}": get_single_observation_space(env_config, agent_config)
+            for i in range(nb_agents)
+        }
+    )
+    action_space = spaces.Dict(
+        {f"agent_{i+1}": get_single_action_space(env_config) for i in range(nb_agents)}
+    )
+
+    return observation_space, action_space
+
+
 def get_single_observation_space(
     env_config: EnvConfig, agent_config: AgentConfig
 ) -> spaces.Dict:

@@ -2,8 +2,51 @@ import heapq
 
 import numpy as np
 
-from simulator.entities.node import Node
+from simulator.entities import agent, moving_entity, node
+from simulator.environment.gridmap import GridMap
 from simulator.geometry import get_relative_distance
+
+
+def compute_astar_paths(
+    grid_map: GridMap,
+    radius_max: float,
+    moving_obstacles: list[moving_entity.MovingEntity],
+    agents: list[agent.Agent],
+):
+    """
+    Return the paths found by A* algorithm for each moving obstacle.
+    """
+
+    pathfinder = AStar(grid_map.grid, int(radius_max // 2 + 1))
+
+    for entity in list(moving_obstacles + agents):
+        if not entity.target_positions or not entity.start_position:
+            continue
+        start = entity.start_position
+        for goal in entity.target_positions:
+            start_grid = _to_grid(grid_map, start)
+            goal_grid = _to_grid(grid_map, goal)
+            path = pathfinder.find_path(start_grid, goal_grid)
+            if path:
+                path = [_from_grid(grid_map, pos) for pos in path]
+                entity.path.extend(path)
+                start = goal
+            else:
+                path = [entity.current_position]
+
+
+def _from_grid(grid_map: GridMap, pos: tuple[int, int]) -> tuple[float, float]:
+    """
+    Convert grid coordinates back to world coordinates.
+    """
+    return grid_map.grid_to_world(pos)
+
+
+def _to_grid(grid_map: GridMap, pos: tuple[float, float]) -> tuple[int, int]:
+    """
+    Convert world coordinates to grid coordinates.
+    """
+    return grid_map.world_to_grid(pos)
 
 
 class AStar:
@@ -78,7 +121,7 @@ class AStar:
                 valid_moves.append((r, c))
         return valid_moves
 
-    def reconstruct_path(self, target: Node) -> list[tuple[int, int]]:
+    def reconstruct_path(self, target: node.Node) -> list[tuple[int, int]]:
         """
         Reconstruct path from target node.
         """
@@ -97,7 +140,9 @@ class AStar:
         Find the shortest path between two positions using A*.
         """
 
-        start_node = Node(start_pos, 0, get_relative_distance(start_pos, target_pos))
+        start_node = node.Node(
+            start_pos, 0, get_relative_distance(start_pos, target_pos)
+        )
         open_list = []
         heapq.heappush(open_list, start_node)
         open_dict = {start_pos: start_node}
@@ -119,7 +164,7 @@ class AStar:
                     current_pos, neighbor_pos
                 )
                 if neighbor_pos not in open_dict:
-                    neighbor_node = Node(
+                    neighbor_node = node.Node(
                         neighbor_pos,
                         new_g,
                         get_relative_distance(neighbor_pos, target_pos),
