@@ -14,11 +14,19 @@ def plot_animation(frames, path: str, file_name: str = "", fps: int = 20):
 
     os.makedirs(path, exist_ok=True)
 
-    file = f"{path}/{file_name}_anim.mp4"
-    writer = imageio.get_writer(file, fps=fps)
+    mp4_file = f"{path}/{file_name}_anim.mp4"
+    writer = imageio.get_writer(mp4_file, fps=fps)
     for frame in frames:
         writer.append_data(frame)
     writer.close()
+
+    gif_file = f"{path}/{file_name}_anim.gif"
+    imageio.mimsave(
+        gif_file,
+        frames,
+        fps=min(fps, 10),
+        loop=0,
+    )
 
 
 def plot_grid(
