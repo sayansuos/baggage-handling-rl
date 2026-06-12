@@ -37,7 +37,7 @@ def compute_rewards(
             reward += 5 * (
                 agent._old_goal_relative_distance - agent._goal_relative_distance
             )
-            reward -= 0.1
+            reward -= 10
             reward += 50 if agent._goal_relative_distance < 0.5 else 0
             reward -= 50 if agent.state == "collided" else 0
             reward -= 50 if timeout else 0

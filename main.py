@@ -13,4 +13,4 @@ if __name__ == "__main__":
     elif MODE == "save":
         run_save(experiments=experiments)
     elif MODE == "train":
-        run_train(experiments=experiments[:1], n_episodes=1000)
+        run_train(experiments=experiments[:1], n_episodes=50)
