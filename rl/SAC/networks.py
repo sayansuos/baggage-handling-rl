@@ -7,14 +7,14 @@ class FeatureExtractor(torch.nn.Module):
     Encode the observation into a latent feature vector.
 
     Observation:
-    local_map, goal_relative_position, motion and orientation.
+    local_map, goal_relative_distance, heading_error, motion and orientation.
     """
 
     def __init__(
         self,
         map_shape: tuple,
         map_channels: int = 1,
-        obs_size: int = 6,
+        obs_size: int = 7,
         feature_size: int = 256,
     ):
         """
@@ -30,13 +30,15 @@ class FeatureExtractor(torch.nn.Module):
             # torch.nn.MaxPool2d(kernel_size=2),
             # torch.nn.Conv2d(16, 32, kernel_size=3, padding=1),
             # torch.nn.ReLU(),
-            torch.nn.AdaptiveAvgPool2d((4, 4)),
+            torch.nn.AdaptiveAvgPool2d((2, 2)),
             torch.nn.Flatten(),
         )
 
         with torch.no_grad():
             dummy = torch.zeros(1, *map_shape)
-            cnn_output_size = self.cnn(dummy).shape[1]  # 8 * 2 * 2 = 64
+            cnn_output_size = self.cnn(dummy).shape[1]  # 4 * 2 * 2 = 16
+
+        cnn_output_size = 0
 
         self.fc = torch.nn.Sequential(
             torch.nn.Linear(cnn_output_size + obs_size, feature_size),
@@ -47,14 +49,16 @@ class FeatureExtractor(torch.nn.Module):
     def forward(
         self,
         local_map,
-        goal_relative_position,
+        goal_relative_distance,
+        heading_error,
         motion,
         orientation,
     ):
         map_features = self.cnn(local_map)
         obs_features = torch.cat(
             (
-                goal_relative_position,
+                goal_relative_distance,
+                heading_error,
                 motion,
                 orientation,
             ),
@@ -67,6 +71,7 @@ class FeatureExtractor(torch.nn.Module):
             ),
             dim=1,
         )
+        x = obs_features
 
         return self.fc(x)
 
@@ -131,13 +136,15 @@ class ActorNetwork(torch.nn.Module):
     def forward(
         self,
         local_map: torch.Tensor,
-        goal_relative_position: torch.Tensor,
+        goal_relative_distance: torch.Tensor,
+        heading_error: torch.Tensor,
         motion: torch.Tensor,
         orientation: torch.Tensor,
     ):
         x = self.features(
             local_map,
-            goal_relative_position,
+            goal_relative_distance,
+            heading_error,
             motion,
             orientation,
         )
@@ -150,13 +157,15 @@ class ActorNetwork(torch.nn.Module):
     def sample_normal(
         self,
         local_map: torch.Tensor,
-        goal_relative_position: torch.Tensor,
+        goal_relative_distance: torch.Tensor,
+        heading_error: torch.Tensor,
         motion: torch.Tensor,
         orientation: torch.Tensor,
     ):
         mean, log_std = self.forward(
             local_map,
-            goal_relative_position,
+            goal_relative_distance,
+            heading_error,
             motion,
             orientation,
         )
@@ -219,14 +228,16 @@ class CriticNetwork(torch.nn.Module):
     def forward(
         self,
         local_map: torch.Tensor,
-        goal_relative_position: torch.Tensor,
+        goal_relative_distance: torch.Tensor,
+        heading_error: torch.Tensor,
         motion: torch.Tensor,
         orientation: torch.Tensor,
         action: torch.Tensor,
     ):
         x = self.features(
             local_map,
-            goal_relative_position,
+            goal_relative_distance,
+            heading_error,
             motion,
             orientation,
         )

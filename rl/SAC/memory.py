@@ -28,9 +28,18 @@ class ReplayBuffer:
             dtype=np.float32,
         )
         self.goal_memory = np.zeros(
+            (buffer_length, 1),
+            dtype=np.float32,
+        )
+        self.heading_memory = np.zeros(
             (buffer_length, 2),
             dtype=np.float32,
         )
+        # self.goal_memory = np.zeros(
+        #     (buffer_length, 2),
+        #     dtype=np.float32,
+        # )
+
         self.motion_memory = np.zeros(
             (buffer_length, 2),
             dtype=np.float32,
@@ -46,9 +55,17 @@ class ReplayBuffer:
             dtype=np.float32,
         )
         self.next_goal_memory = np.zeros(
+            (buffer_length, 1),
+            dtype=np.float32,
+        )
+        self.next_heading_memory = np.zeros(
             (buffer_length, 2),
             dtype=np.float32,
         )
+        # self.next_goal_memory = np.zeros(
+        #     (buffer_length, 2),
+        #     dtype=np.float32,
+        # )
         self.next_motion_memory = np.zeros(
             (buffer_length, 2),
             dtype=np.float32,
@@ -85,12 +102,14 @@ class ReplayBuffer:
         index = self.mem_counter % self.buffer_length
 
         self.local_map_memory[index] = state["local_map"]
-        self.goal_memory[index] = state["goal_relative_position"]
+        self.goal_memory[index] = state["goal_relative_distance"]
+        self.heading_memory[index] = state["heading_error"]
         self.motion_memory[index] = state["motion"]
         self.orientation_memory[index] = state["orientation"]
 
         self.next_local_map_memory[index] = next_state["local_map"]
-        self.next_goal_memory[index] = next_state["goal_relative_position"]
+        self.next_goal_memory[index] = next_state["goal_relative_distance"]
+        self.next_heading_memory[index] = next_state["heading_error"]
         self.next_motion_memory[index] = next_state["motion"]
         self.next_orientation_memory[index] = next_state["orientation"]
 
@@ -110,14 +129,16 @@ class ReplayBuffer:
 
         states = {
             "local_map": self.local_map_memory[batch],
-            "goal_relative_position": self.goal_memory[batch],
+            "goal_relative_distance": self.goal_memory[batch],
+            "heading_error": self.heading_memory[batch],
             "motion": self.motion_memory[batch],
             "orientation": self.orientation_memory[batch],
         }
 
         next_states = {
             "local_map": self.next_local_map_memory[batch],
-            "goal_relative_position": self.next_goal_memory[batch],
+            "goal_relative_distance": self.next_goal_memory[batch],
+            "heading_error": self.next_heading_memory[batch],
             "motion": self.next_motion_memory[batch],
             "orientation": self.next_orientation_memory[batch],
         }

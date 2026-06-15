@@ -213,7 +213,6 @@ def run_train(
 
         history, _, metrics, best_score, _, steps = run_sac(
             exp=exp,
-            worker_id=0,
             n_episodes=n_episodes or exp.n_episodes,
         )
 

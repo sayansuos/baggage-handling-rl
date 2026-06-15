@@ -9,14 +9,15 @@ class SACAgent(torch.nn.Module):
         env_name,
         map_shape,
         action_space,
-        tau=5e-3,
+        tau=0.005,
         alpha=0.2,
-        batch_size=256,
-        lr=3e-4,
+        batch_size=64,
+        critic_lr=3e-4,
+        actor_lr=1e-4,
         gamma=0.99,
-        feature_size=256,
-        hidden_size=128,
-        mem_size=int(1e6),
+        feature_size=64,
+        hidden_size=64,
+        mem_size=100_000,
     ):
         """
         Constructor
@@ -24,20 +25,21 @@ class SACAgent(torch.nn.Module):
 
         super(SACAgent, self).__init__()
         self.env_name = env_name
-        self.map_shape = map_shape
+        self.map_shape = map_shape  # Local map size
 
-        self.n_actions = action_space.shape[0]
+        self.n_actions = action_space.shape[0]  # = 2 bc action = (v, omega)
         self.min_action = action_space.low
         self.max_action = action_space.high
 
-        self.batch_size = batch_size
-        self.tau = tau
-        self.alpha = alpha
-        self.lr = lr
-        self.gamma = gamma
-        self.feature_size = feature_size
-        self.hidden_size = hidden_size
-        self.mem_size = mem_size
+        self.batch_size = batch_size  # Nb of transitions sampled from the RB
+        self.tau = tau  # Soft update coefficient
+        self.alpha = alpha  # Entropy weight (exploitation/exploration)
+        self.critic_lr = critic_lr
+        self.actor_lr = actor_lr
+        self.gamma = gamma  # Discount factor
+        self.feature_size = feature_size  # Dim of the latent vector
+        self.hidden_size = hidden_size  # Hidden layers size
+        self.mem_size = mem_size  # Maximal size of the RB
 
         self.memory = memory.ReplayBuffer(self.map_shape, self.n_actions, self.mem_size)
 
@@ -46,7 +48,7 @@ class SACAgent(torch.nn.Module):
             self.feature_size,
             self.hidden_size,
             self.n_actions,
-            self.lr,
+            self.critic_lr,
             chkpt_path=f"rl/SAC/weights/{env_name}_critic_1.pt",
         )
         self.q2 = networks.CriticNetwork(
@@ -54,7 +56,7 @@ class SACAgent(torch.nn.Module):
             self.feature_size,
             self.hidden_size,
             self.n_actions,
-            self.lr,
+            self.critic_lr,
             chkpt_path=f"rl/SAC/weights/{env_name}_critic_2.pt",
         )
 
@@ -63,7 +65,7 @@ class SACAgent(torch.nn.Module):
             self.feature_size,
             self.hidden_size,
             self.n_actions,
-            self.lr,
+            self.critic_lr,
             chkpt_path=f"rl/SAC/weights/{env_name}_target_critic_1.pt",
         )
         self.target_q2 = networks.CriticNetwork(
@@ -71,7 +73,7 @@ class SACAgent(torch.nn.Module):
             self.feature_size,
             self.hidden_size,
             self.n_actions,
-            self.lr,
+            self.critic_lr,
             chkpt_path=f"rl/SAC/weights/{env_name}_target_critic_2.pt",
         )
 
@@ -82,7 +84,7 @@ class SACAgent(torch.nn.Module):
             self.n_actions,
             self.feature_size,
             self.hidden_size,
-            self.lr,
+            self.actor_lr,
             chkpt_path=f"rl/SAC/weights/{env_name}_actor.pt",
         )
 
@@ -99,8 +101,14 @@ class SACAgent(torch.nn.Module):
             .unsqueeze(0)
             .to(self.actor.device)
         )
-        goal_relative_position = (
-            torch.tensor(state["goal_relative_position"], dtype=torch.float32)
+
+        goal_relative_distance = (
+            torch.tensor(state["goal_relative_distance"], dtype=torch.float32)
+            .unsqueeze(0)
+            .to(self.actor.device)
+        )
+        heading_error = (
+            torch.tensor(state["heading_error"], dtype=torch.float32)
             .unsqueeze(0)
             .to(self.actor.device)
         )
@@ -116,7 +124,7 @@ class SACAgent(torch.nn.Module):
         )
         with torch.no_grad():
             action, _ = self.actor.sample_normal(
-                local_map, goal_relative_position, motion, orientation
+                local_map, goal_relative_distance, heading_error, motion, orientation
             )
         self.actor.train()
         return action.cpu().detach().numpy()[0]
@@ -149,7 +157,8 @@ class SACAgent(torch.nn.Module):
         with torch.no_grad():
             next_actions, next_log_probs = self.actor.sample_normal(
                 next_states["local_map"],
-                next_states["goal_relative_position"],
+                next_states["goal_relative_distance"],
+                next_states["heading_error"],
                 next_states["motion"],
                 next_states["orientation"],
             )
@@ -157,7 +166,8 @@ class SACAgent(torch.nn.Module):
             # Compute targets Q functions...
             target_q1 = self.target_q1(
                 next_states["local_map"],
-                next_states["goal_relative_position"],
+                next_states["goal_relative_distance"],
+                next_states["heading_error"],
                 next_states["motion"],
                 next_states["orientation"],
                 next_actions,
@@ -165,7 +175,8 @@ class SACAgent(torch.nn.Module):
 
             target_q2 = self.target_q2(
                 next_states["local_map"],
-                next_states["goal_relative_position"],
+                next_states["goal_relative_distance"],
+                next_states["heading_error"],
                 next_states["motion"],
                 next_states["orientation"],
                 next_actions,
@@ -180,14 +191,16 @@ class SACAgent(torch.nn.Module):
         # Compute current Q functions...
         q1 = self.q1(
             states["local_map"],
-            states["goal_relative_position"],
+            states["goal_relative_distance"],
+            states["heading_error"],
             states["motion"],
             states["orientation"],
             actions,
         )
         q2 = self.q2(
             states["local_map"],
-            states["goal_relative_position"],
+            states["goal_relative_distance"],
+            states["heading_error"],
             states["motion"],
             states["orientation"],
             actions,
@@ -216,7 +229,8 @@ class SACAgent(torch.nn.Module):
 
         new_actions, log_probs = self.actor.sample_normal(
             states["local_map"],
-            states["goal_relative_position"],
+            states["goal_relative_distance"],
+            states["heading_error"],
             states["motion"],
             states["orientation"],
         )
@@ -224,14 +238,16 @@ class SACAgent(torch.nn.Module):
         # Get min critic value of states with current policy
         q1_new = self.q1(
             states["local_map"],
-            states["goal_relative_position"],
+            states["goal_relative_distance"],
+            states["heading_error"],
             states["motion"],
             states["orientation"],
             new_actions,
         )
         q2_new = self.q2(
             states["local_map"],
-            states["goal_relative_position"],
+            states["goal_relative_distance"],
+            states["heading_error"],
             states["motion"],
             states["orientation"],
             new_actions,
@@ -298,10 +314,13 @@ class SACAgent(torch.nn.Module):
             "local_map": torch.tensor(
                 states["local_map"], dtype=torch.float32, device=self.actor.device
             ),
-            "goal_relative_position": torch.tensor(
-                states["goal_relative_position"],
+            "goal_relative_distance": torch.tensor(
+                states["goal_relative_distance"],
                 dtype=torch.float32,
                 device=self.actor.device,
+            ),
+            "heading_error": torch.tensor(
+                states["heading_error"], dtype=torch.float32, device=self.actor.device
             ),
             "motion": torch.tensor(
                 states["motion"], dtype=torch.float32, device=self.actor.device

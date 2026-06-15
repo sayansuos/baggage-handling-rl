@@ -9,64 +9,60 @@ from simulator.environment.environment import Environment
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 
-def run_sac(exp: Experiment, worker_id, n_episodes: int = 1000):
+def run_sac(exp: Experiment, n_episodes: int = 1000):
 
     env = Environment(
         exp.env_config,
         exp.agent_config,
         exp.reward_config,
         exp.name,
-        worker_id,
     )
 
     trained_agent_id = "agent_1"
 
     agent = SACAgent(
-        env_name=f"{exp.name}_{worker_id}",
+        env_name=f"{exp.name}",
         map_shape=(
             1,
             exp.agent_config.length_view,
             exp.agent_config.length_view,
         ),
         action_space=env.action_space[trained_agent_id],
-        tau=0.005,
-        alpha=0.2,
-        batch_size=128,
-        lr=3e-4,
-        gamma=0.99,
-        feature_size=64,
-        hidden_size=64,
-        mem_size=100_000,
     )
 
     history = []
 
     best_score = -np.inf
     best_mean_time_travel = np.inf
-    best_success_rate = 0
+    best_success_rate = 0.0
     scores = []
     mean_time_travels = []
     success_rates = []
     metrics = []
 
     steps = 0
+    start_steps = 500
 
     for episode in range(n_episodes):
 
         state, _ = env.reset()
         score = 0.0
 
-        if episode == n_episodes - 1:
+        if episode % 10 == 0:
             env.debug = True
         else:
             env.debug = False
 
         while not env.dones[trained_agent_id]:
             actions = {}
-            actions[trained_agent_id] = agent.choose_action(state[trained_agent_id])
-            for amr in env.agents:
-                if amr.id != trained_agent_id:
-                    actions[amr.id] = None
+            if steps < start_steps:
+                actions[trained_agent_id] = env.action_space[trained_agent_id].sample()
+            else:
+                actions[trained_agent_id] = agent.choose_action(state[trained_agent_id])
+                for amr in env.agents:
+                    if amr.id != trained_agent_id:
+                        actions[amr.id] = None
+                agent.learn()
             next_state, rewards, _, _, info = env.step(actions)
 
             agent.store_transition(
@@ -77,7 +73,6 @@ def run_sac(exp: Experiment, worker_id, n_episodes: int = 1000):
                 env.dones[trained_agent_id],
             )
 
-            agent.learn()
             score += rewards[trained_agent_id]
             state = next_state
 
@@ -102,7 +97,6 @@ def run_sac(exp: Experiment, worker_id, n_episodes: int = 1000):
         metrics.append(
             {
                 "experiment": exp.name,
-                "worker": worker_id,
                 "episode": episode + 1,
                 "return": score,
                 "average_return": avg_score,
@@ -117,7 +111,7 @@ def run_sac(exp: Experiment, worker_id, n_episodes: int = 1000):
         )
 
         print(
-            f"[{exp.name}_{worker_id} Episode {episode + 1:04}/{n_episodes}] "
+            f"[{exp.name} Episode {episode + 1:04}/{n_episodes}] "
             f"Return = {score:8.3f} "
             f"Average = {avg_score:8.3f} "
             f"Best = {best_score:8.3f}",
