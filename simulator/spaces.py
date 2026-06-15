@@ -35,11 +35,17 @@ def get_single_observation_space(
                 shape=(1, agent_config.length_view, AgentConfig.length_view),
                 dtype=np.float64,
             ),
-            "goal_relative_position": spaces.Box(
-                low=-max(env_config.width, env_config.height),
-                high=max(env_config.width, env_config.height),
+            "goal_relative_distance": spaces.Box(
+                low=0,
+                high=1,
+                shape=(1,),
+                dtype=np.float32,
+            ),
+            "heading_error": spaces.Box(
+                low=-1,
+                high=1,
                 shape=(2,),
-                dtype=np.float64,
+                dtype=np.float32,
             ),
             "motion": spaces.Box(
                 low=np.array([agent_config.v_min, agent_config.omega_min]),

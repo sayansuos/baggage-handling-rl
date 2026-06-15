@@ -1,10 +1,73 @@
 import numpy as np
 
 
+def get_heading_error(
+    goal_relative_position: tuple[float, float],
+    theta: float,
+) -> float:
+    """
+    Return the angle between the agent heading and the goal direction.
+
+    heading_error = 0 means the agent faces the goal.
+    heading_error > 0 means the goal is on the left.
+    heading_error < 0 means the goal is on the right.
+    """
+
+    dx, dy = goal_relative_position
+
+    goal_angle = np.arctan2(dy, dx)
+
+    error = goal_angle - theta
+
+    # wrap to [-pi, pi]
+    error = np.arctan2(np.sin(error), np.cos(error))
+
+    return float(error)
+
+
+def get_normalized_heading_error(
+    goal_relative_position: tuple[float, float],
+    theta: float,
+) -> np.ndarray:
+    """
+    Return heading error encoded as cos/sin.
+    """
+
+    error = get_heading_error(goal_relative_position, theta)
+
+    return np.array(
+        [np.cos(error), np.sin(error)],
+        dtype=np.float32,
+    )
+
+
+def get_normalized_relative_distance(
+    distance: float,
+    env_width: int,
+    env_height: int,
+) -> np.ndarray:
+    """
+    Normalize a relative distance between 0 and 1.
+
+    The maximum possible distance corresponds
+    to the environment diagonal.
+    """
+
+    max_distance = np.hypot(env_width, env_height)
+
+    return np.array(
+        [distance / max_distance],
+        dtype=np.float32,
+    )
+
+
 def get_normalized_position(
     pos: tuple[float, float], env_width: int, env_height: int
 ) -> np.ndarray:
-    """ """
+    """
+    Normalize a relative position to [-1, 1].
+    """
+
     x, y = pos
     norm_x, norm_y = x / env_width, y / env_height
     return np.array([norm_x, norm_y], dtype=np.float32)
@@ -13,7 +76,9 @@ def get_normalized_position(
 def get_normalized_motion(
     motion: tuple[float, float], v_max: float, omega_max: float
 ) -> np.ndarray:
-    """ """
+    """
+    Normalize a motion.
+    """
     v, omega = motion
     norm_v, norm_omega = v / v_max, omega / omega_max
     return np.array([norm_v, norm_omega], dtype=np.float32)

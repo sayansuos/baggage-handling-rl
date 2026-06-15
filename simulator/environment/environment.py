@@ -8,7 +8,11 @@ from simulator.environment.manager import Manager
 from simulator.environment.pathfinding import compute_astar_paths
 from simulator.environment.rewards import compute_rewards
 from simulator.environment.terminations import compute_closest, compute_dones
-from simulator.geometry import get_normalized_motion, get_normalized_position
+from simulator.geometry import (
+    get_normalized_heading_error,
+    get_normalized_motion,
+    get_normalized_relative_distance,
+)
 from simulator.spaces import get_multi_spaces
 
 
@@ -109,10 +113,13 @@ class Environment(gym.Env):
             local_map = self.grid_map.get_local_grid(
                 agent, current_grid, self.agent_config.length_view
             )[np.newaxis, :, :]
-            goal_relative_position = get_normalized_position(
-                agent._goal_relative_position,
+            goal_relative_distance = get_normalized_relative_distance(
+                agent._goal_relative_distance,
                 self.env_config.width,
                 self.env_config.height,
+            )
+            heading_error = get_normalized_heading_error(
+                agent._goal_relative_position, agent.theta
             )
             motion = get_normalized_motion(
                 agent._motion,
@@ -123,7 +130,8 @@ class Environment(gym.Env):
 
             obs[agent.id] = {
                 "local_map": local_map,
-                "goal_relative_position": goal_relative_position,
+                "goal_relative_distance": goal_relative_distance,
+                "heading_error": heading_error,
                 "motion": motion,
                 "orientation": orientation,
             }
@@ -149,8 +157,8 @@ class Environment(gym.Env):
             for agent in self.agents:
                 debug["agents"][agent.id] = {
                     "state": agent.state,
-                    "old_pos": agent.old_position,
-                    "current_pos": agent.current_position,
+                    "orientation": agent._orientation,
+                    "goal_relative_position": agent._goal_relative_position,
                     "goal_relative_distance": agent._goal_relative_distance,
                     "reward": self.rewards[agent.id],
                     "travel_time": agent.travel_time,
@@ -251,7 +259,7 @@ class Environment(gym.Env):
             if agent.state == "active":
                 agent.travel_time += 1
                 final_target = agent.target_positions[-1]
-                if agent.get_relative_distance(final_target) < 0.5:
+                if agent.get_relative_distance(final_target) < 1.0:
                     agent.state = "reached"
 
         # Get all metrics
