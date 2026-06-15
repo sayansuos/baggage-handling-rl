@@ -48,7 +48,7 @@ def run_sac(exp: Experiment, n_episodes: int = 1000):
         state, _ = env.reset()
         score = 0.0
 
-        if episode % 10 == 0:
+        if episode == n_episodes - 1:
             env.debug = True
         else:
             env.debug = False

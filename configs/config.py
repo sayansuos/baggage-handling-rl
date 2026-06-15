@@ -47,18 +47,18 @@ class AgentConfig:
 
 @dataclass
 class RewardConfig:
-    beta1: float = 10
-    beta2: float = 0.1
-    beta3: float = 0.01
-    beta4: float = 2
+    beta1: float = 10.0
+    beta2 = 1.0
+    beta3 = 1.0
+    beta4 = 1.0
 
-    goal_bonus: float = 20
-    collision_malus: float = -20
-    angular_malus: float = -0.1
-    omega_threshold: float = np.pi / 6
-    safety_malus1: float = -0.5
-    safety_malus2: float = 0.2
-    safety_threshold: float = 2
+    goal_bonus: float = 200.0
+    collision_malus: float = -100.0
+    angular_malus: float = -1.0
+    omega_threshold: float = np.pi / 4
+    safety_malus1 = -1.0
+    safety_malus2 = 0.5
+    safety_threshold = 2.0
 
 
 @dataclass

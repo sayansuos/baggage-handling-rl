@@ -259,7 +259,7 @@ class Environment(gym.Env):
             if agent.state == "active":
                 agent.travel_time += 1
                 final_target = agent.target_positions[-1]
-                if agent.get_relative_distance(final_target) < 1.0:
+                if agent.get_relative_distance(final_target) < 0.5:
                     agent.state = "reached"
 
         # Get all metrics

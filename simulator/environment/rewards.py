@@ -29,35 +29,34 @@ def compute_rewards(
     for agent in agents:
 
         if agent.state in ["truncated", "terminated"]:
-            rewards[agent.id] = 0
+            rewards[agent.id] = 0.0
 
         else:
-            reward = 0
+            reward = 0.0
 
-            reward += 10 * (
-                agent._old_goal_relative_distance - agent._goal_relative_distance
-            )
-            reward -= 0.5
-            reward += 200 if agent._goal_relative_distance < 1.0 else 0
-            reward -= 100 if agent.state == "collided" else 0
-            reward -= 50 if timeout else 0
+            current = agent._goal_relative_distance
+            progress = agent._old_goal_relative_distance - current
 
-            # # Goal reached/progress reward
-            # current = agent._goal_relative_distance
-            # progress = agent._old_goal_relative_distance - agent._goal_relative_distance
-            # reward += beta1 * (goal_bonus if current < 0.5 else progress)
-            # # Abrupt rotations penalty
-            # omega = abs(agent.omega)
-            # reward += beta2 * (angular_malus * omega if omega > omega_threshold else 0)
-            # # Non-respect of safety distance penalty
-            # closest_dist = safety_threshold - closest[agent.id]["closest_distance"]
-            # reward += beta3 * (
-            #     safety_malus1 * np.exp(safety_malus2 * closest_dist)
-            #     if closest_dist > 0
-            #     else 0
-            # )
-            # # Collision penalty
-            # reward += beta4 * (collision_malus if agent.state == "collided" else 0)
+            # Progress reward
+            reward += beta1 * progress
+
+            # Goal reached
+            if current < 0.5:
+                reward += goal_bonus
+
+            # Abrupt rotations penalty
+            omega = abs(agent.omega)
+            if omega > omega_threshold:
+                reward += beta2 * angular_malus * omega
+
+            # Non-respect of safety distance penalty
+            closest_dist = safety_threshold - closest[agent.id]["closest_distance"]
+            if closest_dist > 0:
+                reward += beta3 * safety_malus1 * np.exp(safety_malus2 * closest_dist)
+
+            # Collision penalty
+            if agent.state == "collided":
+                reward += beta4 * collision_malus
 
             rewards[agent.id] = reward
 
