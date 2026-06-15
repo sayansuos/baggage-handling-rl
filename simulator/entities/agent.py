@@ -74,6 +74,8 @@ class Agent(MovingEntity):
         """
         Update the agent's position regarding a given velocity.
         """
+
+        self.old_position = self.current_position
         self.v = v
         self.omega = omega
         self.theta += omega * dt
@@ -207,5 +209,5 @@ class Agent(MovingEntity):
         assert self.current_position is not None
         x, y = self.current_position
         x += v * np.cos(self.theta) * dt
-        y += np.sin(self.theta) * dt
+        y += v * np.sin(self.theta) * dt
         return x, y
