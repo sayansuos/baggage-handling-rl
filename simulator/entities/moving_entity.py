@@ -137,7 +137,7 @@ class MovingEntity(Entity):
         """
 
         assert self.current_position is not None
-        return get_relative_position(self.current_position, pos)
+        return get_relative_position(pos, self.current_position)
 
     def get_relative_distance(self, pos: tuple[float, float]) -> float:
         """
