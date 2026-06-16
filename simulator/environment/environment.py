@@ -9,6 +9,7 @@ from simulator.environment.pathfinding import compute_astar_paths
 from simulator.environment.rewards import compute_rewards
 from simulator.environment.terminations import compute_closest, compute_dones
 from simulator.geometry import (
+    get_heading_error,
     get_normalized_heading_error,
     get_normalized_motion,
     get_normalized_relative_distance,
@@ -138,7 +139,7 @@ class Environment(gym.Env):
 
         return obs
 
-    def _get_info(self) -> dict:
+    def _get_info(self, rewards_info: dict | None = None) -> dict:
         """
         Return auxiliary information for all agents.
         """
@@ -148,38 +149,71 @@ class Environment(gym.Env):
         mean_time_travel = sum(agent.travel_time for agent in self.agents) / n
         success_rate = sum(agent.state == "terminated" for agent in self.agents) / n
         collision_rate = sum(agent.state == "truncated" for agent in self.agents) / n
+        mean_v = self.sum_v / self.motion_count if self.motion_count > 0 else 0.0
+        mean_abs_omega = (
+            self.sum_abs_omega / self.motion_count if self.motion_count > 0 else 0.0
+        )
 
         if self.debug:
-            debug = {
-                "step": self.step_count,
-                "agents": {},
-            }
+
+            info = {}
+
             for agent in self.agents:
-                debug["agents"][agent.id] = {
-                    "state": agent.state,
-                    "orientation": agent._orientation,
-                    "goal_relative_position": agent._goal_relative_position,
-                    "goal_relative_distance": agent._goal_relative_distance,
-                    "reward": self.rewards[agent.id],
-                    "travel_time": agent.travel_time,
-                    "action": list(agent._motion),
-                    "closest_obstacle_distance": self._closest[agent.id][
+
+                if agent.current_position is not None:
+                    x, y = agent.current_position
+                else:
+                    x, y = None, None
+                heading_error = get_heading_error(
+                    agent._goal_relative_position, agent.theta
+                )
+
+                if rewards_info is None:
+                    rewards = {
+                        "reward_progress": 0.0,
+                        "reward_collision": 0.0,
+                        "reward_safety": 0.0,
+                        "reward_rotation": 0.0,
+                    }
+                else:
+                    rewards = rewards_info[agent.id]
+
+                info[agent.id] = {
+                    "pos_x": x,
+                    "pos_y": y,
+                    "distance_to_goal": agent._goal_relative_distance,
+                    "heading_error": heading_error,
+                    "min_obstacle_distance": self._closest[agent.id][
                         "closest_distance"
                     ],
+                    "v": agent.v,
+                    "omega": agent.omega,
+                    "state": agent.state,
+                    **rewards,
+                    "experiment": self.name,
+                    "episode": self.episode,
+                    "return_total": self.return_total,
+                    "mean_v": mean_v,
+                    "mean_abs_omega": mean_abs_omega,
+                    "success_rate": success_rate,
+                    "collision_rate": collision_rate,
+                    "mean_time_travel": mean_time_travel,
+                    **self.reward_sums,
                 }
-            self._debug.append(debug)
 
-        info = {
-            "environment": self.name,
-            "worker": self.env_id,
-            "episode": self.episode,
-            "return": self.sum_rewards,
-            "mean_time_travel": mean_time_travel,
-            "success_rate": success_rate,
-            "collision_rate": collision_rate,
-            "total_step": self.total_step,
-            "debug": self._debug,
-        }
+        else:
+
+            info = {
+                "experiment": self.name,
+                "episode": self.episode,
+                "return_total": self.return_total,
+                "mean_v": mean_v,
+                "mean_abs_omega": mean_abs_omega,
+                "success_rate": success_rate,
+                "collision_rate": collision_rate,
+                "mean_time_travel": mean_time_travel,
+                **self.reward_sums,
+            }
 
         return info
 
@@ -226,8 +260,17 @@ class Environment(gym.Env):
 
         self.dones: dict = {agent.id: False for agent in self.agents}
         self.rewards: dict = {agent.id: 0 for agent in self.agents}
-        self.sum_rewards = 0
-        self._debug = []
+        self.return_total = 0
+        self.reward_sums = {
+            "reward_progress": 0.0,
+            "reward_collision": 0.0,
+            "reward_safety": 0.0,
+            "reward_rotation": 0.0,
+        }
+        self.sum_v = 0.0
+        self.sum_abs_omega = 0.0
+        self.motion_count = 0
+
         obs = self._get_obs()
         info = self._get_info()
 
@@ -258,6 +301,10 @@ class Environment(gym.Env):
                 agent.step()
             if agent.state == "active":
                 agent.travel_time += 1
+                self.sum_v += agent.v
+                self.sum_abs_omega += abs(agent.omega)
+                self.motion_count += 1
+
                 final_target = agent.target_positions[-1]
                 if agent.get_relative_distance(final_target) < 0.5:
                     agent.state = "reached"
@@ -270,18 +317,24 @@ class Environment(gym.Env):
             agents=self.agents,
         )
         obs = self._get_obs()
-        rewards = compute_rewards(
+
+        rewards, rewards_info = compute_rewards(
             reward_config=self.rewards_config,
             agents=self.agents,
             closest=self._closest,
             timeout=self.timeout,
         )
         self.rewards = rewards
-        self.sum_rewards += sum(rewards.values())
+        self.return_total += sum(rewards.values())
+        for agent_id, agent_rewards_info in rewards_info.items():
+            for reward_name, reward_value in agent_rewards_info.items():
+                self.reward_sums[reward_name] += reward_value
+
         terminated, truncated, self.dones = compute_dones(
             agents=self.agents, timeout=self.timeout
         )
-        info = self._get_info()
+
+        info = self._get_info(rewards_info)
 
         return obs, rewards, terminated, truncated, info
 

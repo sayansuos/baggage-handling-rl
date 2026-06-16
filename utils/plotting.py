@@ -7,6 +7,196 @@ import numpy as np
 import pandas as pd
 
 
+def plot_rewards(df: pd.DataFrame, path: str, file_name: str, window: int = 10):
+
+    for col in [
+        "return_total",
+        "reward_progress",
+        "reward_collision",
+        "reward_safety",
+        "reward_rotation",
+    ]:
+        df[f"{col}_smooth"] = df[col].rolling(window, min_periods=1).mean()
+
+    fig, ax = plt.subplots(figsize=(12, 6))
+
+    ax.plot(
+        df["episode"],
+        df["reward_progress_smooth"],
+        alpha=0.2,
+        label="Progress",
+    )
+
+    ax.plot(
+        df["episode"],
+        df["reward_collision_smooth"],
+        alpha=0.2,
+        label="Collision",
+    )
+
+    ax.plot(
+        df["episode"],
+        df["reward_safety_smooth"],
+        alpha=0.2,
+        label="Safety",
+    )
+
+    ax.plot(
+        df["episode"],
+        df["reward_rotation_smooth"],
+        alpha=0.2,
+        label="Rotation",
+    )
+
+    ax.plot(
+        df["episode"],
+        df["return_total_smooth"],
+        color="black",
+        label="Total",
+    )
+
+    ax.set_xlabel("Episode")
+    ax.set_ylabel("Reward")
+    ax.set_title("Reward decomposition during training")
+
+    ax.grid(alpha=0.2)
+    ax.legend()
+
+    fig.tight_layout()
+    fig.savefig(f"{path}/{file_name}_rewards.png", dpi=300)
+
+    plt.close(fig)
+
+
+def plot_performances(
+    df: pd.DataFrame,
+    path: str,
+    file_name: str,
+    window: int = 10,
+):
+    df["timeout_rate"] = 1 - df["success_rate"] - df["collision_rate"]
+
+    for col in ["success_rate", "collision_rate", "timeout_rate", "mean_time_travel"]:
+        df[f"{col}_smooth"] = df[col].rolling(window, min_periods=1).mean()
+
+    fig, (ax1, ax2) = plt.subplots(
+        2,
+        1,
+        figsize=(12, 8),
+        sharex=True,
+    )
+
+    # Plot rates
+
+    ax1.plot(
+        df["episode"],
+        df["success_rate_smooth"],
+        linewidth=2,
+        label="Success rate",
+    )
+
+    ax1.plot(
+        df["episode"],
+        df["collision_rate_smooth"],
+        linewidth=2,
+        label="Collision rate",
+    )
+
+    ax1.plot(
+        df["episode"],
+        df["timeout_rate_smooth"],
+        linewidth=2,
+        label="Timeout rate",
+    )
+
+    ax1.set_ylabel("Rate")
+    ax1.set_ylim(0, 1.1)
+    ax1.set_title("Training performance")
+
+    ax1.grid(alpha=0.2)
+    ax1.legend()
+
+    # Plot time travel
+
+    ax2.plot(
+        df["episode"],
+        df["mean_time_travel_smooth"],
+        linewidth=2,
+        label="Mean travel time",
+    )
+
+    ax2.set_xlabel("Episode")
+    ax2.set_ylabel("Steps")
+
+    ax2.grid(alpha=0.2)
+    ax2.legend()
+
+    fig.tight_layout()
+    fig.savefig(
+        f"{path}/{file_name}_performances.png",
+        dpi=300,
+    )
+
+    plt.close(fig)
+
+
+def plot_velocities(
+    df: pd.DataFrame,
+    path: str,
+    file_name: str,
+    window: int = 10,
+):
+    for col in ["mean_v", "mean_abs_omega"]:
+        df[f"{col}_smooth"] = df[col].rolling(window, min_periods=1).mean()
+
+    fig, ax = plt.subplots(figsize=(12, 6))
+
+    ax.plot(
+        df["episode"],
+        df["mean_v"],
+        alpha=0.2,
+        linewidth=1,
+        label="Mean v (raw)",
+    )
+
+    ax.plot(
+        df["episode"],
+        df["mean_abs_omega"],
+        alpha=0.2,
+        linewidth=1,
+        label="Mean |omega| (raw)",
+    )
+
+    ax.plot(
+        df["episode"],
+        df["mean_v_smooth"],
+        linewidth=1,
+        label="Mean v",
+    )
+
+    ax.plot(
+        df["episode"],
+        df["mean_abs_omega_smooth"],
+        linewidth=1,
+        label="Mean |omega|",
+    )
+
+    ax.set_xlabel("Episode")
+    ax.set_ylabel("Value")
+    ax.set_title("Linear and angular velocities during training")
+
+    ax.grid(alpha=0.2)
+    ax.legend()
+
+    fig.tight_layout()
+    fig.savefig(
+        f"{path}/{file_name}_velocities.png",
+        dpi=300,
+    )
+
+    plt.close(fig)
+
+
 def plot_animation(frames, path: str, file_name: str = "", fps: int = 20):
     """
     Save a list of frames as an animation.
@@ -57,125 +247,3 @@ def plot_grid(
         cv2.line(img, (0, y), (W * scale, y), (200, 200, 200), 1)
 
     imageio.imwrite(f"{path}/{file_name}_grid.png", img)
-
-
-def plot_rewards(
-    df: pd.DataFrame,
-    path: str,
-    file_name: str = "",
-):
-    """
-    Save reward and cumulative reward plots from debug logs.
-    """
-
-    os.makedirs(path, exist_ok=True)
-
-    experiments = df["environment"].unique()
-    fig, axes = plt.subplots(
-        nrows=len(experiments),
-        ncols=2,
-        figsize=(12, 4 * len(experiments)),
-        squeeze=False,
-    )
-
-    for row, exp in enumerate(experiments):
-
-        # Get infos
-
-        data = df[df["environment"] == exp].copy()
-        success_steps = (
-            data.loc[data["goal_distance"] < 0.5]
-            .groupby("agent", as_index=False)["step"]
-            .min()
-        )["step"].tolist()
-        collision_steps = (
-            data.loc[data["state"] == "truncated"]
-            .groupby("agent", as_index=False)["step"]
-            .min()
-        )["step"].tolist()
-        exp_df = (
-            data.groupby("step", as_index=False)
-            .agg(
-                reward=("reward", "sum"),
-            )
-            .sort_values("step")
-        )
-        steps = exp_df["step"]
-        rewards = exp_df["reward"]
-
-        # Plot
-
-        ax_reward = axes[row, 0]
-        ax_cumsum = axes[row, 1]
-
-        for agent in data["agent"].unique():
-            agent_df = data[data["agent"] == agent].sort_values("step")
-            ax_reward.plot(
-                agent_df["step"],
-                agent_df["reward"],
-                alpha=0.3,
-                label=agent,
-                linestyle="--",
-            )
-            ax_cumsum.plot(
-                agent_df["step"],
-                agent_df["reward"].cumsum(),
-                alpha=0.3,
-                label=agent,
-                linestyle="--",
-            )
-
-        ax_reward.plot(steps, rewards, color="black")
-        for s in collision_steps:
-            ax_reward.axvline(s, color="red", alpha=0.7)
-        for s in success_steps:
-            ax_reward.axvline(s, color="green", alpha=0.7)
-        ax_reward.set_title(f"Reward Function | {exp}")
-        ax_reward.set_xlabel("Step")
-        ax_reward.set_ylabel("Reward")
-        ax_reward.legend()
-        ax_reward.grid(True)
-
-        ax_cumsum.plot(steps, rewards.cumsum(), color="black")
-        for s in collision_steps:
-            ax_cumsum.axvline(s, color="red", alpha=0.7)
-        for s in success_steps:
-            ax_cumsum.axvline(s, color="green", alpha=0.7)
-
-        ax_cumsum.set_title(f"Cumulative Reward Function | {exp}")
-        ax_cumsum.set_xlabel("Step")
-        ax_cumsum.legend()
-        ax_cumsum.grid(True)
-
-    fig.tight_layout()
-    fig.savefig(f"{path}/{file_name}_reward_tracking.png", dpi=300)
-    plt.close(fig)
-
-
-def plot_training_metrics(
-    df: pd.DataFrame,
-    path: str,
-    file_name: str = "",
-):
-    """
-    Save SAC training metrics and plot return evolution.
-    """
-
-    os.makedirs(path, exist_ok=True)
-    fig, ax = plt.subplots(figsize=(10, 5))
-
-    ax.plot(df["episode"], df["return"], label="Score", alpha=0.4)
-    ax.plot(df["episode"], df["average_return"], label="Average return")
-    ax.plot(df["episode"], df["best_return"], label="Best return", linestyle="--")
-
-    ax.set_title(f"SAC training | {file_name}")
-    ax.set_xlabel("Episode")
-    ax.set_ylabel("Score")
-    ax.legend()
-    ax.grid(True)
-
-    fig.tight_layout()
-    fig.savefig(f"{path}/{file_name}_metrics.png", dpi=300)
-    plt.close(fig)
-
-    return df

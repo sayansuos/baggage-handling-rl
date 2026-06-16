@@ -1,6 +1,7 @@
 import warnings
 
 import numpy as np
+import pandas as pd
 
 from configs.config import Experiment
 from rl.sac.agent import SACAgent
@@ -9,7 +10,16 @@ from simulator.environment.environment import Environment
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 
-def run_sac(exp: Experiment, n_episodes: int = 1000):
+def run_sac(
+    exp: Experiment,
+    n_steps: int = 10000,
+    warmup_steps: int = 1000,
+    update_frequency: int = 4,
+    trained_agent_id: str = "agent_1",
+):
+    """ """
+
+    # Create environment and SAC Agent
 
     env = Environment(
         exp.env_config,
@@ -17,8 +27,6 @@ def run_sac(exp: Experiment, n_episodes: int = 1000):
         exp.reward_config,
         exp.name,
     )
-
-    trained_agent_id = "agent_1"
 
     agent = SACAgent(
         env_name=f"{exp.name}",
@@ -31,39 +39,39 @@ def run_sac(exp: Experiment, n_episodes: int = 1000):
     )
 
     history = []
-
+    debug = []
     best_score = -np.inf
-    best_mean_time_travel = np.inf
-    best_success_rate = 0.0
     scores = []
-    mean_time_travels = []
-    success_rates = []
-    metrics = []
 
-    steps = 0
-    start_steps = 500
+    total_steps = 0
+    episode = 0
 
-    for episode in range(n_episodes):
-
+    while total_steps < n_steps:
         state, _ = env.reset()
+        episode += 1
         score = 0.0
 
-        if episode == n_episodes - 1:
+        if env.episode % 20 == 0:
             env.debug = True
         else:
             env.debug = False
 
-        while not env.dones[trained_agent_id]:
+        while not env.dones[trained_agent_id] and total_steps < n_steps:
             actions = {}
-            if steps < start_steps:
+
+            # Warmup to fill the RB with random data
+            if total_steps < warmup_steps:
                 actions[trained_agent_id] = env.action_space[trained_agent_id].sample()
+
+            # Then, we use the policy to fill the RB
             else:
                 actions[trained_agent_id] = agent.choose_action(state[trained_agent_id])
-                for amr in env.agents:
-                    if amr.id != trained_agent_id:
-                        actions[amr.id] = None
-                agent.learn()
-            next_state, rewards, _, _, info = env.step(actions)
+
+            for amr in env.agents:
+                if amr.id != trained_agent_id:
+                    actions[amr.id] = None
+
+            next_state, rewards, terminated, truncated, info = env.step(actions)
 
             agent.store_transition(
                 state[trained_agent_id],
@@ -75,47 +83,55 @@ def run_sac(exp: Experiment, n_episodes: int = 1000):
 
             score += rewards[trained_agent_id]
             state = next_state
+            total_steps += 1
 
-        history.append(info)
-        steps += env.step_count
+            if total_steps >= warmup_steps and total_steps % update_frequency == 0:
+                agent.learn()
+
+            if env.debug:  # Store metrics for debug logs
+                for agent_id, info in info.items():
+                    debug.append(
+                        {
+                            "experiment": env.name,
+                            "episode": episode,
+                            "step": total_steps,
+                            "agent": agent_id,
+                            "pos_x": info["pos_x"],
+                            "pos_y": info["pos_y"],
+                            "distance_to_goal": info["distance_to_goal"],
+                            "heading_error": info["heading_error"],
+                            "min_obstacle_distance": info["min_obstacle_distance"],
+                            "v": info["v"],
+                            "omega": info["omega"],
+                            "reward": rewards[agent_id],
+                            "reward_progress": info["reward_progress"],
+                            "reward_rotation": info["reward_rotation"],
+                            "reward_safety": info["reward_safety"],
+                            "reward_collision": info["reward_collision"],
+                            "state": info["state"],
+                        }
+                    )
+
+        if not env.debug:
+            history.append(info)
 
         scores.append(score)
-        mean_time_travels.append(info["mean_time_travel"])
-        success_rates.append(info["success_rate"])
         avg_score = np.mean(scores[-100:])
-        avg_mean_time_travel = np.mean(mean_time_travels[-100:])
-        avg_success_rate = np.mean(success_rates[-100:])
 
         if avg_score > best_score:
             best_score = avg_score
             agent.save_checkpoints()
-        if avg_mean_time_travel < best_mean_time_travel:
-            best_mean_time_travel = avg_mean_time_travel
-        if avg_success_rate > best_success_rate:
-            best_success_rate = avg_success_rate
-
-        metrics.append(
-            {
-                "experiment": exp.name,
-                "episode": episode + 1,
-                "return": score,
-                "average_return": avg_score,
-                "best_return": best_score,
-                "mean_time_travel": info["mean_time_travel"],
-                "average_mean_time_travel": avg_mean_time_travel,
-                "best_mean_time_travel": best_mean_time_travel,
-                "success_rate": info["success_rate"],
-                "average_success_rate": avg_success_rate,
-                "best_success_rate": best_success_rate,
-            }
-        )
 
         print(
-            f"[{exp.name} Episode {episode + 1:04}/{n_episodes}] "
+            f"[ {exp.name} ] Step {total_steps:06d}/{n_steps} | Episode {episode:04d} | "
             f"Return = {score:8.3f} "
             f"Average = {avg_score:8.3f} "
-            f"Best = {best_score:8.3f}",
+            f"Best Average = {best_score:8.3f} "
+            f"Success = {info['success_rate']:.0%} "
+            f"Time = {info['mean_time_travel']:5.1f} ",
             end="\r",
         )
 
-    return history, scores, metrics, best_score, agent, steps
+    print()
+
+    return history, debug, agent

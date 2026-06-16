@@ -6,12 +6,10 @@ from simulator.entities.agent import Agent
 
 def compute_rewards(
     reward_config: RewardConfig, agents: list[Agent], closest: dict, timeout: bool
-) -> dict[str, float]:
+) -> tuple[dict, dict]:
     """
-    Compute the rewards associated with all agents.
+    Compute the rewards associated with all agents and their components.
     """
-
-    rewards = {}
 
     beta1 = reward_config.beta1
     beta2 = reward_config.beta2
@@ -26,38 +24,46 @@ def compute_rewards(
     omega_threshold = reward_config.omega_threshold
     safety_threshold = reward_config.safety_threshold
 
+    rewards = {}
+    rewards_info = {}
+
     for agent in agents:
 
-        if agent.state in ["truncated", "terminated"]:
-            rewards[agent.id] = 0.0
+        reward_progress = 0.0
+        reward_rotation = 0.0
+        reward_safety = 0.0
+        reward_collision = 0.0
 
-        else:
-            reward = 0.0
+        if agent.state not in ["truncated", "terminated"]:
 
             current = agent._goal_relative_distance
             progress = agent._old_goal_relative_distance - current
 
-            # Progress reward
-            reward += beta1 * progress
+            reward_progress = beta1 * progress
+            if current < 0.5:  # target reached
+                reward_progress += goal_bonus
 
-            # Goal reached
-            if current < 0.5:
-                reward += goal_bonus
-
-            # Abrupt rotations penalty
             omega = abs(agent.omega)
             if omega > omega_threshold:
-                reward += beta2 * angular_malus * omega
+                reward_rotation = beta2 * angular_malus * omega
 
-            # Non-respect of safety distance penalty
             closest_dist = safety_threshold - closest[agent.id]["closest_distance"]
             if closest_dist > 0:
-                reward += beta3 * safety_malus1 * np.exp(safety_malus2 * closest_dist)
+                reward_safety = (
+                    beta3 * safety_malus1 * np.exp(safety_malus2 * closest_dist)
+                )
 
-            # Collision penalty
             if agent.state == "collided":
-                reward += beta4 * collision_malus
+                reward_collision = beta4 * collision_malus
 
-            rewards[agent.id] = reward
+        rewards[agent.id] = (
+            reward_progress + reward_collision + reward_safety + reward_rotation
+        )
+        rewards_info[agent.id] = {
+            "reward_progress": reward_progress,
+            "reward_collision": reward_collision,
+            "reward_safety": reward_safety,
+            "reward_rotation": reward_rotation,
+        }
 
-    return rewards
+    return rewards, rewards_info

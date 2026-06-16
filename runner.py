@@ -8,16 +8,21 @@ from tqdm import tqdm
 from configs.config import Experiment
 from rl.sac.sac import run_sac
 from simulator.environment.environment import Environment
-from utils.logging import log_metrics, log_metrics_debug, log_training_metrics
+from utils.logging import log_debug, log_rewards, log_train
+
+# from utils.logging import log_metrics, log_metrics_debug, log_training_metrics
 from utils.plotting import (
     plot_animation,
     plot_grid,
+    plot_performances,
     plot_rewards,
-    plot_training_metrics,
+    plot_velocities,
 )
 
 
-def run_worker(exp: Experiment, worker_id: int, save=True) -> tuple[list[dict], int]:
+def run_worker(
+    exp: Experiment, worker_id: int, save=True
+) -> tuple[list[dict], list[dict], int]:
     """
     One process handles multiple episodes on a single environment.
     """
@@ -26,24 +31,49 @@ def run_worker(exp: Experiment, worker_id: int, save=True) -> tuple[list[dict], 
         exp.env_config, exp.agent_config, exp.reward_config, exp.name, worker_id
     )
 
-    histories = []
+    history = []
+    debug = []
     steps = 0
+
     for i in range(exp.n_episodes):
         env.reset(seed=1234 + worker_id + i + 1)
 
-        if save and worker_id == 0:
-            plot_grid(env.grid_map.grid, "figures/simulation", exp.name)
-
-        if i == exp.n_episodes - 1 and worker_id == 0:
-            env.debug = True
+        env.debug = i == exp.n_episodes - 1 and worker_id == 0
 
         while not env.done():
-            _, _, _, _, info = env.step()
+            _, rewards, _, _, info = env.step()
 
-        histories.append(info)
+            if env.debug:  # Store metrics for debug logs
+                for agent_id, info in info.items():
+                    debug.append(
+                        {
+                            "experiment": env.name,
+                            "episode": env.episode,
+                            "step": env.step_count,
+                            "agent": agent_id,
+                            "pos_x": info["pos_x"],
+                            "pos_y": info["pos_y"],
+                            "distance_to_goal": info["distance_to_goal"],
+                            "heading_error": info["heading_error"],
+                            "min_obstacle_distance": info["min_obstacle_distance"],
+                            "v": info["v"],
+                            "omega": info["omega"],
+                            "reward": rewards[agent_id],
+                            "reward_progress": info["reward_progress"],
+                            "reward_rotation": info["reward_rotation"],
+                            "reward_safety": info["reward_safety"],
+                            "reward_collision": info["reward_collision"],
+                            "state": info["state"],
+                        }
+                    )
+
+        env.debug = False
+        if not env.debug:
+            history.append(info)
+
         steps += env.step_count
 
-    return histories, steps
+    return history, debug, steps
 
 
 def run_simulation(experiments: list[Experiment]):
@@ -51,32 +81,20 @@ def run_simulation(experiments: list[Experiment]):
     Run multiple episodes in parallel.
     """
 
-    print(
-        f"\nINFO: Starting SIMULATION with {len(experiments)} experiments\n", end="\r"
-    )
-
     start = time.perf_counter()
+    print(f"\n[ SIMULATION ] {len(experiments)} experiment(s)\n")
 
     histories = []
+    debugs = []
     total_eps = 0
     total_steps = 0
 
-    for k, exp in enumerate(experiments, start=1):
+    for exp in experiments:
+        print(f"[ START ] {exp.name}")
 
-        print("=" * 60)
-        print(f"INFO: Experiment {k}/{len(experiments)}")
-        print(f"INFO: Name        : {exp.name}")
-        print(f"INFO: Environments: {exp.n_envs}")
-        print(f"INFO: Episodes    : {exp.n_episodes}")
-        print("=" * 60)
-
-        tasks = []
-        worker_id = 0
+        tasks = [(exp, worker_id) for worker_id in range(exp.n_envs)]
         total_eps += exp.n_envs * exp.n_episodes
 
-        for _ in range(exp.n_envs):
-            tasks.append((exp, worker_id))
-            worker_id += 1
         n_processes = min(cpu_count(), len(tasks))
 
         with Pool(processes=n_processes) as pool:
@@ -88,21 +106,23 @@ def run_simulation(experiments: list[Experiment]):
                 )
             )
 
-        for h, s in results:
-            histories.extend(h)
-            total_steps += s
+        for history, debug, steps in results:
+            histories.extend(history)
+            debugs.extend(debug)
+            total_steps += steps
 
-    end = time.perf_counter()
+        log_train(histories, "logs/simulation", exp.name)
+        log_debug(debugs, "logs/simulation", exp.name)
+        log_rewards(histories, "logs/simulation", exp.name)
+
+        print(f"[ DONE ] {exp.name}")
+
+    duration = time.perf_counter() - start
 
     print(
-        f"INFO: Resulting in {total_eps:,} episodes and {total_steps:,} steps. Execution time: {end - start:.6f} s.\n"
+        f"\n[ SUMMARY ] {total_eps:,} episode(s) | "
+        f"{total_steps:,} step(s) | {duration:.1f}s\n"
     )
-
-    _ = log_metrics(histories, "logs/simulation")
-    df_debug = log_metrics_debug(histories, "logs/simulation")
-    plot_rewards(df_debug, "figures/simulation")
-
-    print("\nINFO: TASK COMPLETED!\n")
 
 
 def run_test(experiments: list[Experiment], render: bool = False):
@@ -110,15 +130,18 @@ def run_test(experiments: list[Experiment], render: bool = False):
     Run some episodes and plot at each step.
     """
 
-    print(f"\nINFO: Starting TEST with {len(experiments)} experiments...\n", end="\r")
+    print(f"\n[ TEST ] {len(experiments)} experiment(s)\n")
 
     if render:
         plt.ion()
         _, ax = plt.subplots(figsize=(10, 8))
 
     histories = []
+    debugs = []
 
     for exp in experiments:
+
+        print(f"[ START ] {exp.name}")
 
         env = Environment(
             env_config=exp.env_config,
@@ -129,28 +152,53 @@ def run_test(experiments: list[Experiment], render: bool = False):
             debug=True,
         )
         env.reset(seed=1234)
+        plot_grid(env.grid_map.grid, "figures/test", exp.name)
 
         if render:
             env.render(ax=ax)
             plt.pause(0.001)
 
         while not env.done():
-            _, _, _, _, info = env.step()
+            _, rewards, _, _, info = env.step()
+
+            for agent_id, info in info.items():
+                debugs.append(
+                    {
+                        "experiment": env.name,
+                        "episode": env.episode,
+                        "step": env.step_count,
+                        "agent": agent_id,
+                        "pos_x": info["pos_x"],
+                        "pos_y": info["pos_y"],
+                        "distance_to_goal": info["distance_to_goal"],
+                        "heading_error": info["heading_error"],
+                        "min_obstacle_distance": info["min_obstacle_distance"],
+                        "v": info["v"],
+                        "omega": info["omega"],
+                        "reward": rewards[agent_id],
+                        "reward_progress": info["reward_progress"],
+                        "reward_rotation": info["reward_rotation"],
+                        "reward_safety": info["reward_safety"],
+                        "reward_collision": info["reward_collision"],
+                        "state": info["state"],
+                    }
+                )
 
             if render:
                 env.render(ax=ax)
                 plt.pause(0.001)
 
         histories.append(info)
+        print(f"[ DONE ] {exp.name}")
 
         if render:
             plt.ioff()
 
-    _ = log_metrics(histories, "logs/test")
-    df_debug = log_metrics_debug(histories, "logs/test")
-    plot_rewards(df_debug, "figures/test")
+    log_train(histories, "logs/test", "test")
+    log_debug(debugs, "logs/test", "test")
+    log_rewards(histories, "logs/test", "test")
 
-    print("\nINFO: TASK COMPLETED!\n")
+    print("\n[ TEST ] completed\n")
 
 
 def run_save(
@@ -161,20 +209,21 @@ def run_save(
     Run one episode per experiment and save the animation.
     """
 
-    print(f"\nINFO: Starting SAVE with {len(experiments)} experiments...\n", end="\r")
+    print(f"\n[ SAVE ] {len(experiments)} experiment(s)\n")
 
     frames = []
 
     for exp in experiments:
+        print(f"[ START ] {exp.name}")
 
         env = Environment(exp.env_config, exp.agent_config, exp.reward_config, exp.name)
         env.reset(seed=1234)
 
         fig, ax = plt.subplots(figsize=(10, 8))
+
         env.render(ax)
         fig.canvas.draw()
-        frame = np.asarray(fig.canvas.renderer.buffer_rgba()).copy()
-        frames.append(frame)
+        frames.append(np.asarray(fig.canvas.renderer.buffer_rgba()).copy())
 
         while not env.done():
             env.step()
@@ -183,54 +232,43 @@ def run_save(
             frame = np.asarray(fig.canvas.renderer.buffer_rgba()).copy()
             frames.append(frame)
 
+        print(f"[ DONE ] {exp.name}")
+
     plt.close(fig)
 
     plot_animation(frames, "figures/test", "", fps)
 
-    print("\nINFO: TASK COMPLETED!\n")
+    print("\n[ SAVE ] completed\n")
 
 
 def run_train(
     experiments: list[Experiment],
-    n_episodes: int | None = None,
+    n_steps: int = 5000,
 ):
     """
     Train a SAC agent on each experiment.
     """
 
-    print(f"\nINFO: Starting TRAINING with {len(experiments)} experiments\n", end="\r")
+    np.random.seed(1234)
 
     start = time.perf_counter()
-
-    total_eps = 0
-    total_steps = 0
+    print(f"\n[ TRAIN ] {len(experiments)} experiment(s)\n")
 
     for exp in experiments:
+        history, debug, _ = run_sac(exp=exp, n_steps=n_steps)
 
-        print("\n" + "=" * 60)
-        print(f"TRAINING {exp.name}")
-        print("=" * 60)
+        df_train = log_train(history, "logs/train", exp.name)
+        log_debug(debug, "logs/train", exp.name)
+        df_rewards = log_rewards(history, "logs/train", exp.name)
 
-        history, _, metrics, best_score, _, steps = run_sac(
-            exp=exp,
-            n_episodes=n_episodes or exp.n_episodes,
-        )
+        plot_performances(df_train, "figures/train", exp.name)
+        plot_velocities(df_train, "figures/train", exp.name)
+        plot_rewards(df_rewards, "figures/train", exp.name)
 
-        total_eps += n_episodes or exp.n_episodes
-        total_steps += steps
-
-        print(f"INFO: {exp.name} finished " f"(best score = {best_score:.3f})")
-
-        df = log_training_metrics(metrics, "logs/train", exp.name)
-        plot_training_metrics(df, "figures/train", exp.name)
-        _ = log_metrics(history, "logs/train", exp.name)
-        df_debug = log_metrics_debug(history, "logs/train", exp.name)
-
-        plot_rewards(df_debug, "figures/train")
-
-    end = time.perf_counter()
+    duration = time.perf_counter() - start
 
     print(
-        f"INFO: Resulting in {total_eps:,} episodes and {total_steps:,} steps. Execution time: {end - start:.6f} s.\n"
+        f"\n[ SUMMARY ] "
+        f"{len(experiments)} experiment(s) completed "
+        f"in {duration:.1f}s\n"
     )
-    print("\nINFO: TASK COMPLETED!\n")
