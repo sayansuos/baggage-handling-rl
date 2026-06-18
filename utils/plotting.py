@@ -8,7 +8,9 @@ import pandas as pd
 import torch
 
 
-def plot_rewards(df: pd.DataFrame, path: str, file_name: str, window: int = 10):
+def plot_rewards(
+    df: pd.DataFrame, path: str, file_name: str, window: int = 10, render: bool = False
+):
 
     for col in [
         "return_total",
@@ -66,14 +68,14 @@ def plot_rewards(df: pd.DataFrame, path: str, file_name: str, window: int = 10):
     fig.tight_layout()
     fig.savefig(f"{path}/{file_name}_rewards.png", dpi=300)
 
+    if render:
+        plt.show()
+
     plt.close(fig)
 
 
 def plot_performances(
-    df: pd.DataFrame,
-    path: str,
-    file_name: str,
-    window: int = 10,
+    df: pd.DataFrame, path: str, file_name: str, window: int = 10, render: bool = False
 ):
     df["timeout_rate"] = 1 - df["success_rate"] - df["collision_rate"]
 
@@ -138,14 +140,14 @@ def plot_performances(
         dpi=300,
     )
 
+    if render:
+        plt.show()
+
     plt.close(fig)
 
 
 def plot_velocities(
-    df: pd.DataFrame,
-    path: str,
-    file_name: str,
-    window: int = 10,
+    df: pd.DataFrame, path: str, file_name: str, window: int = 10, render: bool = False
 ):
     for col in ["mean_v", "mean_abs_omega"]:
         df[f"{col}_smooth"] = df[col].rolling(window, min_periods=1).mean()
@@ -194,6 +196,9 @@ def plot_velocities(
         f"{path}/{file_name}_velocities.png",
         dpi=300,
     )
+
+    if render:
+        plt.show()
 
     plt.close(fig)
 

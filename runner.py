@@ -252,13 +252,9 @@ def run_train(experiments: list[Experiment], n_steps: list[int] = [5000]):
     for i, exp in enumerate(experiments):
         history, debug, agent = run_sac(exp=exp, n_steps=n_steps[i], agent=agent)
 
-        df_train = log_train(history, "logs/train", exp.name)
+        log_train(history, "logs/train", exp.name)
         log_debug(debug, "logs/train", exp.name)
-        df_rewards = log_rewards(history, "logs/train", exp.name)
-
-        plot_performances(df_train, "figures/train", exp.name)
-        plot_velocities(df_train, "figures/train", exp.name)
-        plot_rewards(df_rewards, "figures/train", exp.name)
+        log_rewards(history, "logs/train", exp.name)
 
     duration = time.perf_counter() - start
 
