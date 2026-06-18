@@ -60,7 +60,7 @@ def plot_rewards(
 
     ax.set_xlabel("Episode")
     ax.set_ylabel("Reward")
-    ax.set_title("Reward decomposition during training")
+    ax.set_title("Reward decomposition")
 
     ax.grid(alpha=0.2)
     ax.legend()
@@ -186,7 +186,7 @@ def plot_velocities(
 
     ax.set_xlabel("Episode")
     ax.set_ylabel("Value")
-    ax.set_title("Linear and angular velocities during training")
+    ax.set_title("Linear and angular velocities")
 
     ax.grid(alpha=0.2)
     ax.legend()

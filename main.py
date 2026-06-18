@@ -13,5 +13,5 @@ if __name__ == "__main__":
     elif MODE == "save":
         run_save(experiments=experiments)
     elif MODE == "train":
-        run_train(experiments=experiments[:2], n_steps=[10_000, 50_000])
+        run_train(experiments=experiments[:2], n_steps=[10_000, 10_000])
         run_evaluation(experiments=experiments[:2], n_episodes=100, n_render=5)

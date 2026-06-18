@@ -47,7 +47,7 @@ def compute_rewards(
 
             # Progress reward
             reward_progress = beta1 * progress
-            reward_progress -= 0.5  # Time cost
+            reward_progress -= 1  # Time cost
             reward_progress += dv_malus * (dv**2)  # Smooth motion
             if current < 3:  # End when close to the target
                 reward_progress += 0.5 * beta1 * (3 - current)
