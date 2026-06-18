@@ -1,3 +1,4 @@
+import numpy as np
 from matplotlib.patches import Circle
 
 from simulator.entities.entity import Entity
@@ -57,6 +58,7 @@ class MovingEntity(Entity):
 
         self.radius: float = 0
         self.theta: float = 0
+        self.old_v: float = 0
         self.v: float = 0
         self.omega: float = 0
 
@@ -230,6 +232,16 @@ class MovingEntity(Entity):
             linewidth=0,
         )
         ax.add_patch(circle)
+        ax.arrow(
+            x,
+            y,
+            self.radius * np.cos(self.theta),
+            self.radius * np.sin(self.theta),
+            head_width=0.4,
+            head_length=0.4,
+            length_includes_head=True,
+            color="red",
+        )
         if self.target_positions:
             for pos in self.target_positions:
                 tx, ty = pos

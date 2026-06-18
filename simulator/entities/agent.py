@@ -75,6 +75,7 @@ class Agent(MovingEntity):
         Update the agent's position regarding a given velocity.
         """
 
+        self.old_v = self.v
         self.old_position = self.current_position
         self.v = v
         self.omega = omega

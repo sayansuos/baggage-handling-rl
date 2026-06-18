@@ -6,11 +6,9 @@ import numpy as np
 from tqdm import tqdm
 
 from configs.config import Experiment
-from rl.sac.sac import run_sac
+from rl.sac.sac import evaluate_sac, run_sac
 from simulator.environment.environment import Environment
 from utils.logging import log_debug, log_rewards, log_train
-
-# from utils.logging import log_metrics, log_metrics_debug, log_training_metrics
 from utils.plotting import (
     plot_animation,
     plot_grid,
@@ -20,9 +18,7 @@ from utils.plotting import (
 )
 
 
-def run_worker(
-    exp: Experiment, worker_id: int, save=True
-) -> tuple[list[dict], list[dict], int]:
+def run_worker(exp: Experiment, worker_id: int) -> tuple[list[dict], list[dict], int]:
     """
     One process handles multiple episodes on a single environment.
     """
@@ -241,10 +237,7 @@ def run_save(
     print("\n[ SAVE ] completed\n")
 
 
-def run_train(
-    experiments: list[Experiment],
-    n_steps: int = 5000,
-):
+def run_train(experiments: list[Experiment], n_steps: list[int] = [5000]):
     """
     Train a SAC agent on each experiment.
     """
@@ -254,8 +247,10 @@ def run_train(
     start = time.perf_counter()
     print(f"\n[ TRAIN ] {len(experiments)} experiment(s)\n")
 
-    for exp in experiments:
-        history, debug, _ = run_sac(exp=exp, n_steps=n_steps)
+    agent = None
+
+    for i, exp in enumerate(experiments):
+        history, debug, agent = run_sac(exp=exp, n_steps=n_steps[i], agent=agent)
 
         df_train = log_train(history, "logs/train", exp.name)
         log_debug(debug, "logs/train", exp.name)
@@ -272,3 +267,31 @@ def run_train(
         f"{len(experiments)} experiment(s) completed "
         f"in {duration:.1f}s\n"
     )
+
+
+def run_evaluation(
+    experiments: list[Experiment],
+    n_episodes: int = 100,
+    n_render: int = 5,
+):
+
+    np.random.seed(1234)
+
+    for exp in experiments:
+
+        history, frames = evaluate_sac(
+            exp=exp,
+            n_episodes=n_episodes,
+            n_render=n_render,
+            trained_agent_id="agent_1",
+        )
+
+        df_train = log_train(history, "logs/eval", exp.name)
+        df_rewards = log_rewards(history, "logs/eval", exp.name)
+
+        plot_performances(df_train, "figures/eval", exp.name)
+        plot_velocities(df_train, "figures/eval", exp.name)
+        plot_rewards(df_rewards, "figures/eval", exp.name)
+
+        if n_render > 0:
+            plot_animation(frames, "figures/eval", exp.name, 10)

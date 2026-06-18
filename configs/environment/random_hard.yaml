@@ -5,9 +5,10 @@ agent_mode: random
 env_mode: random
 
 nb_agents: 1
-nb_static_obstacles: 10
-nb_moving_obstacles: 5
+nb_static_obstacles: 2
+nb_moving_obstacles: 0
 nb_targets: 2
 
 margin: 3
 max_attempts: 100
+max_steps: 300

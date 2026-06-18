@@ -51,7 +51,11 @@ def compute_terminated(agents: list[agent.Agent]) -> dict:
     """
     for agent in agents:
         if agent.state == "reached":
-            agent.state = "terminated"
+            if agent.target_index < len(agent.target_positions) - 1:
+                agent.target_index += 1
+                agent.state = "active"
+            else:
+                agent.state = "terminated"
     return {agent.id: agent.state == "terminated" for agent in agents}
 
 

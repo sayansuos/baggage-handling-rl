@@ -90,7 +90,7 @@ class SACAgent(torch.nn.Module):
 
         self.update_network_params(tau=1)
 
-    def choose_action(self, state: dict):
+    def choose_action(self, state: dict, deterministic: bool = False):
         """
         Select an action from the current policy for a given observation.
         """
@@ -123,9 +123,24 @@ class SACAgent(torch.nn.Module):
             .to(self.actor.device)
         )
         with torch.no_grad():
-            action, _ = self.actor.sample_normal(
-                local_map, goal_relative_distance, heading_error, motion, orientation
-            )
+            if deterministic:
+                mean, _ = self.actor.forward(
+                    local_map,
+                    goal_relative_distance,
+                    heading_error,
+                    motion,
+                    orientation,
+                )
+                action = torch.tanh(mean)
+                action = action * self.actor.action_scale + self.actor.action_bias
+            else:
+                action, _ = self.actor.sample_normal(
+                    local_map,
+                    goal_relative_distance,
+                    heading_error,
+                    motion,
+                    orientation,
+                )
         self.actor.train()
         return action.cpu().detach().numpy()[0]
 

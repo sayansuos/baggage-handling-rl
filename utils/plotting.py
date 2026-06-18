@@ -5,6 +5,7 @@ import imageio.v2 as imageio
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import torch
 
 
 def plot_rewards(df: pd.DataFrame, path: str, file_name: str, window: int = 10):
@@ -197,28 +198,6 @@ def plot_velocities(
     plt.close(fig)
 
 
-def plot_animation(frames, path: str, file_name: str = "", fps: int = 20):
-    """
-    Save a list of frames as an animation.
-    """
-
-    os.makedirs(path, exist_ok=True)
-
-    mp4_file = f"{path}/{file_name}_anim.mp4"
-    writer = imageio.get_writer(mp4_file, fps=fps)
-    for frame in frames:
-        writer.append_data(frame)
-    writer.close()
-
-    gif_file = f"{path}/{file_name}_anim.gif"
-    imageio.mimsave(
-        gif_file,
-        frames,
-        fps=min(fps, 10),
-        loop=0,
-    )
-
-
 def plot_grid(
     grid: np.ndarray,
     path: str,
@@ -247,3 +226,25 @@ def plot_grid(
         cv2.line(img, (0, y), (W * scale, y), (200, 200, 200), 1)
 
     imageio.imwrite(f"{path}/{file_name}_grid.png", img)
+
+
+def plot_animation(frames, path: str, file_name: str = "", fps: int = 20):
+    """
+    Save a list of frames as an animation.
+    """
+
+    os.makedirs(path, exist_ok=True)
+
+    mp4_file = f"{path}/{file_name}_anim.mp4"
+    writer = imageio.get_writer(mp4_file, fps=fps)
+    for frame in frames:
+        writer.append_data(frame)
+    writer.close()
+
+    gif_file = f"{path}/{file_name}_anim.gif"
+    imageio.mimsave(
+        gif_file,
+        frames,
+        fps=min(fps, 10),
+        loop=0,
+    )

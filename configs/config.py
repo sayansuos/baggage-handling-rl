@@ -22,8 +22,8 @@ class EnvConfig:
 
     v_min_allowed: float = 0.0
     v_max_allowed: float = 5.0
-    omega_min_allowed: float = -np.pi / 6
-    omega_max_allowed: float = np.pi / 6
+    omega_min_allowed: float = -np.pi / 3
+    omega_max_allowed: float = np.pi / 3
 
     width_min: int = 1
     width_max: int = 20
@@ -38,8 +38,8 @@ class EnvConfig:
 class AgentConfig:
     v_min: float = 0.0
     v_max: float = 5.0
-    omega_min: float = -np.pi / 6
-    omega_max: float = np.pi / 6
+    omega_min: float = -np.pi / 2
+    omega_max: float = np.pi / 2
 
     radius: float = 0.5
     length_view: int = 11
@@ -48,16 +48,17 @@ class AgentConfig:
 @dataclass
 class RewardConfig:
     beta1: float = 10.0
-    beta2 = 1.0
-    beta3 = 1.0
-    beta4 = 1.0
+    beta2: float = 1.0
+    beta3: float = 3.0
+    beta4: float = 2.0
 
     goal_bonus: float = 200.0
-    collision_malus: float = -100.0
-    angular_malus: float = -1.0
+    dv_malus: float = -0.02
+    collision_malus: float = -200.0
+    angular_malus: float = -2.0
     omega_threshold: float = np.pi / 4
     safety_malus1 = -1.0
-    safety_malus2 = 0.5
+    safety_malus2 = 2.0
     safety_threshold = 2.0
 
 

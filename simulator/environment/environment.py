@@ -192,7 +192,7 @@ class Environment(gym.Env):
                     **rewards,
                     "experiment": self.name,
                     "episode": self.episode,
-                    "return_total": self.return_total,
+                    "return_total": self.reward_total,
                     "mean_v": mean_v,
                     "mean_abs_omega": mean_abs_omega,
                     "success_rate": success_rate,
@@ -206,7 +206,7 @@ class Environment(gym.Env):
             info = {
                 "experiment": self.name,
                 "episode": self.episode,
-                "return_total": self.return_total,
+                "return_total": self.reward_total,
                 "mean_v": mean_v,
                 "mean_abs_omega": mean_abs_omega,
                 "success_rate": success_rate,
@@ -260,7 +260,7 @@ class Environment(gym.Env):
 
         self.dones: dict = {agent.id: False for agent in self.agents}
         self.rewards: dict = {agent.id: 0 for agent in self.agents}
-        self.return_total = 0
+        self.reward_total = 0
         self.reward_sums = {
             "reward_progress": 0.0,
             "reward_collision": 0.0,
@@ -305,8 +305,7 @@ class Environment(gym.Env):
                 self.sum_abs_omega += abs(agent.omega)
                 self.motion_count += 1
 
-                final_target = agent.target_positions[-1]
-                if agent.get_relative_distance(final_target) < 0.5:
+                if agent._goal_relative_distance < 0.5:
                     agent.state = "reached"
 
         # Get all metrics
@@ -325,8 +324,8 @@ class Environment(gym.Env):
             timeout=self.timeout,
         )
         self.rewards = rewards
-        self.return_total += sum(rewards.values())
-        for agent_id, agent_rewards_info in rewards_info.items():
+        self.reward_total += sum(rewards.values())
+        for _, agent_rewards_info in rewards_info.items():
             for reward_name, reward_value in agent_rewards_info.items():
                 self.reward_sums[reward_name] += reward_value
 
@@ -344,7 +343,7 @@ class Environment(gym.Env):
         """
 
         if ax is None:
-            _, ax = plt.subplots(figsize=(10, 8))
+            fig, ax = plt.subplots(figsize=(10, 8))
 
         ax.clear()
         ax.set_aspect("equal", adjustable="box")
@@ -379,5 +378,7 @@ class Environment(gym.Env):
         ax.set_ylim(0, H)
         ax.set_xlabel("x")
         ax.set_ylabel("y")
-        ax.set_title(f"{self.name} | episode {self.episode} | step {self.step_count}")
+        ax.set_title(
+            f"{self.name} | Episode {self.episode} | Step {self.step_count} | Return = {self.reward_total} "
+        )
         ax.legend(handles=handles, labels=labels, loc="upper left")

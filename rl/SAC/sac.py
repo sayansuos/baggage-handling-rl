@@ -1,7 +1,7 @@
 import warnings
 
+import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
 
 from configs.config import Experiment
 from rl.sac.agent import SACAgent
@@ -13,6 +13,7 @@ warnings.filterwarnings("ignore", category=DeprecationWarning)
 def run_sac(
     exp: Experiment,
     n_steps: int = 10000,
+    agent: SACAgent | None = None,
     warmup_steps: int = 1000,
     update_frequency: int = 4,
     trained_agent_id: str = "agent_1",
@@ -28,15 +29,29 @@ def run_sac(
         exp.name,
     )
 
-    agent = SACAgent(
-        env_name=f"{exp.name}",
-        map_shape=(
-            1,
-            exp.agent_config.length_view,
-            exp.agent_config.length_view,
-        ),
-        action_space=env.action_space[trained_agent_id],
-    )
+    if agent is None:
+        agent = SACAgent(
+            env_name=f"{exp.name}",
+            map_shape=(
+                1,
+                exp.agent_config.length_view,
+                exp.agent_config.length_view,
+            ),
+            action_space=env.action_space[trained_agent_id],
+        )
+
+    else:
+        agent.env_name = f"{exp.name}"
+        agent.actor.checkpoint_path = f"rl/SAC/weights/{exp.name}_actor.pt"
+        agent.q1.checkpoint_path = f"rl/SAC/weights/{exp.name}_critic_1.pt"
+        agent.q2.checkpoint_path = f"rl/SAC/weights/{exp.name}_critic_2.pt"
+        agent.target_q1.checkpoint_path = (
+            f"rl/SAC/weights/{exp.name}_target_critic_1.pt"
+        )
+        agent.target_q2.checkpoint_path = (
+            f"rl/SAC/weights/{exp.name}_target_critic_2.pt"
+        )
+        warmup_steps = 0
 
     history = []
     debug = []
@@ -135,3 +150,79 @@ def run_sac(
     print()
 
     return history, debug, agent
+
+
+def evaluate_sac(
+    exp: Experiment,
+    n_episodes: int = 5,
+    n_render: int = 0,
+    trained_agent_id: str = "agent_1",
+) -> tuple[list[dict], list[np.ndarray] | None]:
+    """
+    Evaluate a trained SAC agent on one episode.
+    """
+
+    env = Environment(
+        exp.env_config,
+        exp.agent_config,
+        exp.reward_config,
+        exp.name,
+    )
+
+    agent = SACAgent(
+        env_name=f"{exp.name}",
+        map_shape=(
+            1,
+            exp.agent_config.length_view,
+            exp.agent_config.length_view,
+        ),
+        action_space=env.action_space[trained_agent_id],
+    )
+
+    agent.load_checkpoints()
+
+    history = []
+    render = n_render > 0
+    if render:
+        frames = []
+        fig, ax = plt.subplots(figsize=(10, 8))
+    else:
+        frames = None
+
+    for i in range(n_episodes):
+
+        if i == n_render:
+            render = False
+            plt.close(fig)
+
+        state, _ = env.reset()
+
+        if render:
+            env.render(ax)
+            fig.canvas.draw()
+            frames.append(np.asarray(fig.canvas.renderer.buffer_rgba()).copy())
+
+        while not env.dones[trained_agent_id]:
+            actions = {}
+
+            actions[trained_agent_id] = agent.choose_action(
+                state[trained_agent_id],
+                deterministic=True,
+            )
+
+            for amr in env.agents:
+                if amr.id != trained_agent_id:
+                    actions[amr.id] = None
+
+            next_state, _, _, _, info = env.step(actions)
+
+            state = next_state
+
+            if render:
+                env.render(ax)
+                fig.canvas.draw()
+                frames.append(np.asarray(fig.canvas.renderer.buffer_rgba()).copy())
+
+        history.append(info)
+
+    return history, frames
