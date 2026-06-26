@@ -1,42 +1,36 @@
 experiments:
-  - name: random_easy
-    env_config_path: configs/environment/random_easy.yaml
-    agent_config_path: null
-    reward_config_path: null
-    n_envs: 50
-    n_episodes: 1000
+  - name: exp1_empty
+    env_config: exp1_empty
+    agent_config: null
+    reward_config: null
+    n_steps: 50_000
 
-  - name: random_hard
-    env_config_path: configs/environment/random_hard.yaml
-    agent_config_path: null
-    reward_config_path: null
-    n_envs: 50
-    n_episodes: 100
+  - name: exp2_fixed_1
+    env_config: exp2_fixed_1
+    agent_config: null
+    reward_config: null
+    n_steps: 150_000
 
-  - name: warehouse_easy
-    env_config_path: configs/environment/warehouse_easy.yaml
-    agent_config_path: null
-    reward_config_path: null
-    n_envs: 10
-    n_episodes: 500
+  - name: exp3_fixed_2
+    env_config: exp3_fixed_2
+    agent_config: null
+    reward_config: null
+    n_steps: 200_000
 
-  - name: warehouse_hard
-    env_config_path: configs/environment/warehouse_hard.yaml
-    agent_config_path: null
-    reward_config_path: null
-    n_envs: 10
-    n_episodes: 500
+  - name: exp4_fixed_3
+    env_config: exp4_fixed_3
+    agent_config: null
+    reward_config: null
+    n_steps: 250_000
 
-  - name: crossing_easy
-    env_config_path: configs/environment/crossing_easy.yaml
-    agent_config_path: null
-    reward_config_path: null
-    n_envs: 1
-    n_episodes: 100
+  - name: exp5_fixed_random
+    env_config: exp5_fixed_random
+    agent_config: null
+    reward_config: null
+    n_steps: 300_000
 
-  - name: crossing_hard
-    env_config_path: configs/environment/crossing_hard.yaml
-    agent_config_path: null
-    reward_config_path: null
-    n_envs: 10
-    n_episodes: 100
+  - name: exp6_random_1
+    env_config: exp6_random_1
+    agent_config: null
+    reward_config: null
+    n_steps: 350_000

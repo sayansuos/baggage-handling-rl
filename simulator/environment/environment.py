@@ -318,10 +318,7 @@ class Environment(gym.Env):
         obs = self._get_obs()
 
         rewards, rewards_info = compute_rewards(
-            reward_config=self.rewards_config,
-            agents=self.agents,
-            closest=self._closest,
-            timeout=self.timeout,
+            reward_config=self.rewards_config, agents=self.agents
         )
         self.rewards = rewards
         self.reward_total += sum(rewards.values())

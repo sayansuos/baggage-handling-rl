@@ -59,6 +59,9 @@ class Agent(MovingEntity):
         self.state: str = "active"
         self.travel_time: int = 0
 
+        self._closest_dist: float = np.inf
+        self._old_closest_dist: float = np.inf
+
     def __str__(self):
         return f"agent_{self.num}"
 

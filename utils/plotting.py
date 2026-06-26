@@ -26,28 +26,28 @@ def plot_rewards(
     ax.plot(
         df["episode"],
         df["reward_progress_smooth"],
-        alpha=0.2,
+        alpha=0.3,
         label="Progress",
     )
 
     ax.plot(
         df["episode"],
         df["reward_collision_smooth"],
-        alpha=0.2,
+        alpha=0.3,
         label="Collision",
     )
 
     ax.plot(
         df["episode"],
         df["reward_safety_smooth"],
-        alpha=0.2,
+        alpha=0.3,
         label="Safety",
     )
 
     ax.plot(
         df["episode"],
         df["reward_rotation_smooth"],
-        alpha=0.2,
+        alpha=0.3,
         label="Rotation",
     )
 
@@ -62,7 +62,7 @@ def plot_rewards(
     ax.set_ylabel("Reward")
     ax.set_title("Reward decomposition")
 
-    ax.grid(alpha=0.2)
+    ax.grid(alpha=0.3)
     ax.legend()
 
     fig.tight_layout()
@@ -116,7 +116,7 @@ def plot_performances(
     ax1.set_ylim(0, 1.1)
     ax1.set_title("Training performance")
 
-    ax1.grid(alpha=0.2)
+    ax1.grid(alpha=0.3)
     ax1.legend()
 
     # Plot time travel
@@ -131,7 +131,7 @@ def plot_performances(
     ax2.set_xlabel("Episode")
     ax2.set_ylabel("Steps")
 
-    ax2.grid(alpha=0.2)
+    ax2.grid(alpha=0.3)
     ax2.legend()
 
     fig.tight_layout()
@@ -157,24 +157,23 @@ def plot_velocities(
     ax.plot(
         df["episode"],
         df["mean_v"],
-        alpha=0.2,
+        alpha=0.3,
         linewidth=1,
         label="Mean v (raw)",
+        color="blue",
     )
 
     ax.plot(
         df["episode"],
         df["mean_abs_omega"],
-        alpha=0.2,
+        alpha=0.3,
         linewidth=1,
         label="Mean |omega| (raw)",
+        color="orange",
     )
 
     ax.plot(
-        df["episode"],
-        df["mean_v_smooth"],
-        linewidth=1,
-        label="Mean v",
+        df["episode"], df["mean_v_smooth"], linewidth=1, label="Mean v", color="blue"
     )
 
     ax.plot(
@@ -182,13 +181,14 @@ def plot_velocities(
         df["mean_abs_omega_smooth"],
         linewidth=1,
         label="Mean |omega|",
+        color="orange",
     )
 
     ax.set_xlabel("Episode")
     ax.set_ylabel("Value")
     ax.set_title("Linear and angular velocities")
 
-    ax.grid(alpha=0.2)
+    ax.grid(alpha=0.3)
     ax.legend()
 
     fig.tight_layout()

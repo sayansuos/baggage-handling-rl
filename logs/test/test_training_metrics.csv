@@ -1,7 +1,0 @@
-experiment,episode,return_total,mean_v,mean_abs_omega,success_rate,collision_rate,mean_time_travel
-random_easy,1,292.19544457292886,0.0,0.0,1.0,0.0,9.0
-random_hard,1,152.56589981034045,0.0,0.0,0.0,1.0,28.0
-warehouse_easy,1,444.31340747079975,0.0,0.0,0.0,1.0,68.0
-warehouse_hard,1,738.0649343607057,0.0,0.0,0.0,1.0,97.0
-crossing_easy,1,134.7361037578128,0.0,0.0,0.0,1.0,26.0
-crossing_hard,1,125.8476095626676,0.0,0.0,0.0,1.0,26.0

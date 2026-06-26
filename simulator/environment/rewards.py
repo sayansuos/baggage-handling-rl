@@ -6,7 +6,7 @@ from simulator.geometry import get_heading_error
 
 
 def compute_rewards(
-    reward_config: RewardConfig, agents: list[Agent], closest: dict, timeout: bool
+    reward_config: RewardConfig, agents: list[Agent]
 ) -> tuple[dict, dict]:
     """
     Compute the rewards associated with all agents and their components.
@@ -15,15 +15,11 @@ def compute_rewards(
     beta1 = reward_config.beta1
     beta2 = reward_config.beta2
     beta3 = reward_config.beta3
-    beta4 = reward_config.beta4
 
     goal_bonus = reward_config.goal_bonus
-    dv_malus = reward_config.dv_malus
     collision_malus = reward_config.collision_malus
     angular_malus = reward_config.angular_malus
     safety_malus1 = reward_config.safety_malus1
-    safety_malus2 = reward_config.safety_malus2
-    omega_threshold = reward_config.omega_threshold
     safety_threshold = reward_config.safety_threshold
 
     rewards = {}
@@ -36,32 +32,30 @@ def compute_rewards(
         reward_safety = 0.0
         reward_collision = 0.0
 
-        closest_dist = safety_threshold - closest[agent.id]["closest_distance"]
-
         if agent.state not in ["truncated", "terminated"]:
 
             current = agent._goal_relative_distance
             progress = agent._old_goal_relative_distance - current
             omega = abs(agent.omega)
-            dv = agent.v - agent.old_v
 
             # Progress reward
-            reward_progress = beta1 * progress
-            reward_progress -= 1  # Time cost
-            reward_progress += dv_malus * (dv**2)  # Smooth motion
-            if current < 3:  # End when close to the target
-                reward_progress += 0.5 * beta1 * (3 - current)
-            if agent.state == "reached":  # Target reached
+            if agent._closest_dist >= safety_threshold:
+                reward_progress = beta1 * progress - 1
+
+            else:
+                reward_progress = 0.2 * beta1 * progress - 1
+            reward_progress += 2.0 * agent.v
+            if agent.state == "reached":
                 reward_progress += goal_bonus
 
             # Rotation penalty
-            if closest_dist < 0:
-                reward_rotation = beta2 * angular_malus * (omega**2)
+            reward_rotation = beta2 * angular_malus * (omega**2)
 
             # Obstacle penalty
-            if closest_dist > 0:
+            if agent._closest_dist < safety_threshold:
+                d = max(agent._closest_dist, 0.1)
                 reward_safety = (
-                    beta3 * safety_malus1 * np.exp(safety_malus2 * closest_dist)
+                    beta3 * safety_malus1 * (1 / d**2 - 1 / safety_threshold**2)
                 )
 
             # Collision penalty

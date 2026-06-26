@@ -10,13 +10,13 @@ class SACAgent(torch.nn.Module):
         map_shape,
         action_space,
         tau=0.005,
-        alpha=0.2,
+        alpha=0.15,
         batch_size=64,
         critic_lr=3e-4,
-        actor_lr=1e-4,
+        actor_lr=3e-5,
         gamma=0.99,
         feature_size=64,
-        hidden_size=64,
+        hidden_size=128,
         mem_size=100_000,
     ):
         """

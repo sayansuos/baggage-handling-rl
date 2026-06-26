@@ -10,10 +10,25 @@ from simulator.environment.environment import Environment
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 
+def load_agent(
+    env: Environment, exp: Experiment, trained_agent_id: str = "agent_1"
+) -> SACAgent:
+    """ """
+    agent = SACAgent(
+        env_name=f"{exp.name}",
+        map_shape=(
+            1,
+            exp.agent_config.length_view,
+            exp.agent_config.length_view,
+        ),
+        action_space=env.action_space[trained_agent_id],
+    )
+    return agent
+
+
 def run_sac(
     exp: Experiment,
-    n_steps: int = 10000,
-    agent: SACAgent | None = None,
+    previous_exp: Experiment | None = None,
     warmup_steps: int = 1000,
     update_frequency: int = 4,
     trained_agent_id: str = "agent_1",
@@ -29,18 +44,11 @@ def run_sac(
         exp.name,
     )
 
-    if agent is None:
-        agent = SACAgent(
-            env_name=f"{exp.name}",
-            map_shape=(
-                1,
-                exp.agent_config.length_view,
-                exp.agent_config.length_view,
-            ),
-            action_space=env.action_space[trained_agent_id],
-        )
+    if previous_exp is None:
+        agent = load_agent(env, exp, trained_agent_id)
 
     else:
+        agent = load_agent(env, previous_exp, trained_agent_id)
         agent.env_name = f"{exp.name}"
         agent.actor.checkpoint_path = f"rl/SAC/weights/{exp.name}_actor.pt"
         agent.q1.checkpoint_path = f"rl/SAC/weights/{exp.name}_critic_1.pt"
@@ -61,9 +69,11 @@ def run_sac(
     total_steps = 0
     episode = 0
 
-    while total_steps < n_steps:
-        state, _ = env.reset()
+    while total_steps < exp.n_steps:
         episode += 1
+        if episode % 20 == 0:
+            env.static_obstacles = env.env_manager.generate_static_obstacles()
+        state, _ = env.reset()
         score = 0.0
 
         if env.episode % 20 == 0:
@@ -71,7 +81,7 @@ def run_sac(
         else:
             env.debug = False
 
-        while not env.dones[trained_agent_id] and total_steps < n_steps:
+        while not env.dones[trained_agent_id] and total_steps < exp.n_steps:
             actions = {}
 
             # Warmup to fill the RB with random data
@@ -86,7 +96,7 @@ def run_sac(
                 if amr.id != trained_agent_id:
                     actions[amr.id] = None
 
-            next_state, rewards, terminated, truncated, info = env.step(actions)
+            next_state, rewards, terminated, _, info = env.step(actions)
 
             agent.store_transition(
                 state[trained_agent_id],
@@ -138,7 +148,7 @@ def run_sac(
             agent.save_checkpoints()
 
         print(
-            f"[ {exp.name} ] Step {total_steps:06d}/{n_steps} | Episode {episode:04d} | "
+            f"[ {exp.name} ] Step {total_steps:06d}/{exp.n_steps} | Episode {episode:04d} | "
             f"Return = {score:8.3f} "
             f"Average = {avg_score:8.3f} "
             f"Best Average = {best_score:8.3f} "
@@ -154,7 +164,8 @@ def run_sac(
 
 def evaluate_sac(
     exp: Experiment,
-    n_episodes: int = 5,
+    agent: SACAgent | None = None,
+    n_episodes: int = 20,
     n_render: int = 0,
     trained_agent_id: str = "agent_1",
 ) -> tuple[list[dict], list[np.ndarray] | None]:
@@ -169,25 +180,15 @@ def evaluate_sac(
         exp.name,
     )
 
-    agent = SACAgent(
-        env_name=f"{exp.name}",
-        map_shape=(
-            1,
-            exp.agent_config.length_view,
-            exp.agent_config.length_view,
-        ),
-        action_space=env.action_space[trained_agent_id],
-    )
-
-    agent.load_checkpoints()
+    if agent is None:
+        agent = load_agent(env, exp, trained_agent_id)
+        agent.load_checkpoints()
 
     history = []
     render = n_render > 0
-    if render:
-        frames = []
-        fig, ax = plt.subplots(figsize=(10, 8))
-    else:
-        frames = None
+    frames = [] if render else None
+
+    fig, ax = plt.subplots(figsize=(10, 8))
 
     for i in range(n_episodes):
 
@@ -195,7 +196,8 @@ def evaluate_sac(
             render = False
             plt.close(fig)
 
-        state, _ = env.reset()
+        env.static_obstacles = env.env_manager.generate_static_obstacles()
+        state, _ = env.reset(seed=1234 + i)
 
         if render:
             env.render(ax)
@@ -204,12 +206,10 @@ def evaluate_sac(
 
         while not env.dones[trained_agent_id]:
             actions = {}
-
             actions[trained_agent_id] = agent.choose_action(
                 state[trained_agent_id],
                 deterministic=True,
             )
-
             for amr in env.agents:
                 if amr.id != trained_agent_id:
                     actions[amr.id] = None

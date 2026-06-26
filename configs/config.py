@@ -47,19 +47,15 @@ class AgentConfig:
 
 @dataclass
 class RewardConfig:
-    beta1: float = 10.0
-    beta2: float = 1.0
-    beta3: float = 3.0
-    beta4: float = 2.0
+    beta1: float = 5.0
+    beta2: float = 0.1
+    beta3: float = 0.5
 
-    goal_bonus: float = 200.0
-    dv_malus: float = -0.02
-    collision_malus: float = -200.0
+    goal_bonus: float = 400.0
+    collision_malus: float = -100.0
     angular_malus: float = -2.0
-    omega_threshold: float = np.pi / 4
-    safety_malus1 = -1.0
-    safety_malus2 = 2.0
-    safety_threshold = 2.0
+    safety_malus1: float = -1.0
+    safety_threshold: float = 2.0
 
 
 @dataclass
@@ -68,5 +64,4 @@ class Experiment:
     env_config: EnvConfig
     agent_config: AgentConfig
     reward_config: RewardConfig
-    n_envs: int
-    n_episodes: int
+    n_steps: int

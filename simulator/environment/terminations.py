@@ -27,13 +27,17 @@ def compute_closest(
             if dist < min_distance:
                 min_distance = dist
                 closest_entity = other
-            if dist < 1e-3:
+            if dist < 0.5:
                 a.state = "collided"
 
         metrics[a.id] = {
             "closest_distance": min_distance,
             "closest_entity": closest_entity,
         }
+
+        a._old_closest_dist = a._closest_dist
+        a._closest_dist = min_distance
+
     return metrics
 
 

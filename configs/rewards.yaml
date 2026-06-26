@@ -1,0 +1,14 @@
+rewards:
+  - name: reward_1
+
+    beta1: 12.0
+    beta2: 1.0
+    beta3: 3.0
+
+    goal_bonus: 200.0
+    dv_malus: -0.02
+    collision_malus: -200.0
+    angular_malus: -2.0
+    safety_malus1: -1.0
+    safety_malus2: 2.0
+    safety_threshold: 2.0

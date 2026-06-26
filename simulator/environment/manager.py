@@ -96,6 +96,8 @@ class Manager:
         additional obstacles.
         """
 
+        self.static_obstacles = []
+
         pad = self.env_config.thickness
         width_min = self.env_config.width_min
         width_max = self.env_config.width_max
@@ -117,6 +119,18 @@ class Manager:
                 min_dist,
                 max_attempts,
             )
+
+        if mode == "fixed":
+            self._fixed_static_obstacles()
+
+        if mode == "fixed_2":
+            self._fixed_2_static_obstacles()
+
+        if mode == "fixed_3":
+            self._fixed_3_static_obstacles()
+
+        if mode == "fixed_random":
+            self._fixed_random_static_obstacles()
 
         if mode == "warehouse":
             self._warehouse_static_obstacles()
@@ -158,6 +172,18 @@ class Manager:
         max_attempts = self.env_config.max_attempts
         mode = self.env_config.agent_mode
 
+        if mode == "fixed":
+            self._fixed_agents(nb_targets, min_dist)
+
+        if mode == "fixed_2":
+            self._fixed_2_agents(nb_targets, min_dist)
+
+        if mode == "fixed_3":
+            self._fixed_3_agents(nb_targets, min_dist)
+
+        if mode == "fixed_random":
+            self._fixed_random_agents(nb_targets, min_dist)
+
         if mode == "random":
             self._random_agents(nb_targets, min_dist, max_attempts)
 
@@ -191,6 +217,137 @@ class Manager:
         left_wall.current_position = (0, self.height / 2)
 
         self.static_obstacles.extend([top_wall, right_wall, bot_wall, left_wall])
+
+    def _fixed_static_obstacles(self):
+        """ """
+
+        n = self.env_config.nb_static_obstacles
+
+        cx = self.env_config.width // 2
+
+        w = self.env_config.width // 16
+        h = self.env_config.height // 16
+
+        y_positions = np.linspace(
+            self.env_config.height // (n + 1),
+            self.env_config.height * n // (n + 1),
+            n,
+        )
+
+        for y in y_positions:
+            obstacle = static_entity.StaticEntity(
+                width=w,
+                height=h,
+                num=len(self.static_obstacles) + 1,
+            )
+            obstacle.current_position = (cx, int(y))
+            self.static_obstacles.append(obstacle)
+
+    def _fixed_2_static_obstacles(self):
+        """ """
+
+        n = self.env_config.nb_static_obstacles
+
+        cx = self.env_config.width // 3
+
+        w = self.env_config.width // 16
+        h = self.env_config.height // 16
+
+        y_positions = np.linspace(
+            self.env_config.height // (n + 1),
+            self.env_config.height * n // (n + 1),
+            n,
+        )
+
+        for y in y_positions:
+
+            obstacle = static_entity.StaticEntity(
+                width=w,
+                height=h,
+                num=len(self.static_obstacles) + 1,
+            )
+            obstacle.current_position = (cx, int(y))
+            self.static_obstacles.append(obstacle)
+
+            obstacle = static_entity.StaticEntity(
+                width=w,
+                height=h,
+                num=len(self.static_obstacles) + 1,
+            )
+            obstacle.current_position = (2 * cx, int(y))
+            self.static_obstacles.append(obstacle)
+
+    def _fixed_3_static_obstacles(self):
+        """ """
+
+        n = self.env_config.nb_static_obstacles
+
+        cx = self.env_config.width // 3
+
+        w = self.env_config.width // 8
+        h = self.env_config.height // 16
+
+        y_positions = np.linspace(
+            self.env_config.height // (n + 1),
+            self.env_config.height * n // (n + 1),
+            n,
+        )
+
+        for y in y_positions:
+
+            obstacle = static_entity.StaticEntity(
+                width=w,
+                height=h,
+                num=len(self.static_obstacles) + 1,
+            )
+            obstacle.current_position = (cx, int(y))
+            self.static_obstacles.append(obstacle)
+
+            obstacle = static_entity.StaticEntity(
+                width=w,
+                height=h,
+                num=len(self.static_obstacles) + 1,
+            )
+            obstacle.current_position = (2 * cx, int(y))
+            self.static_obstacles.append(obstacle)
+
+    def _fixed_random_static_obstacles(self):
+        """ """
+
+        n = self.env_config.nb_static_obstacles
+
+        cx = self.env_config.width // 3
+        y_positions = np.linspace(
+            self.env_config.height // (n + 1),
+            self.env_config.height * n // (n + 1),
+            n,
+        )
+
+        for cy in y_positions:
+
+            w = np.random.randint(1, 8)
+            h = np.random.randint(1, 5)
+            x = np.random.randint(-3, 3)
+            y = np.random.randint(-2, 2)
+            obstacle = static_entity.StaticEntity(
+                width=w,
+                height=h,
+                num=len(self.static_obstacles) + 1,
+            )
+            obstacle.current_position = (cx + x, int(cy + y))
+            self.static_obstacles.append(obstacle)
+
+            w = np.random.randint(1, 8)
+            h = np.random.randint(1, 5)
+            x = np.random.randint(-3, 3)
+            y = np.random.randint(-2, 2)
+            obstacle = static_entity.StaticEntity(
+                width=w,
+                height=h,
+                num=len(self.static_obstacles) + 1,
+            )
+            obstacle.current_position = (2 * cx + x, int(cy + y))
+            self.static_obstacles.append(obstacle)
 
     def _random_static_obstacles(
         self,
@@ -336,6 +493,135 @@ class Manager:
     # ---------------------------------------------------------------
     # GENERATE AGENTS
     # ---------------------------------------------------------------
+
+    def _fixed_agents(self, nb_targets: int, min_dist: float):
+        """"""
+
+        pad = int(self.env_config.thickness + min_dist)
+
+        for i in range(self.nb_agents):
+            a = agent.Agent(self.agent_config, i + 1)
+
+            cx = self.width // 2
+            w = self.width // 16
+
+            pos = (
+                np.random.randint(pad, cx - w - pad),
+                np.random.randint(pad, self.height - pad),
+            )
+            a.start_position = pos
+            a.current_position = pos
+            a.old_position = pos
+
+            for _ in range(nb_targets):
+                pos = (
+                    np.random.randint(cx + w + pad, self.width - pad),
+                    np.random.randint(pad, self.height - pad),
+                )
+                a.target_positions.append(pos)
+
+            self.agents.append(a)
+
+    def _fixed_2_agents(self, nb_targets: int, min_dist: float):
+        """"""
+
+        pad = int(self.env_config.thickness + min_dist)
+
+        for i in range(self.nb_agents):
+            a = agent.Agent(self.agent_config, i + 1)
+
+            cx = self.width // 3
+            w = self.width // 16
+
+            pos = (
+                np.random.randint(pad, cx - w - pad),
+                np.random.randint(pad, self.height - pad),
+            )
+            a.start_position = pos
+            a.current_position = pos
+            a.old_position = pos
+
+            for j in range(nb_targets):
+                if j % 2 == 1:
+                    pos = (
+                        np.random.randint(2 * cx + w + pad, self.width - pad),
+                        np.random.randint(pad, self.height - pad),
+                    )
+                else:
+                    pos = (
+                        np.random.randint(cx + w + pad, 2 * cx - w - pad),
+                        np.random.randint(pad, self.height - pad),
+                    )
+                a.target_positions.append(pos)
+
+            self.agents.append(a)
+
+    def _fixed_3_agents(self, nb_targets: int, min_dist: float):
+        """"""
+
+        pad = int(self.env_config.thickness + min_dist)
+
+        for i in range(self.nb_agents):
+            a = agent.Agent(self.agent_config, i + 1)
+
+            cx = self.width // 3
+            w = self.width // 10
+
+            pos = (
+                np.random.randint(pad, cx - w - pad),
+                np.random.randint(pad, self.height - pad),
+            )
+            a.start_position = pos
+            a.current_position = pos
+            a.old_position = pos
+
+            for j in range(nb_targets):
+                if j % 2 == 1:
+                    pos = (
+                        np.random.randint(2 * cx + w + pad, self.width - pad),
+                        np.random.randint(pad, self.height - pad),
+                    )
+                else:
+                    pos = (
+                        np.random.randint(cx + w + pad, 2 * cx - w - pad),
+                        np.random.randint(pad, self.height - pad),
+                    )
+                a.target_positions.append(pos)
+
+            self.agents.append(a)
+
+    def _fixed_random_agents(self, nb_targets: int, min_dist: float):
+        """ """
+
+        pad = int(self.env_config.thickness + min_dist)
+
+        for i in range(self.nb_agents):
+
+            a = agent.Agent(self.agent_config, i + 1)
+            cx = self.width // 3
+
+            pos = (
+                np.random.randint(pad, cx - pad),
+                np.random.randint(pad, self.height - pad),
+            )
+            a.start_position = pos
+            a.current_position = pos
+            a.old_position = pos
+
+            for j in range(nb_targets):
+                if j % 2 == 1:
+                    pos = (
+                        np.random.randint(2 * cx + pad, self.width - pad),
+                        np.random.randint(pad, self.height - pad),
+                    )
+                else:
+                    pos = (
+                        np.random.randint(cx + pad, 2 * cx - pad),
+                        np.random.randint(pad, self.height - pad),
+                    )
+                a.target_positions.append(pos)
+
+            self.agents.append(a)
 
     def _random_agents(self, nb_targets: int, min_dist: float, max_attempts: int):
         """

@@ -18,7 +18,7 @@ from utils.plotting import (
 )
 
 
-def run_worker(exp: Experiment, worker_id: int) -> tuple[list[dict], list[dict], int]:
+def run_worker(exp: Experiment, worker_id: int) -> tuple[list[dict], int]:
     """
     One process handles multiple episodes on a single environment.
     """
@@ -28,48 +28,20 @@ def run_worker(exp: Experiment, worker_id: int) -> tuple[list[dict], list[dict],
     )
 
     history = []
-    debug = []
-    steps = 0
+    steps_total = 0
+    n_episodes = 0
 
-    for i in range(exp.n_episodes):
-        env.reset(seed=1234 + worker_id + i + 1)
+    while steps_total < exp.n_steps:
+        n_episodes += 1
+        env.reset(seed=1234 + worker_id + steps_total)
 
-        env.debug = i == exp.n_episodes - 1 and worker_id == 0
+        while not env.done() and steps_total < exp.n_steps:
+            _, _, _, _, info = env.step()
+            steps_total += 1
 
-        while not env.done():
-            _, rewards, _, _, info = env.step()
+        history.append(info)
 
-            if env.debug:  # Store metrics for debug logs
-                for agent_id, info in info.items():
-                    debug.append(
-                        {
-                            "experiment": env.name,
-                            "episode": env.episode,
-                            "step": env.step_count,
-                            "agent": agent_id,
-                            "pos_x": info["pos_x"],
-                            "pos_y": info["pos_y"],
-                            "distance_to_goal": info["distance_to_goal"],
-                            "heading_error": info["heading_error"],
-                            "min_obstacle_distance": info["min_obstacle_distance"],
-                            "v": info["v"],
-                            "omega": info["omega"],
-                            "reward": rewards[agent_id],
-                            "reward_progress": info["reward_progress"],
-                            "reward_rotation": info["reward_rotation"],
-                            "reward_safety": info["reward_safety"],
-                            "reward_collision": info["reward_collision"],
-                            "state": info["state"],
-                        }
-                    )
-
-        env.debug = False
-        if not env.debug:
-            history.append(info)
-
-        steps += env.step_count
-
-    return history, debug, steps
+    return history, n_episodes
 
 
 def run_simulation(experiments: list[Experiment]):
@@ -80,17 +52,15 @@ def run_simulation(experiments: list[Experiment]):
     start = time.perf_counter()
     print(f"\n[ SIMULATION ] {len(experiments)} experiment(s)\n")
 
-    histories = []
-    debugs = []
     total_eps = 0
     total_steps = 0
 
     for exp in experiments:
         print(f"[ START ] {exp.name}")
 
-        tasks = [(exp, worker_id) for worker_id in range(exp.n_envs)]
-        total_eps += exp.n_envs * exp.n_episodes
+        histories = []
 
+        tasks = [(exp, worker_id) for worker_id, exp in enumerate(experiments)]
         n_processes = min(cpu_count(), len(tasks))
 
         with Pool(processes=n_processes) as pool:
@@ -102,14 +72,18 @@ def run_simulation(experiments: list[Experiment]):
                 )
             )
 
-        for history, debug, steps in results:
+        for history, n_episodes in results:
             histories.extend(history)
-            debugs.extend(debug)
-            total_steps += steps
+            total_eps += n_episodes
 
-        log_train(histories, "logs/simulation", exp.name)
-        log_debug(debugs, "logs/simulation", exp.name)
-        log_rewards(histories, "logs/simulation", exp.name)
+        total_steps += exp.n_steps
+
+        df_train = log_train(histories, "logs/simulation", exp.name)
+        df_rewards = log_rewards(histories, "logs/simulation", exp.name)
+
+        plot_performances(df_train, "figures/simulation", exp.name)
+        plot_velocities(df_train, "figures/simulation", exp.name)
+        plot_rewards(df_rewards, "figures/simulation", exp.name)
 
         print(f"[ DONE ] {exp.name}")
 
@@ -123,20 +97,20 @@ def run_simulation(experiments: list[Experiment]):
 
 def run_test(experiments: list[Experiment], render: bool = False):
     """
-    Run some episodes and plot at each step.
+    Run test episodes until exp.n_steps is reached.
     """
 
     print(f"\n[ TEST ] {len(experiments)} experiment(s)\n")
 
     if render:
         plt.ion()
-        _, ax = plt.subplots(figsize=(10, 8))
+        fig, ax = plt.subplots(figsize=(10, 8))
+    else:
+        fig, ax = None, None
 
-    histories = []
     debugs = []
 
     for exp in experiments:
-
         print(f"[ START ] {exp.name}")
 
         env = Environment(
@@ -147,6 +121,7 @@ def run_test(experiments: list[Experiment], render: bool = False):
             env_id=1,
             debug=True,
         )
+
         env.reset(seed=1234)
         plot_grid(env.grid_map.grid, "figures/test", exp.name)
 
@@ -155,28 +130,28 @@ def run_test(experiments: list[Experiment], render: bool = False):
             plt.pause(0.001)
 
         while not env.done():
-            _, rewards, _, _, info = env.step()
+            _, rewards, _, _, infos = env.step()
 
-            for agent_id, info in info.items():
+            for agent_id, agent_info in infos.items():
                 debugs.append(
                     {
                         "experiment": env.name,
                         "episode": env.episode,
                         "step": env.step_count,
                         "agent": agent_id,
-                        "pos_x": info["pos_x"],
-                        "pos_y": info["pos_y"],
-                        "distance_to_goal": info["distance_to_goal"],
-                        "heading_error": info["heading_error"],
-                        "min_obstacle_distance": info["min_obstacle_distance"],
-                        "v": info["v"],
-                        "omega": info["omega"],
+                        "pos_x": agent_info["pos_x"],
+                        "pos_y": agent_info["pos_y"],
+                        "distance_to_goal": agent_info["distance_to_goal"],
+                        "heading_error": agent_info["heading_error"],
+                        "min_obstacle_distance": agent_info["min_obstacle_distance"],
+                        "v": agent_info["v"],
+                        "omega": agent_info["omega"],
                         "reward": rewards[agent_id],
-                        "reward_progress": info["reward_progress"],
-                        "reward_rotation": info["reward_rotation"],
-                        "reward_safety": info["reward_safety"],
-                        "reward_collision": info["reward_collision"],
-                        "state": info["state"],
+                        "reward_progress": agent_info["reward_progress"],
+                        "reward_rotation": agent_info["reward_rotation"],
+                        "reward_safety": agent_info["reward_safety"],
+                        "reward_collision": agent_info["reward_collision"],
+                        "state": agent_info["state"],
                     }
                 )
 
@@ -184,20 +159,18 @@ def run_test(experiments: list[Experiment], render: bool = False):
                 env.render(ax=ax)
                 plt.pause(0.001)
 
-        histories.append(info)
+        log_debug(debugs, "logs/test", exp.name)
+
         print(f"[ DONE ] {exp.name}")
 
-        if render:
-            plt.ioff()
-
-    log_train(histories, "logs/test", "test")
-    log_debug(debugs, "logs/test", "test")
-    log_rewards(histories, "logs/test", "test")
+    if render:
+        plt.ioff()
+        plt.close(fig)
 
     print("\n[ TEST ] completed\n")
 
 
-def run_save(
+def run_animation(
     experiments: list[Experiment],
     fps: int = 20,
 ):
@@ -237,7 +210,7 @@ def run_save(
     print("\n[ SAVE ] completed\n")
 
 
-def run_train(experiments: list[Experiment], n_steps: list[int] = [5000]):
+def run_train(experiments: list[Experiment], previous_exp: Experiment | None = None):
     """
     Train a SAC agent on each experiment.
     """
@@ -247,14 +220,18 @@ def run_train(experiments: list[Experiment], n_steps: list[int] = [5000]):
     start = time.perf_counter()
     print(f"\n[ TRAIN ] {len(experiments)} experiment(s)\n")
 
-    agent = None
+    for exp in experiments:
+        history, debug, _ = run_sac(exp=exp, previous_exp=previous_exp)
 
-    for i, exp in enumerate(experiments):
-        history, debug, agent = run_sac(exp=exp, n_steps=n_steps[i], agent=agent)
-
-        log_train(history, "logs/train", exp.name)
+        df_train = log_train(history, "logs/train", exp.name)
         log_debug(debug, "logs/train", exp.name)
-        log_rewards(history, "logs/train", exp.name)
+        df_rewards = log_rewards(history, "logs/train", exp.name)
+
+        plot_performances(df_train, "figures/train", exp.name)
+        plot_velocities(df_train, "figures/train", exp.name)
+        plot_rewards(df_rewards, "figures/train", exp.name)
+
+        previous_exp = exp
 
     duration = time.perf_counter() - start
 
