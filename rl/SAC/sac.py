@@ -31,6 +31,7 @@ def run_sac(
     previous_exp: Experiment | None = None,
     warmup_steps: int = 1000,
     update_frequency: int = 4,
+    reset_frequency: int = 20,
     trained_agent_id: str = "agent_1",
 ):
     """ """
@@ -49,6 +50,7 @@ def run_sac(
 
     else:
         agent = load_agent(env, previous_exp, trained_agent_id)
+        agent.load_checkpoints()
         agent.env_name = f"{exp.name}"
         agent.actor.checkpoint_path = f"rl/SAC/weights/{exp.name}_actor.pt"
         agent.q1.checkpoint_path = f"rl/SAC/weights/{exp.name}_critic_1.pt"
@@ -71,7 +73,7 @@ def run_sac(
 
     while total_steps < exp.n_steps:
         episode += 1
-        if episode % 20 == 0:
+        if episode % reset_frequency == 0:
             env.static_obstacles = env.env_manager.generate_static_obstacles()
         state, _ = env.reset()
         score = 0.0
@@ -169,9 +171,7 @@ def evaluate_sac(
     n_render: int = 0,
     trained_agent_id: str = "agent_1",
 ) -> tuple[list[dict], list[np.ndarray] | None]:
-    """
-    Evaluate a trained SAC agent on one episode.
-    """
+    """ """
 
     env = Environment(
         exp.env_config,
@@ -215,7 +215,6 @@ def evaluate_sac(
                     actions[amr.id] = None
 
             next_state, _, _, _, info = env.step(actions)
-
             state = next_state
 
             if render:

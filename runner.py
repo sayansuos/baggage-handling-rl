@@ -1,104 +1,28 @@
+import random
 import time
-from multiprocessing import Pool, cpu_count
 
 import matplotlib.pyplot as plt
 import numpy as np
-from tqdm import tqdm
 
 from configs.config import Experiment
-from rl.sac.sac import evaluate_sac, run_sac
+from rl.sac.sac import evaluate_sac, load_agent, run_sac
 from simulator.environment.environment import Environment
 from utils.logging import log_debug, log_rewards, log_train
 from utils.plotting import (
     plot_animation,
-    plot_grid,
     plot_performances,
     plot_rewards,
     plot_velocities,
 )
 
 
-def run_worker(exp: Experiment, worker_id: int) -> tuple[list[dict], int]:
-    """
-    One process handles multiple episodes on a single environment.
-    """
-
-    env = Environment(
-        exp.env_config, exp.agent_config, exp.reward_config, exp.name, worker_id
-    )
-
-    history = []
-    steps_total = 0
-    n_episodes = 0
-
-    while steps_total < exp.n_steps:
-        n_episodes += 1
-        env.reset(seed=1234 + worker_id + steps_total)
-
-        while not env.done() and steps_total < exp.n_steps:
-            _, _, _, _, info = env.step()
-            steps_total += 1
-
-        history.append(info)
-
-    return history, n_episodes
-
-
-def run_simulation(experiments: list[Experiment]):
-    """
-    Run multiple episodes in parallel.
-    """
-
-    start = time.perf_counter()
-    print(f"\n[ SIMULATION ] {len(experiments)} experiment(s)\n")
-
-    total_eps = 0
-    total_steps = 0
-
-    for exp in experiments:
-        print(f"[ START ] {exp.name}")
-
-        histories = []
-
-        tasks = [(exp, worker_id) for worker_id, exp in enumerate(experiments)]
-        n_processes = min(cpu_count(), len(tasks))
-
-        with Pool(processes=n_processes) as pool:
-            results = list(
-                tqdm(
-                    pool.starmap(run_worker, tasks),
-                    total=len(tasks),
-                    desc=f"Simulation -- {exp.name}",
-                )
-            )
-
-        for history, n_episodes in results:
-            histories.extend(history)
-            total_eps += n_episodes
-
-        total_steps += exp.n_steps
-
-        df_train = log_train(histories, "logs/simulation", exp.name)
-        df_rewards = log_rewards(histories, "logs/simulation", exp.name)
-
-        plot_performances(df_train, "figures/simulation", exp.name)
-        plot_velocities(df_train, "figures/simulation", exp.name)
-        plot_rewards(df_rewards, "figures/simulation", exp.name)
-
-        print(f"[ DONE ] {exp.name}")
-
-    duration = time.perf_counter() - start
-
-    print(
-        f"\n[ SUMMARY ] {total_eps:,} episode(s) | "
-        f"{total_steps:,} step(s) | {duration:.1f}s\n"
-    )
-
-
-def run_test(experiments: list[Experiment], render: bool = False):
-    """
-    Run test episodes until exp.n_steps is reached.
-    """
+def run_test(
+    experiments: list[Experiment],
+    best_exp: Experiment,
+    render: bool = False,
+    trained_agent_id: str = "agent_1",
+):
+    """ """
 
     print(f"\n[ TEST ] {len(experiments)} experiment(s)\n")
 
@@ -108,8 +32,6 @@ def run_test(experiments: list[Experiment], render: bool = False):
     else:
         fig, ax = None, None
 
-    debugs = []
-
     for exp in experiments:
         print(f"[ START ] {exp.name}")
 
@@ -118,48 +40,32 @@ def run_test(experiments: list[Experiment], render: bool = False):
             agent_config=exp.agent_config,
             reward_config=exp.reward_config,
             name=exp.name,
-            env_id=1,
-            debug=True,
         )
+        agent = load_agent(env, best_exp, trained_agent_id)
+        agent.load_checkpoints()
 
-        env.reset(seed=1234)
-        plot_grid(env.grid_map.grid, "figures/test", exp.name)
+        state, _ = env.reset(seed=1234)
 
         if render:
             env.render(ax=ax)
             plt.pause(0.001)
 
-        while not env.done():
-            _, rewards, _, _, infos = env.step()
+        while not env.dones[trained_agent_id]:
+            actions = {}
+            actions[trained_agent_id] = agent.choose_action(
+                state[trained_agent_id],
+                deterministic=True,
+            )
+            for amr in env.agents:
+                if amr.id != trained_agent_id:
+                    actions[amr.id] = None
 
-            for agent_id, agent_info in infos.items():
-                debugs.append(
-                    {
-                        "experiment": env.name,
-                        "episode": env.episode,
-                        "step": env.step_count,
-                        "agent": agent_id,
-                        "pos_x": agent_info["pos_x"],
-                        "pos_y": agent_info["pos_y"],
-                        "distance_to_goal": agent_info["distance_to_goal"],
-                        "heading_error": agent_info["heading_error"],
-                        "min_obstacle_distance": agent_info["min_obstacle_distance"],
-                        "v": agent_info["v"],
-                        "omega": agent_info["omega"],
-                        "reward": rewards[agent_id],
-                        "reward_progress": agent_info["reward_progress"],
-                        "reward_rotation": agent_info["reward_rotation"],
-                        "reward_safety": agent_info["reward_safety"],
-                        "reward_collision": agent_info["reward_collision"],
-                        "state": agent_info["state"],
-                    }
-                )
+            next_state, _, _, _, _ = env.step(actions)
+            state = next_state
 
             if render:
                 env.render(ax=ax)
                 plt.pause(0.001)
-
-        log_debug(debugs, "logs/test", exp.name)
 
         print(f"[ DONE ] {exp.name}")
 
@@ -210,10 +116,77 @@ def run_animation(
     print("\n[ SAVE ] completed\n")
 
 
-def run_train(experiments: list[Experiment], previous_exp: Experiment | None = None):
-    """
-    Train a SAC agent on each experiment.
-    """
+def run_train_all(
+    experiments: list[Experiment],
+    exp_name: str,
+    previous_exp: Experiment | None,
+    n_steps: int,
+    chunk_steps: int,
+):
+    """ """
+
+    np.random.seed(1234)
+
+    total_steps = 0
+    histories = []
+    debugs = []
+
+    while total_steps < n_steps:
+
+        env = random.choice(experiments)
+        print(
+            f"[ TRAIN MIXED ] "
+            f"Step {total_steps:06d}/{n_steps:06d} | "
+            f"Scenario = {env.name}"
+        )
+
+        steps = min(chunk_steps, n_steps - total_steps)
+        exp = Experiment(
+            name=exp_name,
+            env_config=env.env_config,
+            agent_config=env.agent_config,
+            reward_config=env.reward_config,
+            n_steps=steps,
+        )
+
+        history, debug, _ = run_sac(
+            exp=exp, previous_exp=previous_exp, warmup_steps=0, reset_frequency=1
+        )
+
+        for row in history:
+            row["scenario"] = env.name
+
+        for row in debug:
+            row["scenario"] = env.name
+
+        histories.extend(history)
+        debugs.extend(debug)
+
+        previous_exp = exp
+        total_steps += steps
+
+    for i, history in enumerate(histories):
+        history["episode"] = i
+
+    for i, d in enumerate(debug):
+        d["episode"] = i
+
+    df_train = log_train(histories, "logs/train", exp_name)
+    log_debug(debugs, "logs/train", exp_name)
+    df_rewards = log_rewards(histories, "logs/train", exp_name)
+
+    plot_performances(df_train, "figures/train", exp_name)
+    plot_velocities(df_train, "figures/train", exp_name)
+    plot_rewards(df_rewards, "figures/train", exp_name)
+
+
+def run_train(
+    experiments: list[Experiment],
+    previous_exp: Experiment | None = None,
+    n_steps: int = 200_000,
+    chunk_steps: int = 2_000,
+):
+    """ """
 
     np.random.seed(1234)
 
@@ -221,17 +194,60 @@ def run_train(experiments: list[Experiment], previous_exp: Experiment | None = N
     print(f"\n[ TRAIN ] {len(experiments)} experiment(s)\n")
 
     for exp in experiments:
-        history, debug, _ = run_sac(exp=exp, previous_exp=previous_exp)
 
-        df_train = log_train(history, "logs/train", exp.name)
-        log_debug(debug, "logs/train", exp.name)
-        df_rewards = log_rewards(history, "logs/train", exp.name)
+        if "mixed_curriculum" not in exp.name:
+            history, debug, _ = run_sac(exp=exp, previous_exp=previous_exp)
 
-        plot_performances(df_train, "figures/train", exp.name)
-        plot_velocities(df_train, "figures/train", exp.name)
-        plot_rewards(df_rewards, "figures/train", exp.name)
+            df_train = log_train(history, "logs/train", exp.name)
+            log_debug(debug, "logs/train", exp.name)
+            df_rewards = log_rewards(history, "logs/train", exp.name)
 
-        previous_exp = exp
+            plot_performances(df_train, "figures/train", exp.name)
+            plot_velocities(df_train, "figures/train", exp.name)
+            plot_rewards(df_rewards, "figures/train", exp.name)
+
+            previous_exp = exp
+
+        else:
+            run_train_all(experiments, exp.name, previous_exp, n_steps, chunk_steps)
+
+    duration = time.perf_counter() - start
+
+    print(
+        f"\n[ SUMMARY ] "
+        f"{len(experiments)} experiment(s) completed "
+        f"in {duration:.1f}s\n"
+    )
+
+
+def run_validation(
+    experiments: list[Experiment],
+    n_episodes: int = 100,
+    n_render: int = 5,
+    agent=None,
+):
+    """ """
+
+    np.random.seed(1234)
+
+    start = time.perf_counter()
+    print(f"\n[ VALIDATION ] {len(experiments)} experiment(s)\n")
+
+    for exp in experiments:
+
+        history, frames = evaluate_sac(
+            exp=exp,
+            agent=agent,
+            n_episodes=n_episodes,
+            n_render=n_render,
+            trained_agent_id="agent_1",
+        )
+
+        log_train(history, "logs/validation", exp.name)
+        log_rewards(history, "logs/validation", exp.name)
+
+        if n_render > 0:
+            plot_animation(frames, "figures/validation", exp.name, 10)
 
     duration = time.perf_counter() - start
 
@@ -244,27 +260,42 @@ def run_train(experiments: list[Experiment], previous_exp: Experiment | None = N
 
 def run_evaluation(
     experiments: list[Experiment],
+    policy: Experiment,
     n_episodes: int = 100,
     n_render: int = 5,
 ):
 
     np.random.seed(1234)
 
-    for exp in experiments:
+    start = time.perf_counter()
+    print(f"\n[ EVALUATION ] {len(experiments)} experiment(s)\n")
+
+    for scenario in experiments:
+
+        exp = Experiment(
+            name=policy.name,
+            env_config=scenario.env_config,
+            agent_config=scenario.agent_config,
+            reward_config=scenario.reward_config,
+            n_steps=scenario.n_steps,
+        )
 
         history, frames = evaluate_sac(
             exp=exp,
             n_episodes=n_episodes,
             n_render=n_render,
-            trained_agent_id="agent_1",
         )
 
-        df_train = log_train(history, "logs/eval", exp.name)
-        df_rewards = log_rewards(history, "logs/eval", exp.name)
-
-        plot_performances(df_train, "figures/eval", exp.name)
-        plot_velocities(df_train, "figures/eval", exp.name)
-        plot_rewards(df_rewards, "figures/eval", exp.name)
+        log_train(history, "logs/evaluation", scenario.name)
+        log_rewards(history, "logs/evaluation", scenario.name)
 
         if n_render > 0:
-            plot_animation(frames, "figures/eval", exp.name, 10)
+            plot_animation(frames, "figures/evaluation", scenario.name, 10)
+
+    duration = time.perf_counter() - start
+
+    print(
+        f"\n[ SUMMARY ] "
+        f"{len(experiments)} experiment(s) completed "
+        f"in {duration:.1f}s\n"
+    )

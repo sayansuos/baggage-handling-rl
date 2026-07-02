@@ -5,7 +5,7 @@ from configs.config import AgentConfig, EnvConfig
 
 
 def get_multi_spaces(
-    nb_agents: int, env_config: EnvConfig, agent_config: AgentConfig
+    nb_agents: int, agent_config: AgentConfig
 ) -> tuple[spaces.Dict, spaces.Dict]:
     """
     Define observation and action spaces for each agent.
@@ -13,20 +13,21 @@ def get_multi_spaces(
 
     observation_space = spaces.Dict(
         {
-            f"agent_{i+1}": get_single_observation_space(env_config, agent_config)
+            f"agent_{i+1}": get_single_observation_space(agent_config)
             for i in range(nb_agents)
         }
     )
     action_space = spaces.Dict(
-        {f"agent_{i+1}": get_single_action_space(env_config) for i in range(nb_agents)}
+        {
+            f"agent_{i+1}": get_single_action_space(agent_config)
+            for i in range(nb_agents)
+        }
     )
 
     return observation_space, action_space
 
 
-def get_single_observation_space(
-    env_config: EnvConfig, agent_config: AgentConfig
-) -> spaces.Dict:
+def get_single_observation_space(agent_config: AgentConfig) -> spaces.Dict:
     return spaces.Dict(
         {
             "local_map": spaces.Box(
@@ -57,9 +58,9 @@ def get_single_observation_space(
     )
 
 
-def get_single_action_space(env_config: EnvConfig) -> spaces.Box:
+def get_single_action_space(agent_config: AgentConfig) -> spaces.Box:
     return spaces.Box(
-        low=np.array([env_config.v_min_allowed, env_config.omega_min_allowed]),
-        high=np.array([env_config.v_max_allowed, env_config.omega_max_allowed]),
+        low=np.array([agent_config.v_min, agent_config.omega_min]),
+        high=np.array([agent_config.v_max, agent_config.omega_max]),
         dtype=np.float64,
     )

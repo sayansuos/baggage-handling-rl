@@ -132,6 +132,9 @@ class Manager:
         if mode == "fixed_random":
             self._fixed_random_static_obstacles()
 
+        if mode == "fixed_random_2":
+            self._fixed_random_static_2_obstacles()
+
         if mode == "warehouse":
             self._warehouse_static_obstacles()
 
@@ -168,7 +171,7 @@ class Manager:
         """
 
         nb_targets = self.env_config.nb_targets
-        min_dist = self.env_config.margin
+        min_dist = self.env_config.margin // 2
         max_attempts = self.env_config.max_attempts
         mode = self.env_config.agent_mode
 
@@ -349,6 +352,22 @@ class Manager:
             obstacle.current_position = (2 * cx + x, int(cy + y))
             self.static_obstacles.append(obstacle)
 
+    def _fixed_random_static_2_obstacles(self):
+        """ """
+
+        cx = self.width // 2
+        cy = self.height // 2
+        w = np.random.randint(25, 50)
+        h = np.random.randint(10, 20)
+
+        obstacle = static_entity.StaticEntity(
+            width=w,
+            height=h,
+            num=len(self.static_obstacles) + 1,
+        )
+        obstacle.current_position = (cx, cy)
+        self.static_obstacles.append(obstacle)
+
     def _random_static_obstacles(
         self,
         pad: int,
@@ -395,10 +414,10 @@ class Manager:
         n_cols = self.width // 10
 
         w = 2
-        h = self.height // 2 - 12
+        h = self.height // 2 - 10
 
         x = [self.width * i for i in np.linspace(1 / n_cols, 1 - 1 / n_cols, n_cols)]
-        y = [self.height * i for i in [0.25, 0.75]]
+        y = [self.height * i for i in [0.3, 0.7]]
 
         for i in x:
             for j in y:

@@ -66,7 +66,6 @@ class Environment(gym.Env):
 
         self.observation_space, self.action_space = get_multi_spaces(
             nb_agents=self.env_config.nb_agents,
-            env_config=self.env_config,
             agent_config=self.agent_config,
         )
 
@@ -124,8 +123,8 @@ class Environment(gym.Env):
             )
             motion = get_normalized_motion(
                 agent._motion,
-                self.env_config.v_max_allowed,
-                self.env_config.omega_max_allowed,
+                self.agent_config.v_max,
+                self.agent_config.omega_max,
             )
             orientation = np.array(list(agent._orientation), dtype=np.float32)
 

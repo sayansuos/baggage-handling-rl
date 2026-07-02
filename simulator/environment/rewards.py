@@ -19,7 +19,7 @@ def compute_rewards(
     goal_bonus = reward_config.goal_bonus
     collision_malus = reward_config.collision_malus
     angular_malus = reward_config.angular_malus
-    safety_malus1 = reward_config.safety_malus1
+    safety_malus = reward_config.safety_malus
     safety_threshold = reward_config.safety_threshold
 
     rewards = {}
@@ -55,7 +55,7 @@ def compute_rewards(
             if agent._closest_dist < safety_threshold:
                 d = max(agent._closest_dist, 0.1)
                 reward_safety = (
-                    beta3 * safety_malus1 * (1 / d**2 - 1 / safety_threshold**2)
+                    beta3 * safety_malus * (1 / d**2 - 1 / safety_threshold**2)
                 )
 
             # Collision penalty

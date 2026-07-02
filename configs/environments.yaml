@@ -1,4 +1,4 @@
-environments:
+train_environments:
   - name: exp1_empty
     width: 64
     height: 32
@@ -87,15 +87,118 @@ environments:
     env_mode: random
 
     nb_agents: 1
-    nb_static_obstacles: 5
+    nb_static_obstacles: 4
     nb_moving_obstacles: 0
-    nb_targets: 2
+    nb_targets: 1
 
     width_min: 5
     width_max: 15
     height_min: 5
     height_max: 10
 
-    margin: 4
     max_attempts: 100
+    max_steps: 200
+
+  - name: exp7_random_2
+    width: 64
+    height: 32
+
+    agent_mode: random
+    env_mode: random
+
+    nb_agents: 1
+    nb_static_obstacles: 10
+    nb_moving_obstacles: 0
+    nb_targets: 2
+
+    width_min: 2
+    width_max: 6
+    height_min: 1
+    height_max: 3
+
+    max_attempts: 100
+    max_steps: 200
+
+  - name: exp8_warehouse
+    width: 64
+    height: 32
+
+    agent_mode: random
+    env_mode: warehouse
+
+    nb_agents: 1
+    nb_moving_obstacles: 0
+    nb_targets: 2
+
+    margin: 2
+    max_steps: 200
+
+eval_environments:
+  - name: eval1_random_1
+    width: 64
+    height: 32
+
+    agent_mode: random
+    env_mode: random
+
+    nb_agents: 1
+    nb_static_obstacles: 5
+    nb_moving_obstacles: 0
+    nb_targets: 2
+
+    max_steps: 200
+
+  - name: eval2_random_2
+    width: 64
+    height: 32
+
+    agent_mode: random
+    env_mode: random
+
+    nb_agents: 1
+    nb_static_obstacles: 5
+    nb_moving_obstacles: 2
+    nb_targets: 2
+
+    max_steps: 200
+
+  - name: eval3_warehouse_1
+    width: 64
+    height: 32
+
+    agent_mode: random
+    env_mode: warehouse
+
+    nb_agents: 1
+    nb_moving_obstacles: 0
+    nb_targets: 2
+
+    margin: 2
+    max_steps: 200
+
+  - name: eval4_warehouse_2
+    width: 64
+    height: 32
+
+    agent_mode: random
+    env_mode: warehouse
+
+    nb_agents: 1
+    nb_moving_obstacles: 2
+    nb_targets: 2
+
+    margin: 2
+    max_steps: 200
+
+  - name: eval5_crossing
+    width: 32
+    height: 32
+
+    agent_mode: crossing
+    env_mode: crossing
+
+    nb_agents: 1
+    nb_static_obstacles: 0
+    nb_moving_obstacles: 3
+
     max_steps: 200

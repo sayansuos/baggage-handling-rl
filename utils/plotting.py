@@ -1,3 +1,4 @@
+import math
 import os
 
 import cv2
@@ -5,11 +6,17 @@ import imageio.v2 as imageio
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import torch
+
+from configs.config import Experiment
+from simulator.environment.environment import Environment
 
 
 def plot_rewards(
-    df: pd.DataFrame, path: str, file_name: str, window: int = 10, render: bool = False
+    df: pd.DataFrame,
+    path: str | None,
+    file_name: str | None,
+    window: int = 10,
+    render: bool = False,
 ):
 
     for col in [
@@ -21,7 +28,7 @@ def plot_rewards(
     ]:
         df[f"{col}_smooth"] = df[col].rolling(window, min_periods=1).mean()
 
-    fig, ax = plt.subplots(figsize=(12, 6))
+    fig, ax = plt.subplots(figsize=(8, 4))
 
     ax.plot(
         df["episode"],
@@ -66,7 +73,8 @@ def plot_rewards(
     ax.legend()
 
     fig.tight_layout()
-    fig.savefig(f"{path}/{file_name}_rewards.png", dpi=300)
+    if path and file_name:
+        fig.savefig(f"{path}/{file_name}_rewards.png", dpi=300)
 
     if render:
         plt.show()
@@ -75,7 +83,11 @@ def plot_rewards(
 
 
 def plot_performances(
-    df: pd.DataFrame, path: str, file_name: str, window: int = 10, render: bool = False
+    df: pd.DataFrame,
+    path: str | None,
+    file_name: str | None,
+    window: int = 10,
+    render: bool = False,
 ):
     df["timeout_rate"] = 1 - df["success_rate"] - df["collision_rate"]
 
@@ -85,7 +97,7 @@ def plot_performances(
     fig, (ax1, ax2) = plt.subplots(
         2,
         1,
-        figsize=(12, 8),
+        figsize=(8, 8),
         sharex=True,
     )
 
@@ -135,10 +147,11 @@ def plot_performances(
     ax2.legend()
 
     fig.tight_layout()
-    fig.savefig(
-        f"{path}/{file_name}_performances.png",
-        dpi=300,
-    )
+    if path and file_name:
+        fig.savefig(
+            f"{path}/{file_name}_performances.png",
+            dpi=300,
+        )
 
     if render:
         plt.show()
@@ -147,30 +160,16 @@ def plot_performances(
 
 
 def plot_velocities(
-    df: pd.DataFrame, path: str, file_name: str, window: int = 10, render: bool = False
+    df: pd.DataFrame,
+    path: str | None,
+    file_name: str | None,
+    window: int = 10,
+    render: bool = False,
 ):
     for col in ["mean_v", "mean_abs_omega"]:
         df[f"{col}_smooth"] = df[col].rolling(window, min_periods=1).mean()
 
-    fig, ax = plt.subplots(figsize=(12, 6))
-
-    ax.plot(
-        df["episode"],
-        df["mean_v"],
-        alpha=0.3,
-        linewidth=1,
-        label="Mean v (raw)",
-        color="blue",
-    )
-
-    ax.plot(
-        df["episode"],
-        df["mean_abs_omega"],
-        alpha=0.3,
-        linewidth=1,
-        label="Mean |omega| (raw)",
-        color="orange",
-    )
+    fig, ax = plt.subplots(figsize=(8, 4))
 
     ax.plot(
         df["episode"], df["mean_v_smooth"], linewidth=1, label="Mean v", color="blue"
@@ -192,14 +191,59 @@ def plot_velocities(
     ax.legend()
 
     fig.tight_layout()
-    fig.savefig(
-        f"{path}/{file_name}_velocities.png",
-        dpi=300,
-    )
+    if path and file_name:
+        fig.savefig(
+            f"{path}/{file_name}_velocities.png",
+            dpi=300,
+        )
 
     if render:
         plt.show()
 
+    plt.close(fig)
+
+
+def plot_renders(
+    experiments: list[Experiment],
+    path: str,
+    file_name: str = "",
+    min_ncols: int = 2,
+):
+    """ """
+
+    os.makedirs(path, exist_ok=True)
+
+    n = len(experiments)
+    ncols = min(min_ncols, n)
+    nrows = math.ceil(n / ncols)
+
+    fig, axes = plt.subplots(
+        nrows,
+        ncols,
+        figsize=(5 * ncols, 3 * nrows),
+    )
+
+    axes = np.atleast_1d(axes).ravel()
+
+    for ax, exp in zip(axes, experiments):
+
+        env = Environment(
+            env_config=exp.env_config,
+            agent_config=exp.agent_config,
+            reward_config=exp.reward_config,
+            name=exp.name,
+        )
+        env.reset(1234)
+
+        env.render(ax=ax)
+        ax.set_title(exp.name)
+        ax.tick_params(axis="both", labelsize=6)
+
+    for ax in axes[len(experiments) :]:
+        ax.axis("off")
+
+    plt.tight_layout()
+    plt.savefig(f"{path}/{file_name}_renders.png", dpi=300)
     plt.close(fig)
 
 

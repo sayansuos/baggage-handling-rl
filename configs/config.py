@@ -13,17 +13,12 @@ class EnvConfig:
 
     nb_agents: int = 1
     nb_static_obstacles: int = 10
-    nb_moving_obstacles: int = 5
+    nb_moving_obstacles: int = 0
     nb_targets: int = 2
 
-    margin: int = 3
+    margin: int = 4
     max_attempts: int = 100
-    max_steps: int = 100
-
-    v_min_allowed: float = 0.0
-    v_max_allowed: float = 5.0
-    omega_min_allowed: float = -np.pi / 3
-    omega_max_allowed: float = np.pi / 3
+    max_steps: int = 300
 
     width_min: int = 1
     width_max: int = 20
@@ -38,8 +33,8 @@ class EnvConfig:
 class AgentConfig:
     v_min: float = 0.0
     v_max: float = 5.0
-    omega_min: float = -np.pi / 2
-    omega_max: float = np.pi / 2
+    omega_min: float = -np.pi / 3
+    omega_max: float = np.pi / 3
 
     radius: float = 0.5
     length_view: int = 11
@@ -54,7 +49,7 @@ class RewardConfig:
     goal_bonus: float = 400.0
     collision_malus: float = -100.0
     angular_malus: float = -2.0
-    safety_malus1: float = -1.0
+    safety_malus: float = -1.0
     safety_threshold: float = 2.0
 
 

@@ -1,4 +1,4 @@
-experiments:
+train_experiments:
   - name: exp1_empty
     env_config: exp1_empty
     agent_config: null
@@ -33,4 +33,47 @@ experiments:
     env_config: exp6_random_1
     agent_config: null
     reward_config: null
-    n_steps: 350_000
+    n_steps: 300_000
+
+  - name: exp7_random_2
+    env_config: exp7_random_2
+    agent_config: null
+    reward_config: null
+    n_steps: 300_000
+
+  - name: exp8_warehouse
+    env_config: exp8_warehouse
+    agent_config: null
+    reward_config: null
+    n_steps: 600_000
+
+eval_experiments:
+  - name: eval1_random_1
+    env_config: eval1_random_1
+    agent_config: null
+    reward_config: null
+    n_steps: null
+
+  - name: eval2_random_2
+    env_config: eval2_random_2
+    agent_config: null
+    reward_config: null
+    n_steps: null
+
+  - name: eval3_warehouse_1
+    env_config: eval3_warehouse_1
+    agent_config: null
+    reward_config: null
+    n_steps: null
+
+  - name: eval4_warehouse_2
+    env_config: eval4_warehouse_2
+    agent_config: null
+    reward_config: null
+    n_steps: null
+
+  - name: eval5_crossing
+    env_config: eval5_crossing
+    agent_config: null
+    reward_config: null
+    n_steps: null
