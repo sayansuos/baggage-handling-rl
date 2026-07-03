@@ -8,21 +8,16 @@ from configs.config import Experiment
 from rl.sac.sac import evaluate_sac, load_agent, run_sac
 from simulator.environment.environment import Environment
 from utils.logging import log_debug, log_rewards, log_train
-from utils.plotting import (
-    plot_animation,
-    plot_performances,
-    plot_rewards,
-    plot_velocities,
-)
+from utils.plotting import plot_animation, plot_figures
 
 
-def run_test(
+def run_demo(
     experiments: list[Experiment],
     best_exp: Experiment,
     render: bool = False,
     trained_agent_id: str = "agent_1",
 ):
-    """ """
+    """Run a trained policy on one episode for each experiment, with optional real-time rendering."""
 
     print(f"\n[ TEST ] {len(experiments)} experiment(s)\n")
 
@@ -78,11 +73,13 @@ def run_test(
 
 def run_animation(
     experiments: list[Experiment],
+    best_exp: Experiment,
+    path: str,
+    file_name: str,
     fps: int = 20,
+    trained_agent_id: str = "agent_1",
 ):
-    """
-    Run one episode per experiment and save the animation.
-    """
+    """Run one episode for each experiment and save the rendered trajectory as an animation."""
 
     print(f"\n[ SAVE ] {len(experiments)} experiment(s)\n")
 
@@ -92,7 +89,9 @@ def run_animation(
         print(f"[ START ] {exp.name}")
 
         env = Environment(exp.env_config, exp.agent_config, exp.reward_config, exp.name)
-        env.reset(seed=1234)
+        agent = load_agent(env, best_exp, trained_agent_id)
+        agent.load_checkpoints()
+        state, _ = env.reset(seed=1234)
 
         fig, ax = plt.subplots(figsize=(10, 8))
 
@@ -100,8 +99,19 @@ def run_animation(
         fig.canvas.draw()
         frames.append(np.asarray(fig.canvas.renderer.buffer_rgba()).copy())
 
-        while not env.done():
-            env.step()
+        while not env.dones[trained_agent_id]:
+            actions = {}
+            actions[trained_agent_id] = agent.choose_action(
+                state[trained_agent_id],
+                deterministic=True,
+            )
+            for amr in env.agents:
+                if amr.id != trained_agent_id:
+                    actions[amr.id] = None
+
+            next_state, _, _, _, _ = env.step(actions)
+            state = next_state
+
             env.render(ax)
             fig.canvas.draw()
             frame = np.asarray(fig.canvas.renderer.buffer_rgba()).copy()
@@ -111,7 +121,7 @@ def run_animation(
 
     plt.close(fig)
 
-    plot_animation(frames, "figures/test", "", fps)
+    plot_animation(frames, path, file_name, fps)
 
     print("\n[ SAVE ] completed\n")
 
@@ -123,7 +133,7 @@ def run_train_all(
     n_steps: int,
     chunk_steps: int,
 ):
-    """ """
+    """Train a single policy by alternating between multiple scenarios and log the training results."""
 
     np.random.seed(1234)
 
@@ -175,9 +185,7 @@ def run_train_all(
     log_debug(debugs, "logs/train", exp_name)
     df_rewards = log_rewards(histories, "logs/train", exp_name)
 
-    plot_performances(df_train, "figures/train", exp_name)
-    plot_velocities(df_train, "figures/train", exp_name)
-    plot_rewards(df_rewards, "figures/train", exp_name)
+    plot_figures(df_train, df_rewards, "figures/train", exp_name)
 
 
 def run_train(
@@ -186,7 +194,7 @@ def run_train(
     n_steps: int = 200_000,
     chunk_steps: int = 2_000,
 ):
-    """ """
+    """Train a policy for each experiment and save the corresponding logs and figures."""
 
     np.random.seed(1234)
 
@@ -201,10 +209,7 @@ def run_train(
             df_train = log_train(history, "logs/train", exp.name)
             log_debug(debug, "logs/train", exp.name)
             df_rewards = log_rewards(history, "logs/train", exp.name)
-
-            plot_performances(df_train, "figures/train", exp.name)
-            plot_velocities(df_train, "figures/train", exp.name)
-            plot_rewards(df_rewards, "figures/train", exp.name)
+            plot_figures(df_train, df_rewards, "figures/train", exp.name)
 
             previous_exp = exp
 
@@ -226,7 +231,7 @@ def run_validation(
     n_render: int = 5,
     agent=None,
 ):
-    """ """
+    """Evaluate a trained policy on the validation scenarios and save the resulting metrics and animations."""
 
     np.random.seed(1234)
 
@@ -264,6 +269,7 @@ def run_evaluation(
     n_episodes: int = 100,
     n_render: int = 5,
 ):
+    """Evaluate a trained policy on a set of scenarios and save the corresponding performance metrics and animations."""
 
     np.random.seed(1234)
 
