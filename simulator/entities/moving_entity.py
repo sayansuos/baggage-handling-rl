@@ -11,7 +11,9 @@ from simulator.geometry import (
 
 
 class MovingEntity(Entity):
-    """Base class for circular entities that can move within the environment."""
+    """
+    Base class for circular entities that can move within the environment.
+    """
 
     def __init__(self, num: int | None = None):
         """
@@ -32,9 +34,15 @@ class MovingEntity(Entity):
         self.path_index: int = 0
 
     def step(self):
-        """Advance the entity to the next position along its predefined path."""
+        """
+        Advance the entity to the next position along its predefined path.
+        """
 
-        self.path_index += 1
+        if self.path_index < len(self.path) - 1:
+            self.path_index += 1
+        else:
+            self.path_index = 0
+
         self.current_position = self.path[self.path_index]
 
     def render(
@@ -59,19 +67,25 @@ class MovingEntity(Entity):
 
     @property
     def id(self) -> str:
-        """Advance the entity to the next position along its predefined path."""
+        """
+        Advance the entity to the next position along its predefined path.
+        """
 
         return f"moving_obstacle_{self.num}"
 
     @property
     def bounds(self) -> tuple[float, float, float, float]:
-        """Return the bounding box of the entity at its current position."""
+        """
+        Return the bounding box of the entity at its current position.
+        """
 
         assert self.current_position is not None
         return self.bounds_at(self.current_position)
 
     def bounds_at(self, pos: tuple[float, float]) -> tuple[float, float, float, float]:
-        """Return the bounding box of the entity at a given position."""
+        """
+        Return the bounding box of the entity at a given position.
+        """
 
         x, y = pos
         return (
@@ -82,19 +96,25 @@ class MovingEntity(Entity):
         )
 
     def get_relative_position(self, pos: tuple[float, float]) -> tuple[float, float]:
-        """Return the relative position of the entity with respect to a given point."""
+        """
+        Return the relative position of the entity with respect to a given point.
+        """
 
         assert self.current_position is not None
         return get_relative_position(pos, self.current_position)
 
     def get_relative_distance(self, pos: tuple[float, float]) -> float:
-        """Return the Euclidean distance between the entity and a given point."""
+        """
+        Return the Euclidean distance between the entity and a given point.
+        """
 
         assert self.current_position is not None
         return get_relative_distance(self.current_position, pos)
 
     def get_distance(self, other: StaticEntity | MovingEntity) -> float:
-        """Compute the distance between the entity and another entity."""
+        """
+        Compute the distance between the entity and another entity.
+        """
 
         return other._get_distance_circle(self)
 
@@ -104,7 +124,9 @@ class MovingEntity(Entity):
         new_pos: tuple[float, float],
         min_dist: float,
     ) -> bool:
-        """Check whether the entity would collide with another entity at the given positions."""
+        """
+        Check whether the entity would collide with another entity at the given positions.
+        """
 
         assert other.current_position
         return bool(
@@ -112,7 +134,9 @@ class MovingEntity(Entity):
         )
 
     def _get_distance_circle(self, circle: MovingEntity) -> float:
-        """Compute the distance between two circular entities."""
+        """
+        Compute the distance between two circular entities.
+        """
 
         assert self.current_position is not None
         assert circle.current_position is not None
@@ -123,7 +147,9 @@ class MovingEntity(Entity):
         return get_distance_circle_circle(cx1, cy1, radius1, cx2, cy2, radius2)
 
     def _get_distance_rectangle(self, rect: StaticEntity) -> float:
-        """Compute the distance between the entity and a rectangular obstacle."""
+        """
+        Compute the distance between the entity and a rectangular obstacle.
+        """
 
         assert self.current_position is not None
         assert rect.current_position is not None
@@ -139,7 +165,9 @@ class MovingEntity(Entity):
         pos_other: tuple[float, float],
         min_dist: float,
     ) -> bool:
-        """Check whether two circular entities collide at the given positions."""
+        """
+        Check whether two circular entities collide at the given positions.
+        """
 
         cx1, cy1 = pos_self
         radius1 = self.radius
@@ -155,7 +183,9 @@ class MovingEntity(Entity):
         pos_other: tuple[float, float],
         min_dist: float,
     ) -> bool:
-        """Check whether the entity collides with a rectangular obstacle at the given positions."""
+        """
+        Check whether the entity collides with a rectangular obstacle at the given positions.
+        """
 
         x_min, y_min, x_max, y_max = rect.get_bounds_at(pos_other)
         cx, cy = pos_self
@@ -164,7 +194,9 @@ class MovingEntity(Entity):
         return dist <= min_dist
 
     def _get_next_pos(self, v: float, dt: float = 1) -> tuple[float, float]:
-        """Compute the next position of the entity from its current state."""
+        """
+        Compute the next position of the entity from its current state.
+        """
 
         assert self.current_position is not None
         x, y = self.current_position

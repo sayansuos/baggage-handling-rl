@@ -2,7 +2,6 @@ import numpy as np
 
 from configs.config import RewardConfig
 from simulator.entities.agent import Agent
-from simulator.geometry import get_heading_error
 
 
 def compute_rewards(

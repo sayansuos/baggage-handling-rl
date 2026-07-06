@@ -19,20 +19,8 @@ from simulator.spaces import get_multi_spaces
 
 class Environment(gym.Env):
     """
-    Multi-agent reinforcement learning environment.
-
-    The environment contains:
-    - autonomous agents
-    - static rectangular obstacles
-    - moving circular obstacles
-
-    Each observation is decentralized:
-    an agent only observes its own local state.
-
-    The environment follows the Gymnasium API.
+    Multi-agent navigation environment following the Gymnasium API.
     """
-
-    metadata = {"render_modes": ["human"]}
 
     def __init__(
         self,
@@ -49,7 +37,6 @@ class Environment(gym.Env):
 
         # Initialization
 
-        # self.fig, self.ax = None, None
         self.env_config = env_config
         self.agent_config = agent_config
         self.rewards_config = reward_config
@@ -110,9 +97,17 @@ class Environment(gym.Env):
 
         for agent in self.agents:
 
-            local_map = self.grid_map.get_local_grid(
+            map = self.grid_map.get_local_grid(
                 agent, current_grid, self.agent_config.length_view
             )[np.newaxis, :, :]
+            if agent.local_maps == []:
+                local_maps = [map for _ in range(self.agent_config.n_maps)]
+            else:
+                local_maps = agent.local_maps
+                local_maps.pop(0)
+                local_maps.append(map)
+            agent.local_maps = local_maps
+
             goal_relative_distance = get_normalized_relative_distance(
                 agent._goal_relative_distance,
                 self.env_config.width,
@@ -129,7 +124,7 @@ class Environment(gym.Env):
             orientation = np.array(list(agent._orientation), dtype=np.float32)
 
             obs[agent.id] = {
-                "local_map": local_map,
+                "local_map": np.concatenate(agent.local_maps, axis=0),
                 "goal_relative_distance": goal_relative_distance,
                 "heading_error": heading_error,
                 "motion": motion,

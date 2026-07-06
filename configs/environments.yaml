@@ -6,9 +6,9 @@ train_environments:
     agent_mode: random
     env_mode: random
 
-    nb_agents: 1
+    nb_agents: 2
     nb_static_obstacles: 0
-    nb_moving_obstacles: 0
+    nb_moving_obstacles: 1
     nb_targets: 2
 
     margin: 3

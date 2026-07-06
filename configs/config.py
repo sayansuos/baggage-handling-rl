@@ -31,6 +31,9 @@ class EnvConfig:
 
 @dataclass
 class AgentConfig:
+
+    n_maps: int = 3
+
     v_min: float = 0.0
     v_max: float = 5.0
     omega_min: float = -np.pi / 3

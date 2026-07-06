@@ -17,7 +17,9 @@ def run_demo(
     render: bool = False,
     trained_agent_id: str = "agent_1",
 ):
-    """Run a trained policy on one episode for each experiment, with optional real-time rendering."""
+    """
+    Run a trained policy on one episode for each experiment, with optional real-time rendering.
+    """
 
     print(f"\n[ TEST ] {len(experiments)} experiment(s)\n")
 
@@ -28,6 +30,7 @@ def run_demo(
         fig, ax = None, None
 
     for exp in experiments:
+
         print(f"[ START ] {exp.name}")
 
         env = Environment(
@@ -46,7 +49,9 @@ def run_demo(
             plt.pause(0.001)
 
         while not env.dones[trained_agent_id]:
+
             actions = {}
+
             for amr in env.agents:
                 actions[amr.id] = agent.choose_action(
                     state[amr.id],
@@ -77,28 +82,33 @@ def run_animation(
     fps: int = 20,
     trained_agent_id: str = "agent_1",
 ):
-    """Run one episode for each experiment and save the rendered trajectory as an animation."""
+    """
+    Run one episode for each experiment and save the rendered trajectory as an animation.
+    """
 
     print(f"\n[ SAVE ] {len(experiments)} experiment(s)\n")
 
     frames = []
 
     for exp in experiments:
+
         print(f"[ START ] {exp.name}")
 
         env = Environment(exp.env_config, exp.agent_config, exp.reward_config, exp.name)
         agent = load_agent(env, best_exp, trained_agent_id)
         agent.load_checkpoints()
+
         state, _ = env.reset(seed=1234)
 
         fig, ax = plt.subplots(figsize=(10, 8))
-
         env.render(ax)
         fig.canvas.draw()
         frames.append(np.asarray(fig.canvas.renderer.buffer_rgba()).copy())
 
         while not env.dones[trained_agent_id]:
+
             actions = {}
+
             for amr in env.agents:
                 actions[amr.id] = agent.choose_action(
                     state[amr.id],
@@ -130,7 +140,9 @@ def run_train_all(
     n_steps: int = 200_000,
     chunk_steps: int = 2_000,
 ):
-    """Train a single policy by alternating between multiple scenarios and log the training results."""
+    """
+    Train a single policy by alternating between multiple scenarios and log the training results.
+    """
 
     np.random.seed(1234)
 
@@ -141,6 +153,7 @@ def run_train_all(
     while total_steps < n_steps:
 
         env = random.choice(experiments)
+
         print(
             f"[ TRAIN MIXED ] "
             f"Step {total_steps:06d}/{n_steps:06d} | "
@@ -194,16 +207,19 @@ def run_train(
     previous_exp: Experiment | None = None,
     trained_agent_id: str = "agent_1",
 ):
-    """Train a policy for each experiment and save the corresponding logs and figures."""
+    """
+    Train a policy for each experiment and save the corresponding logs and figures.
+    """
 
     np.random.seed(1234)
-
     start = time.perf_counter()
+
     print(f"\n[ TRAIN ] {len(experiments)} experiment(s)\n")
 
     for exp in experiments:
 
         if "mixed_curriculum" not in exp.name:
+
             history, debug, _ = run_sac(
                 exp=exp, previous_exp=previous_exp, trained_agent_id=trained_agent_id
             )
@@ -211,11 +227,13 @@ def run_train(
             df_train = log_train(history, "logs/train", exp.name)
             log_debug(debug, "logs/train", exp.name)
             df_rewards = log_rewards(history, "logs/train", exp.name)
+
             plot_figures(df_train, df_rewards, "figures/train", exp.name)
 
             previous_exp = exp
 
         else:
+
             run_train_all(
                 experiments=experiments,
                 previous_exp=previous_exp,
@@ -238,11 +256,13 @@ def run_validation(
     n_render: int = 5,
     agent=None,
 ):
-    """Evaluate a trained policy on the validation scenarios and save the resulting metrics and animations."""
+    """
+    Evaluate a trained policy on the validation scenarios and save the resulting metrics and animations.
+    """
 
     np.random.seed(1234)
-
     start = time.perf_counter()
+
     print(f"\n[ VALIDATION ] {len(experiments)} experiment(s)\n")
 
     for exp in experiments:
@@ -275,12 +295,15 @@ def run_evaluation(
     policy: Experiment,
     n_episodes: int = 100,
     n_render: int = 5,
+    trained_agent_id: str = "agent_1",
 ):
-    """Evaluate a trained policy on a set of scenarios and save the corresponding performance metrics and animations."""
+    """
+    Evaluate a trained policy on a set of scenarios and save the corresponding performance metrics and animations.
+    """
 
     np.random.seed(1234)
-
     start = time.perf_counter()
+
     print(f"\n[ EVALUATION ] {len(experiments)} experiment(s)\n")
 
     for scenario in experiments:
@@ -295,8 +318,10 @@ def run_evaluation(
 
         history, frames = evaluate_sac(
             exp=exp,
+            agent=None,
             n_episodes=n_episodes,
             n_render=n_render,
+            trained_agent_id=trained_agent_id,
         )
 
         log_train(history, "logs/evaluation", scenario.name)

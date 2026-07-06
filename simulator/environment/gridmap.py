@@ -9,35 +9,7 @@ from simulator.entities.static_entity import StaticEntity
 
 
 class GridMap:
-    """
-    Occupancy grid representation of the environment.
-
-    This class converts the continuous simulation world into a
-    discrete 2D occupancy grid.
-
-    The occupancy grid uses the following convention:
-    - 0 → free cell
-    - 1 → occupied cell
-
-    Attributes
-    ----------
-    env_config : EnvConfig
-        Environment configuration parameters.
-    agent_config : AgentConfig
-        Agent configuration parameters.
-    static_obstacles : list[StaticEntity]
-        List of static obstacles in the environment.
-    moving_obstacles : list[MovingEntity]
-        List of dynamic obstacles in the environment.
-    agents : list[Agent]
-        List of agents in the environment.
-    _rows : int
-        Number of rows in the occupancy grid.
-    _columns : int
-        Number of columns in the occupancy grid.
-    _grid : np.ndarray
-        Static occupancy grid containing only static obstacles.
-    """
+    """Manage the occupancy grid and the local observations of the agents."""
 
     def __init__(
         self,

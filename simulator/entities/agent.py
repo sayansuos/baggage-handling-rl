@@ -7,11 +7,13 @@ from simulator.geometry import get_relative_distance
 
 
 class Agent(MovingEntity):
-    """ """
+    """
+    Mobile agent controlled by a navigation policy.
+    """
 
     def __init__(self, agent_config: AgentConfig, num: int | None = None):
         """
-        Builder
+        Constructor
         """
 
         super().__init__(num=num)
@@ -20,13 +22,16 @@ class Agent(MovingEntity):
         self.target_index: int = 0
         self.radius = agent_config.radius
         self.length_view: int = agent_config.length_view
+        self.local_maps: list[np.ndarray] = []
 
         self.state: str = "active"
         self.travel_time: int = 0
         self._closest_dist: float = np.inf
 
     def step(self, action: dict, dt: float = 1) -> tuple[float, float, int]:
-        """ """
+        """
+        Update the agent state according to the applied action.
+        """
 
         self.old_v = self.v
         self.old_position = self.current_position
@@ -62,14 +67,16 @@ class Agent(MovingEntity):
         height_max: float,
         color: str | tuple[float, float, float, float] = "red",
     ):
-        """ """
+        """
+        Render the agent, its targets, trajectory, and field of view.
+        """
 
         assert self.start_position is not None
         x, y = self.start_position
         circle = Circle(
             (x, y),
             0.5,
-            facecolor="white",
+            facecolor=color,
             edgecolor=color,
             linewidth=2,
             alpha=0.1,
@@ -77,15 +84,16 @@ class Agent(MovingEntity):
         ax.add_patch(circle)
 
         if self.target_positions:
-            for pos in self.target_positions:
+            for i, pos in enumerate(self.target_positions):
+                face_color = color if i < self.target_index else "white"
                 tx, ty = pos
                 target = Circle(
                     (tx, ty),
                     0.5,
-                    facecolor="white",
+                    facecolor=face_color,
                     edgecolor=color,
                     linewidth=2,
-                    alpha=0.1,
+                    alpha=0.2,
                 )
                 ax.add_patch(target)
 
@@ -123,10 +131,9 @@ class Agent(MovingEntity):
         ax.add_patch(rect)
 
         if hasattr(self, "path"):
-            if len(self.path) >= 2:
-                xs = [p[0] for p in self.path[self.path_index :]]
-                ys = [p[1] for p in self.path[self.path_index :]]
-                ax.plot(xs, ys, "--", color=color, alpha=0.1, linewidth=2)
+            xs = [p[0] for p in self.path[self.path_index :]]
+            ys = [p[1] for p in self.path[self.path_index :]]
+            ax.plot(xs, ys, "--", color=color, alpha=0.1, linewidth=2)
 
     def get_vision_field(
         self,
@@ -135,7 +142,9 @@ class Agent(MovingEntity):
         height_min: float,
         height_max: float,
     ) -> tuple[float, float, float, float]:
-        """ """
+        """
+        Return the bounds of the agent's local field of view.
+        """
 
         assert self.current_position is not None
         x, y = self.current_position
@@ -163,27 +172,38 @@ class Agent(MovingEntity):
 
     @property
     def id(self) -> str:
-        """ """
+        """
+        Return the unique identifier of the agent.
+        """
 
         return f"agent_{self.num}"
 
     @property
     def _goal_relative_position(self):
-        """ """
+        """
+        Return the relative position of the current target.
+        """
+
         if not self.target_positions:
             return (0, 0)
         return self.get_relative_position(self.target_positions[self.target_index])
 
     @property
     def _goal_relative_distance(self):
-        """ """
+        """
+        Return the distance to the current target.
+        """
+
         if not self.target_positions:
             return 0
         return self.get_relative_distance(self.target_positions[self.target_index])
 
     @property
     def _old_goal_relative_distance(self):
-        """ """
+        """
+        Return the previous distance to the current target.
+        """
+
         assert self.old_position is not None
         if not self.target_positions:
             return 0
@@ -193,11 +213,16 @@ class Agent(MovingEntity):
 
     @property
     def _motion(self) -> tuple[float, float]:
-        """ """
+        """
+        Return the current linear and angular velocities.
+        """
+
         return (self.v, self.omega)
 
     @property
     def _orientation(self) -> tuple[float, float]:
-        """ """
+        """
+        Return the current orientation as a unit vector.
+        """
 
         return np.cos(self.theta), np.sin(self.theta)

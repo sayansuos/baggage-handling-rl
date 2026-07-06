@@ -13,16 +13,16 @@ class FeatureExtractor(torch.nn.Module):
     def __init__(
         self,
         map_shape: tuple,
-        map_channels: int = 1,
-        obs_size: int = 7,
-        feature_size: int = 256,
+        obs_size: int,
+        feature_size: int,
     ):
         """
         Constructor
         """
+
         super().__init__()
         self.cnn = torch.nn.Sequential(
-            torch.nn.Conv2d(map_channels, 4, kernel_size=3, padding=1),
+            torch.nn.Conv2d(map_shape[0], 4, kernel_size=3, padding=1),
             torch.nn.ReLU(),
             torch.nn.AdaptiveAvgPool2d((3, 3)),
             torch.nn.Flatten(),
@@ -73,12 +73,14 @@ class ActorNetwork(torch.nn.Module):
         min_action: np.ndarray,
         max_action: np.ndarray,
         map_shape: tuple,
-        n_actions: int = 2,
-        feature_size: int = 256,
-        hidden_size: int = 128,
-        lr: float = 3e-5,
-        reparam_noise=1e-6,
-        chkpt_path="weights/actor.pt",
+        map_channels: int,
+        obs_size: int,
+        n_actions: int,
+        feature_size: int,
+        hidden_size: int,
+        lr: float,
+        reparam_noise: float,
+        chkpt_path: str,
     ):
         """
         Constructor
@@ -90,7 +92,11 @@ class ActorNetwork(torch.nn.Module):
         self.reparam_noise = reparam_noise
         self.checkpoint_path = chkpt_path
 
-        self.features = FeatureExtractor(map_shape, feature_size=feature_size)
+        self.features = FeatureExtractor(
+            map_shape=map_shape,
+            obs_size=obs_size,
+            feature_size=feature_size,
+        )
 
         self.actor = torch.nn.Sequential(
             torch.nn.Linear(feature_size, hidden_size),
@@ -186,11 +192,13 @@ class CriticNetwork(torch.nn.Module):
     def __init__(
         self,
         map_shape: tuple,
-        feature_size: int = 256,
-        hidden_size: int = 128,
-        n_actions: int = 2,
-        lr: float = 3e-4,
-        chkpt_path: str = "weights/critic.pt",
+        map_channels: int,
+        obs_size: int,
+        feature_size: int,
+        hidden_size: int,
+        n_actions: int,
+        lr: float,
+        chkpt_path: str,
     ):
         """
         Constructor
@@ -200,7 +208,11 @@ class CriticNetwork(torch.nn.Module):
         self.lr = lr
         self.checkpoint_path = chkpt_path
 
-        self.features = FeatureExtractor(map_shape, feature_size=feature_size)
+        self.features = FeatureExtractor(
+            map_shape=map_shape,
+            obs_size=obs_size,
+            feature_size=feature_size,
+        )
 
         self.critic = torch.nn.Sequential(
             torch.nn.Linear(feature_size + n_actions, hidden_size),

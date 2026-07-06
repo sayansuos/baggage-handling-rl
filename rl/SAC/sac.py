@@ -11,15 +11,12 @@ warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 
 def load_agent(env: Environment, exp: Experiment, trained_agent_id: str) -> SACAgent:
-    """Create a SAC agent with the observation and action dimensions of the environment."""
+    """
+    Create a SAC agent with the observation and action dimensions of the environment.
+    """
 
     agent = SACAgent(
-        env_name=f"{exp.name}",
-        map_shape=(
-            1,
-            exp.agent_config.length_view,
-            exp.agent_config.length_view,
-        ),
+        exp=exp,
         action_space=env.action_space[trained_agent_id],
     )
     return agent
@@ -33,7 +30,9 @@ def run_sac(
     update_frequency: int = 4,
     reset_frequency: int = 20,
 ):
-    """ """
+    """
+    Train a SAC agent on an experiment, optionally initializing it from a previous policy.
+    """
 
     # Create environment and SAC Agent
 
@@ -72,30 +71,37 @@ def run_sac(
 
     while total_steps < exp.n_steps:
         episode += 1
+
         if episode % reset_frequency == 0:
             env.static_obstacles = env.env_manager.generate_static_obstacles()
+
         state, _ = env.reset()
         score = 0.0
 
         if env.episode % 20 == 0:
             env.debug = True
+
         else:
             env.debug = False
 
         while not env.dones[trained_agent_id] and total_steps < exp.n_steps:
+
             actions = {}
 
-            # Warmup to fill the RB with random data
-            if total_steps < warmup_steps:
-                actions[trained_agent_id] = env.action_space[trained_agent_id].sample()
-
-            # Then, we use the policy to fill the RB
-            else:
-                actions[trained_agent_id] = agent.choose_action(state[trained_agent_id])
-
             for amr in env.agents:
-                if amr.id != trained_agent_id:
-                    actions[amr.id] = None
+
+                if amr.id == trained_agent_id:
+                    # Warmup to fill the RB with random data
+                    if total_steps < warmup_steps:
+                        actions[amr.id] = env.action_space[trained_agent_id].sample()
+                    # Then, we use the policy to fill the RB
+                    else:
+                        actions[amr.id] = agent.choose_action(state[amr.id])
+
+                else:
+                    actions[amr.id] = agent.choose_action(
+                        state[amr.id], deterministic=True
+                    )
 
             next_state, rewards, _, _, info = env.step(actions)
 
@@ -165,12 +171,14 @@ def run_sac(
 
 def evaluate_sac(
     exp: Experiment,
-    agent: SACAgent | None = None,
-    n_episodes: int = 20,
-    n_render: int = 0,
-    trained_agent_id: str = "agent_1",
+    agent: SACAgent | None,
+    n_episodes: int,
+    n_render: int,
+    trained_agent_id: str,
 ) -> tuple[list[dict], list[np.ndarray] | None]:
-    """ """
+    """
+    Evaluate a trained SAC agent over multiple episodes and optionally record rendered frames.
+    """
 
     env = Environment(
         exp.env_config,
@@ -204,14 +212,12 @@ def evaluate_sac(
             frames.append(np.asarray(fig.canvas.renderer.buffer_rgba()).copy())
 
         while not env.dones[trained_agent_id]:
+
             actions = {}
-            actions[trained_agent_id] = agent.choose_action(
-                state[trained_agent_id],
-                deterministic=True,
-            )
+
             for amr in env.agents:
-                if amr.id != trained_agent_id:
-                    actions[amr.id] = None
+
+                actions[amr.id] = agent.choose_action(state[amr.id])
 
             next_state, _, _, _, info = env.step(actions)
             state = next_state

@@ -40,7 +40,7 @@ def compute_astar_paths(
 
         if min_length is not None and len(full_path) > 1:
 
-            back_and_forth = full_path[::-1] + full_path
+            back_and_forth = full_path + full_path[::-1]
             extended_path = []
 
             while len(extended_path) < min_length:
