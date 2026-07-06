@@ -10,35 +10,42 @@ from utils.plotting import plot_renders
 
 if __name__ == "__main__":
 
-    MODE = "animation"
+    MODE = "demo"
     train_experiments = load_experiments()
     eval_experiments = load_experiments(obj="eval")
 
     if MODE == "demo":
         run_demo(
-            experiments=train_experiments + eval_experiments,
+            experiments=eval_experiments,
             best_exp=train_experiments[-1],
             render=True,
         )
+        # run_demo(
+        #     experiments=train_experiments + eval_experiments,
+        #     best_exp=train_experiments[-1],
+        #     render=True,
+        # )
 
     elif MODE == "animation":
-        plot_renders(
-            experiments=train_experiments, path="figures/demo", file_name="train"
-        )
-        plot_renders(
-            experiments=eval_experiments, path="figures/demo", file_name="eval"
-        )
+        # plot_renders(
+        #     experiments=train_experiments, path="figures/demo", file_name="train"
+        # )
+        # plot_renders(
+        #     experiments=eval_experiments, path="figures/demo", file_name="eval"
+        # )
         run_animation(
             experiments=train_experiments,
             best_exp=train_experiments[-1],
             path="figures/demo",
             file_name="train",
+            fps=10,
         )
         run_animation(
             experiments=eval_experiments,
             best_exp=train_experiments[-1],
             path="figures/demo",
             file_name="eval",
+            fps=10,
         )
 
     elif MODE == "train":

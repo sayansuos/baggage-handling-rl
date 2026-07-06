@@ -1,124 +1,132 @@
 import numpy as np
-from matplotlib.patches import Rectangle
+from matplotlib.patches import Circle, Rectangle
 
 from configs.config import AgentConfig
 from simulator.entities.moving_entity import MovingEntity
+from simulator.geometry import get_relative_distance
 
 
 class Agent(MovingEntity):
-    """
-    Represents an autonomous moving agent in the environment.
-
-    Agents are circular moving entities capable of:
-    - navigating
-    - perceiving their surroundings
-    - reaching target positions
-
-    Attributes
-    ----------
-    Attributes
-    ----------
-    num : int
-        Unique identifier of the entity.
-    current_position : tuple[float, float]
-        Current center position of the entity.
-        Format: [x, y].
-    old_position : tuple[int, int]
-        Previous center position of the entity.
-    start_position : tuple[float, float]
-        Initial position of the entity.
-    target_positions : list[tuple[float, float]]
-        List of target positions to reach.
-    radius : float
-        Radius of the circular entity.
-    theta : float
-        Current orientation angle in radians.
-    v : float
-        Linear velocity of the entity.
-    omega : float
-        Angular velocity of the entity.
-    path : list[tuple]
-        Path of the entity.
-    path_index : int
-        Position index in the path of the entity.
-    length_view : int
-        Perception range around the agent.
-    state : bool
-        State of the agent, either 'active', 'terminated' or 'truncated'.
-    travel_time : int
-        Travel time of the agent (in seconds).
-    """
+    """ """
 
     def __init__(self, agent_config: AgentConfig, num: int | None = None):
         """
         Builder
         """
+
         super().__init__(num=num)
+
+        self.old_position: tuple[float, float] | None = None
+        self.target_index: int = 0
         self.radius = agent_config.radius
         self.length_view: int = agent_config.length_view
+
         self.state: str = "active"
         self.travel_time: int = 0
-
         self._closest_dist: float = np.inf
-        self._old_closest_dist: float = np.inf
 
-    def __str__(self):
-        return f"agent_{self.num}"
-
-    @property
-    def id(self) -> str:
-        """
-        Return the identifier of the agent.
-        """
-
-        return f"agent_{self.num}"
-
-    def move(self, v: float, omega: float, dt: float = 1):
-        """
-        Update the agent's position regarding a given velocity.
-        """
+    def step(self, action: dict, dt: float = 1) -> tuple[float, float, int]:
+        """ """
 
         self.old_v = self.v
         self.old_position = self.current_position
+
+        # Update position
+
+        v, omega = action[self.id]
         self.v = v
         self.omega = omega
         self.theta += omega * dt
-        self.current_position = self._get_next_pos(v, dt)
 
-    def step(self) -> tuple[int, int] | tuple[float, float] | None:
-        """
-        Move the entity one step along its current path and reset it.
-        """
+        self.current_position = self._get_next_pos(v, dt)
+        self.path.append(self.current_position)
+
+        # Update states
+
+        motion_count = 0
+        if self.state == "active":
+            self.travel_time += 1
+            motion_count = 1
+
+            if self._goal_relative_distance < 0.5:
+                self.state = "reached"
+
+        return (v, abs(self.omega), motion_count)
+
+    def render(
+        self,
+        ax,
+        width_min: float,
+        width_max: float,
+        height_min: float,
+        height_max: float,
+        color: str | tuple[float, float, float, float] = "red",
+    ):
+        """ """
 
         assert self.start_position is not None
+        x, y = self.start_position
+        circle = Circle(
+            (x, y),
+            0.5,
+            facecolor="white",
+            edgecolor=color,
+            linewidth=2,
+            alpha=0.1,
+        )
+        ax.add_patch(circle)
 
-        self.old_position = self.current_position
-        self.path_index += 1
+        if self.target_positions:
+            for pos in self.target_positions:
+                tx, ty = pos
+                target = Circle(
+                    (tx, ty),
+                    0.5,
+                    facecolor="white",
+                    edgecolor=color,
+                    linewidth=2,
+                    alpha=0.1,
+                )
+                ax.add_patch(target)
 
-        if self.path_index >= len(self.path) - 1:
-            self.path = self.path[::-1]
-            self.path_index = 0
-            # if self.state == "active":
-            #     self.state = "reached"
+        assert self.current_position is not None
+        x, y = self.current_position
+        circle = Circle(
+            (x, y),
+            self.radius,
+            facecolor=color,
+            edgecolor=color,
+            linewidth=0,
+        )
+        ax.add_patch(circle)
+        ax.arrow(
+            x,
+            y,
+            self.radius * np.cos(self.theta),
+            self.radius * np.sin(self.theta),
+            head_width=0.1,
+            head_length=0.5,
+            length_includes_head=True,
+            color="red",
+        )
 
-        if self.target_positions[self.target_index] == self.current_position:
-            self.target_index += 1
+        x_min, y_min, x_max, y_max = self.get_vision_field(
+            width_min, width_max, height_min, height_max
+        )
+        rect = Rectangle(
+            (x_min, y_min),
+            x_max - x_min,
+            y_max - y_min,
+            facecolor=color,
+            alpha=0.1,
+        )
+        ax.add_patch(rect)
 
-            if self.target_index >= len(self.target_positions):
-                self.target_positions = self.target_positions[::-1]
-                self.target_positions.append(self.start_position)
-                self.start_position = self.target_positions.pop(0)
-                self.target_index = 0
-
-        try:
-            self.current_position = self.path[self.path_index]
-
-        except IndexError:
-            print(f"path length = {len(self.path)}")
-            print(f"path_index = {self.path_index}")
-            raise
-
-        return None
+        if hasattr(self, "path"):
+            if len(self.path) >= 2:
+                xs = [p[0] for p in self.path[self.path_index :]]
+                ys = [p[1] for p in self.path[self.path_index :]]
+                ax.plot(xs, ys, "--", color=color, alpha=0.1, linewidth=2)
 
     def get_vision_field(
         self,
@@ -127,12 +135,7 @@ class Agent(MovingEntity):
         height_min: float,
         height_max: float,
     ) -> tuple[float, float, float, float]:
-        """
-        Compute the clipped perception area around the agent.
-
-        The perception area is represented as an axis-aligned
-        bounding box centered on the agent.
-        """
+        """ """
 
         assert self.current_position is not None
         x, y = self.current_position
@@ -158,60 +161,43 @@ class Agent(MovingEntity):
         )
         return x_min, y_min, x_max, y_max
 
-    def render(
-        self,
-        ax,
-        width_min: float,
-        width_max: float,
-        height_min: float,
-        height_max: float,
-        color: str | tuple[float, float, float, float] = "red",
-    ):
-        """
-        Default render method for moving agents.
-        """
+    @property
+    def id(self) -> str:
+        """ """
 
-        super().render(ax, color=color)
-        x_min, y_min, x_max, y_max = self.get_vision_field(
-            width_min, width_max, height_min, height_max
+        return f"agent_{self.num}"
+
+    @property
+    def _goal_relative_position(self):
+        """ """
+        if not self.target_positions:
+            return (0, 0)
+        return self.get_relative_position(self.target_positions[self.target_index])
+
+    @property
+    def _goal_relative_distance(self):
+        """ """
+        if not self.target_positions:
+            return 0
+        return self.get_relative_distance(self.target_positions[self.target_index])
+
+    @property
+    def _old_goal_relative_distance(self):
+        """ """
+        assert self.old_position is not None
+        if not self.target_positions:
+            return 0
+        return get_relative_distance(
+            self.old_position, self.target_positions[self.target_index]
         )
-        rect = Rectangle(
-            (x_min, y_min),
-            x_max - x_min,
-            y_max - y_min,
-            facecolor=color,
-            alpha=0.1,
-        )
-        ax.add_patch(rect)
 
     @property
     def _motion(self) -> tuple[float, float]:
-        """
-        Return the current motion state of the agent.
-
-        The motion state contains the linear and angular velocities.
-        """
+        """ """
         return (self.v, self.omega)
 
     @property
     def _orientation(self) -> tuple[float, float]:
-        """
-        Return the current orientation of the agent.
-
-        The orientation is encoded using the cosine and sine
-        of the heading angle in order to avoid angular
-        discontinuities.
-        """
+        """ """
 
         return np.cos(self.theta), np.sin(self.theta)
-
-    def _get_next_pos(self, v: float, dt: float = 1) -> tuple[float, float]:
-        """
-        Regarding the agent's next position regarding its velocity.
-        """
-
-        assert self.current_position is not None
-        x, y = self.current_position
-        x += v * np.cos(self.theta) * dt
-        y += v * np.sin(self.theta) * dt
-        return x, y

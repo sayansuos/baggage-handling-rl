@@ -47,13 +47,11 @@ def run_demo(
 
         while not env.dones[trained_agent_id]:
             actions = {}
-            actions[trained_agent_id] = agent.choose_action(
-                state[trained_agent_id],
-                deterministic=True,
-            )
             for amr in env.agents:
-                if amr.id != trained_agent_id:
-                    actions[amr.id] = None
+                actions[amr.id] = agent.choose_action(
+                    state[amr.id],
+                    deterministic=True,
+                )
 
             next_state, _, _, _, _ = env.step(actions)
             state = next_state
@@ -101,13 +99,11 @@ def run_animation(
 
         while not env.dones[trained_agent_id]:
             actions = {}
-            actions[trained_agent_id] = agent.choose_action(
-                state[trained_agent_id],
-                deterministic=True,
-            )
             for amr in env.agents:
-                if amr.id != trained_agent_id:
-                    actions[amr.id] = None
+                actions[amr.id] = agent.choose_action(
+                    state[amr.id],
+                    deterministic=True,
+                )
 
             next_state, _, _, _, _ = env.step(actions)
             state = next_state
@@ -128,10 +124,11 @@ def run_animation(
 
 def run_train_all(
     experiments: list[Experiment],
-    exp_name: str,
     previous_exp: Experiment | None,
-    n_steps: int,
-    chunk_steps: int,
+    trained_agent_id: str,
+    exp_name: str,
+    n_steps: int = 200_000,
+    chunk_steps: int = 2_000,
 ):
     """Train a single policy by alternating between multiple scenarios and log the training results."""
 
@@ -160,7 +157,11 @@ def run_train_all(
         )
 
         history, debug, _ = run_sac(
-            exp=exp, previous_exp=previous_exp, warmup_steps=0, reset_frequency=1
+            exp=exp,
+            previous_exp=previous_exp,
+            trained_agent_id=trained_agent_id,
+            warmup_steps=0,
+            reset_frequency=1,
         )
 
         for row in history:
@@ -191,8 +192,7 @@ def run_train_all(
 def run_train(
     experiments: list[Experiment],
     previous_exp: Experiment | None = None,
-    n_steps: int = 200_000,
-    chunk_steps: int = 2_000,
+    trained_agent_id: str = "agent_1",
 ):
     """Train a policy for each experiment and save the corresponding logs and figures."""
 
@@ -204,7 +204,9 @@ def run_train(
     for exp in experiments:
 
         if "mixed_curriculum" not in exp.name:
-            history, debug, _ = run_sac(exp=exp, previous_exp=previous_exp)
+            history, debug, _ = run_sac(
+                exp=exp, previous_exp=previous_exp, trained_agent_id=trained_agent_id
+            )
 
             df_train = log_train(history, "logs/train", exp.name)
             log_debug(debug, "logs/train", exp.name)
@@ -214,7 +216,12 @@ def run_train(
             previous_exp = exp
 
         else:
-            run_train_all(experiments, exp.name, previous_exp, n_steps, chunk_steps)
+            run_train_all(
+                experiments=experiments,
+                previous_exp=previous_exp,
+                trained_agent_id=trained_agent_id,
+                exp_name=exp.name,
+            )
 
     duration = time.perf_counter() - start
 

@@ -11,28 +11,44 @@ def compute_astar_paths(
     grid_map: GridMap,
     radius_max: float,
     moving_obstacles: list[moving_entity.MovingEntity],
-    agents: list[agent.Agent],
+    min_length: int | None = None,
 ):
-    """
-    Return the paths found by A* algorithm for each moving obstacle.
-    """
+    """ """
 
     pathfinder = AStar(grid_map.grid, int(radius_max // 2 + 1))
 
-    for entity in list(moving_obstacles + agents):
+    for entity in list(moving_obstacles):
+
         if not entity.target_positions or not entity.start_position:
             continue
+
         start = entity.start_position
+        full_path = []
+
         for goal in entity.target_positions:
             start_grid = _to_grid(grid_map, start)
             goal_grid = _to_grid(grid_map, goal)
             path = pathfinder.find_path(start_grid, goal_grid)
+
             if path:
                 path = [_from_grid(grid_map, pos) for pos in path]
-                entity.path.extend(path)
+                full_path.extend(path)
                 start = goal
+
             else:
                 path = [entity.current_position]
+
+        if min_length is not None and len(full_path) > 1:
+
+            back_and_forth = full_path[::-1] + full_path
+            extended_path = []
+
+            while len(extended_path) < min_length:
+                extended_path.extend(back_and_forth)
+
+            full_path = extended_path[:min_length]
+
+        entity.path.extend(full_path)
 
 
 def _from_grid(grid_map: GridMap, pos: tuple[int, int]) -> tuple[float, float]:

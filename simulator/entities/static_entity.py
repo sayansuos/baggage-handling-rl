@@ -8,23 +8,7 @@ from simulator.geometry import (
 
 
 class StaticEntity(Entity):
-    """
-    Represents a static entity in the environment.
-
-    Static entities are immobile rectangular objects such as:
-    walls, shelves, racks and fixed obstacles.
-
-    Attributes
-    ----------
-    num : int
-        Unique identifier of the object.
-    current_position : tuple
-        Current center position of the object.
-    width : float
-        Width of the rectangular obstacle.
-    height : float
-        Height of the rectangular obstacle.
-    """
+    """Base class for rectangular entities that remain fixed in the environment."""
 
     def __init__(self, width: float, height: float, num: int | None = None):
         """
@@ -34,57 +18,6 @@ class StaticEntity(Entity):
         super().__init__(num)
         self.width = width
         self.height = height
-
-    def __str__(self):
-        return f"static_entity_{self.num}"
-
-    @property
-    def bounds(self) -> tuple[float, float, float, float]:
-        """
-        Return the axis-aligned bounding box of the rectangular entity.
-        """
-
-        assert self.current_position is not None
-        return self.get_bounds_at(self.current_position)
-
-    def get_bounds_at(
-        self, pos: tuple[float, float]
-    ) -> tuple[float, float, float, float]:
-        """
-        Return the axis-aligned bounding box of the rectangular entity at a given position.
-        """
-
-        x, y = pos
-        return (
-            x - self.width / 2,
-            y - self.height / 2,
-            x + self.width / 2,
-            y + self.height / 2,
-        )
-
-    def get_distance(self, other: StaticEntity | MovingEntity) -> float:
-        """
-        Compute the Euclidean distance between this circular entity and another one.
-        """
-        return other._get_distance_rectangle(self)
-
-    def collides_with(
-        self,
-        other: StaticEntity | MovingEntity,
-        new_pos: tuple[float, float],
-        min_dist: float,
-    ) -> bool:
-        """
-        Check collision between this static entity and another entity.
-
-        This method dispatches the collision logic to the appropriate
-        shape-specific implementation of the other entity.
-        """
-
-        assert other.current_position is not None
-        return bool(
-            other._collide_rectangle(self, other.current_position, new_pos, min_dist)
-        )
 
     def render(self, ax, color: str | tuple[float, float, float, float] = "black"):
         """
@@ -101,10 +34,61 @@ class StaticEntity(Entity):
         )
         ax.add_patch(rect)
 
+    @property
+    def id(self):
+        """Return the unique identifier of the static entity."""
+
+        return f"static_entity_{self.num}"
+
+    @property
+    def bounds(self) -> tuple[float, float, float, float]:
+        """
+        Return the bounding box of the entity at its current position.
+        """
+
+        assert self.current_position is not None
+        return self.get_bounds_at(self.current_position)
+
+    def get_bounds_at(
+        self, pos: tuple[float, float]
+    ) -> tuple[float, float, float, float]:
+        """
+        Return the bounding box of the entity at a given position.
+        """
+
+        x, y = pos
+        return (
+            x - self.width / 2,
+            y - self.height / 2,
+            x + self.width / 2,
+            y + self.height / 2,
+        )
+
+    def get_distance(self, other: StaticEntity | MovingEntity) -> float:
+        """
+        Compute the distance between the entity and another entity.
+        """
+
+        return other._get_distance_rectangle(self)
+
+    def collides_with(
+        self,
+        other: StaticEntity | MovingEntity,
+        new_pos: tuple[float, float],
+        min_dist: float,
+    ) -> bool:
+        """
+        Check whether the entity would collide with another entity at the given positions.
+        """
+
+        assert other.current_position is not None
+        return bool(
+            other._collide_rectangle(self, other.current_position, new_pos, min_dist)
+        )
+
     def _get_distance_circle(self, circle: MovingEntity) -> float:
         """
-        Compute the Euclidean distance between a circular entity and a
-        rectangular one.
+        Compute the distance between a rectangular entity and a circular entity.
         """
 
         assert circle.current_position is not None
@@ -116,7 +100,7 @@ class StaticEntity(Entity):
 
     def _get_distance_rectangle(self, rect: MovingEntity) -> float:
         """
-        Compute the Euclidean distance between two rectangular entities.
+        Compute the distance between two rectangular entities.
         """
 
         assert rect.current_position is not None
@@ -135,7 +119,7 @@ class StaticEntity(Entity):
         min_dist: float,
     ) -> bool:
         """
-        Check collision between this static entity and a circular entity.
+        Check whether a rectangular entity and a circular entity collide.
         """
 
         x_min, y_min, x_max, y_max = self.get_bounds_at(pos_self)
@@ -152,7 +136,7 @@ class StaticEntity(Entity):
         min_dist: float,
     ) -> bool:
         """
-        Check collision between this static entity and a rectangular entity.
+        Check whether two rectangular entities collide.
         """
 
         x1_min, y1_min, x1_max, y1_max = self.get_bounds_at(pos_self)

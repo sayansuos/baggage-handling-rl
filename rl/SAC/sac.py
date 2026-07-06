@@ -10,10 +10,9 @@ from simulator.environment.environment import Environment
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 
-def load_agent(
-    env: Environment, exp: Experiment, trained_agent_id: str = "agent_1"
-) -> SACAgent:
-    """ """
+def load_agent(env: Environment, exp: Experiment, trained_agent_id: str) -> SACAgent:
+    """Create a SAC agent with the observation and action dimensions of the environment."""
+
     agent = SACAgent(
         env_name=f"{exp.name}",
         map_shape=(
@@ -28,11 +27,11 @@ def load_agent(
 
 def run_sac(
     exp: Experiment,
-    previous_exp: Experiment | None = None,
+    previous_exp: Experiment | None,
+    trained_agent_id: str,
     warmup_steps: int = 1000,
     update_frequency: int = 4,
     reset_frequency: int = 20,
-    trained_agent_id: str = "agent_1",
 ):
     """ """
 
@@ -98,7 +97,7 @@ def run_sac(
                 if amr.id != trained_agent_id:
                     actions[amr.id] = None
 
-            next_state, rewards, terminated, _, info = env.step(actions)
+            next_state, rewards, _, _, info = env.step(actions)
 
             agent.store_transition(
                 state[trained_agent_id],

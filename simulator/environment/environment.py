@@ -244,7 +244,7 @@ class Environment(gym.Env):
             grid_map=self.grid_map,
             radius_max=self.env_config.radius_max,
             moving_obstacles=self.moving_obstacles,
-            agents=self.agents,
+            min_length=self.env_config.max_steps,
         )
 
         # Get entities interactions
@@ -293,19 +293,10 @@ class Environment(gym.Env):
         # Update agents
 
         for agent in self.agents:
-            if action is not None and action[agent.id] is not None:
-                v, omega = action[agent.id]
-                agent.move(v, omega)
-            else:
-                agent.step()
-            if agent.state == "active":
-                agent.travel_time += 1
-                self.sum_v += agent.v
-                self.sum_abs_omega += abs(agent.omega)
-                self.motion_count += 1
-
-                if agent._goal_relative_distance < 0.5:
-                    agent.state = "reached"
+            v, omega, motion_count = agent.step(action)
+            self.sum_v += v
+            self.sum_abs_omega += omega
+            self.motion_count += motion_count
 
         # Get all metrics
 
@@ -339,12 +330,11 @@ class Environment(gym.Env):
         """
 
         if ax is None:
-            fig, ax = plt.subplots(figsize=(10, 8))
+            _, ax = plt.subplots(figsize=(10, 8))
 
         ax.clear()
         ax.set_aspect("equal", adjustable="box")
 
-        colors = plt.colormaps["tab10"]
         W, H = self.env_config.width, self.env_config.height
 
         for entity in self.static_obstacles:
@@ -355,8 +345,9 @@ class Environment(gym.Env):
 
         handles = []
         labels = []
+        colors = plt.colormaps["tab10"]
         for i, agent in enumerate(self.agents):
-            agent.render(ax, 0, W, 0, H, color=colors(i))
+            agent.render(ax, 0, W, 0, H, colors(i))
             handles.append(
                 plt.Line2D(
                     [],
