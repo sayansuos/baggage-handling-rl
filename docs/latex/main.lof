@@ -1,0 +1,8 @@
+\babel@toc {french}{}\relax 
+\contentsline {figure}{\numberline {1}{\ignorespaces Architecture générale de l'extracteur de caractéristiques convolutionnel}}{9}{figure.caption.3}%
+\contentsline {figure}{\numberline {2}{\ignorespaces Architecture générale de l'actor network}}{9}{figure.caption.4}%
+\contentsline {figure}{\numberline {3}{\ignorespaces Architecture générale des critic networks}}{10}{figure.caption.5}%
+\contentsline {figure}{\numberline {4}{\ignorespaces Scénarios types utilisés pour le curriculum d'entraînement.}}{14}{figure.caption.6}%
+\contentsline {figure}{\numberline {5}{\ignorespaces Scénarios types utilisés pour l'évaluation.}}{16}{figure.caption.7}%
+\contentsline {figure}{\numberline {6}{\ignorespaces Évolution des performances au cours de l'entraînement (Expérience 3)}}{25}{figure.caption.11}%
+\contentsline {figure}{\numberline {7}{\ignorespaces Évolution des performances au cours de l'entraînement (Expérience 7)}}{26}{figure.caption.12}%

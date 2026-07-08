@@ -1,0 +1,61 @@
+\begin{thebibliography}{10}
+\providecommand{\natexlab}[1]{#1}
+\providecommand{\url}[1]{\texttt{#1}}
+\expandafter\ifx\csname urlstyle\endcsname\relax
+  \providecommand{\doi}[1]{doi: #1}\else
+  \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
+
+\bibitem[Bengio et~al.(2009)Bengio, Louradour, Collobert, and Weston]{bengio2009}
+Y.~Bengio, J.~Louradour, R.~Collobert, and J.~Weston.
+\newblock {C}urriculum {L}earning.
+\newblock In \emph{Proceedings of the 26th International Conference on Machine Learning}, pages 41--48, 2009.
+
+\bibitem[Chen et~al.(2020)Chen, Yao, Ma, Pan, Chen, Xu, Ji, and Chen]{chen2020}
+G.~Chen, S.~Yao, J.~Ma, L.~Pan, Y.~Chen, P.~Xu, J.~Ji, and X~Chen.
+\newblock {D}istributed {N}on-{C}ommunicating {M}ulti-{R}obot {C}ollision {A}voidance via {M}ap-{B}ased {D}eep {R}einforcement {L}earning.
+\newblock \emph{Sensors}, 20\penalty0 (17):\penalty0 4836, 2020.
+\newblock \doi{10.3390/s20174836}.
+
+\bibitem[Choi et~al.(2021)Choi, Lee, and Lee]{choi2021}
+J.~Choi, G.~Lee, and C.~Lee.
+\newblock Reinforcement learning-based dynamic obstacle avoidance and integration of path planning.
+\newblock \emph{International Journal of Intelligent Robotics and Applications}, 14\penalty0 (5):\penalty0 663--677, 2021.
+
+\bibitem[Haarnoja et~al.(2018)Haarnoja, Zhou, Abbeel, and Levine]{haarnoja2018sac}
+T.~Haarnoja, A.~Zhou, P.~Abbeel, and S.~Levine.
+\newblock {Soft Actor-Critic: Off-Policy Maximum Entropy Deep Reinforcement Learning with a Stochastic Actor}.
+\newblock In Jennifer Dy and Andreas Krause, editors, \emph{Proceedings of the 35th International Conference on Machine Learning}, volume~80 of \emph{Proceedings of Machine Learning Research}, pages 1861--1870. PMLR, 10--15 Jul 2018.
+\newblock URL \url{https://proceedings.mlr.press/v80/haarnoja18b.html}.
+
+\bibitem[Huang et~al.(2024)Huang, Ren, Chen, Cai, and Xu]{huang2024}
+Z.~Huang, Z.~Ren, T.~Chen, S.~Cai, and C.~Xu.
+\newblock {A}utonomous navigation and collision avoidance for agv in dynamic environments: {A}n enhanced deep reinforcement learning approach with composite rewards and dynamic update mechanisms.
+\newblock \emph{IET Cyber-Systems and Robotics}, 2024.
+
+\bibitem[Kingma and Welling(2022)]{kingma2022}
+D.~P. Kingma and M.~Welling.
+\newblock {A}uto-{E}ncoding {V}ariational {B}ayes, 2022.
+\newblock URL \url{https://arxiv.org/abs/1312.6114}.
+
+\bibitem[Long et~al.(2018)Long, Fan, Liao, Liu, Zhang, and Pan]{long2018}
+P.~Long, T.~Fan, X.~Liao, W.~Liu, H.~Zhang, and J.~Pan.
+\newblock Towards optimally decentralized multi-robot collision avoidance via deep reinforcement learning.
+\newblock In \emph{IEEE International Conference on Robotics and Automation (ICRA)}, 2018.
+
+\bibitem[Narvekar et~al.(2020)Narvekar, Peng, Leonetti, Sinapov, Taylor, and Stone]{narvekar2020}
+S.~Narvekar, B.~Peng, M.~Leonetti, J.~Sinapov, M.~E. Taylor, and P.~Stone.
+\newblock {C}urriculum {L}earning for {R}einforcement {L}earning domains: A framework and survey, 2020.
+\newblock URL \url{https://arxiv.org/abs/2003.04960}.
+
+\bibitem[{OpenAI}(2023)]{openai2023}
+{OpenAI}.
+\newblock Soft actor-critic, 2023.
+\newblock URL \url{https://spinningup.openai.com/en/latest/algorithms/sac.html}.
+\newblock Spinning Up documentation, consulté le 5 mai 2026.
+
+\bibitem[van Hasselt(2010)]{vanHasselt2010}
+H~van Hasselt.
+\newblock {D}ouble {Q}-learning.
+\newblock In J.~D. Lafferty, C.~K.~I. Williams, J.~Shawe-Taylor, R.~S. Zemel, and A.~Culotta, editors, \emph{Advances in Neural Information Processing Systems}, volume~23, pages 2613--2621. Curran Associates, Inc., 2010.
+
+\end{thebibliography}
