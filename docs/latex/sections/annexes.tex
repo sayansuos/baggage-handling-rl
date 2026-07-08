@@ -6,90 +6,87 @@
 
 \begin{longtable}{cp{11cm}r}
 
-\caption{Paramètres du robot}
-\label{tab:robot_parameters} \\
-\toprule
-\textit{Paramètre} & \textit{Définition} & \textit{Val.} \\
-\midrule
-\endfirsthead
-\toprule
-\textit{Paramètre} & \textit{Définition} & \textit{Val.} \\
-\midrule
-\endhead
-\midrule
-\endfoot
-\bottomrule
-\endlastfoot
+    \caption{Paramètres du robot}
+    \label{tab:robot_parameters}                                                   \\
+    \toprule
+    \textit{Paramètre}    & \textit{Définition}                    & \textit{Val.} \\
+    \midrule
+    \endfirsthead
+    \toprule
+    \textit{Paramètre}    & \textit{Définition}                    & \textit{Val.} \\
+    \midrule
+    \endhead
+    \midrule
+    \endfoot
+    \bottomrule
+    \endlastfoot
 
-$K$ & Nombre de cartes locales utilisées & 1 \\
-$W$ & Largeur du champ de vision en mètres & 11 \\
-$H$ & Hauteur du champ de vision en mètres & 11 \\
-\midrule
-$r$ & Rayon du robot en mètres & 0.5 \\
-$v_{\text{min}}$ & Vitesse linéaire minimale en m/s & 0.0 \\
-$v_{\text{max}}$ & Vitesse linéaire maximale en m/s & 5.0 \\
-$\omega_{\text{min}}$ & Vitesse angulaire minimale en radian/s & $-\pi/3$ \\
-$\omega_{\text{max}}$ & Vitesse angulaire maximale en radian/s & $\pi/3$ \\
-
+    $K$                   & Nombre de cartes locales utilisées     & 1             \\
+    $W$                   & Largeur du champ de vision en mètres   & 11            \\
+    $H$                   & Hauteur du champ de vision en mètres   & 11            \\
+    \midrule
+    $r$                   & Rayon du robot en mètres               & 0.5           \\
+    $v_{\text{min}}$      & Vitesse linéaire minimale en m/s       & 0.0           \\
+    $v_{\text{max}}$      & Vitesse linéaire maximale en m/s       & 5.0           \\
+    $\omega_{\text{min}}$ & Vitesse angulaire minimale en radian/s & $-\pi/3$      \\
+    $\omega_{\text{max}}$ & Vitesse angulaire maximale en radian/s & $\pi/3$       \\
 \end{longtable}
 
 \begin{longtable}{cp{11cm}r}
 
-\caption{Paramètres de la fonction de récompense}
-\label{tab:reward_parameters} \\
-\toprule
-\textit{Paramètre} & \textit{Définition} & \textit{Val.} \\
-\midrule
-\endfirsthead
-\toprule
-\textit{Paramètre} & \textit{Définition} & \textit{Val.} \\
-\midrule
-\endhead
-\midrule
-\endfoot
-\bottomrule
-\endlastfoot
+    \caption{Paramètres de la fonction de récompense}
+    \label{tab:reward_parameters}                                                   \\
+    \toprule
+    \textit{Paramètre}     & \textit{Définition}                    & \textit{Val.} \\
+    \midrule
+    \endfirsthead
+    \toprule
+    \textit{Paramètre}     & \textit{Définition}                    & \textit{Val.} \\
+    \midrule
+    \endhead
+    \midrule
+    \endfoot
+    \bottomrule
+    \endlastfoot
 
-$\beta_1$ & Poids de la récompense de progression & 5.0 \\
-$\beta_2$ & Poids de la pénalité de rotation & 0.1 \\
-$\beta_3$ & Poids de la pénalité de sécurité & 0.5 \\
-$r_{\text{goal}}$ & Bonus d'atteinte de la cible & 400.0 \\
-$r_{\text{collision}}$ & Pénalité de collision & -100.0 \\
-$r_{\text{angular}}$ & Coefficient de pénalité angulaire & -2.0 \\
-$r_{\text{safety}}$ & Coefficient de pénalité de sécurité & -1.0 \\
-$\xi_{\text{s}}$ & Distance de sécurité & 2.0 \\
-$\xi_{\text{g}}$ & Seuil d'atteinte de la cible en mètres & 0.5 \\
-$\xi_{\text{s}}$ & Seuil de collision en mètres & 0.5 \\
-
+    $\beta_1$              & Poids de la récompense de progression  & 5.0           \\
+    $\beta_2$              & Poids de la pénalité de rotation       & 0.1           \\
+    $\beta_3$              & Poids de la pénalité de sécurité       & 0.5           \\
+    $r_{\text{goal}}$      & Bonus d'atteinte de la cible           & 400.0         \\
+    $r_{\text{collision}}$ & Pénalité de collision                  & -100.0        \\
+    $r_{\text{angular}}$   & Coefficient de pénalité angulaire      & -2.0          \\
+    $r_{\text{safety}}$    & Coefficient de pénalité de sécurité    & -1.0          \\
+    $\xi_{\text{s}}$       & Distance de sécurité                   & 2.0           \\
+    $\xi_{\text{g}}$       & Seuil d'atteinte de la cible en mètres & 0.5           \\
+    $\xi_{\text{s}}$       & Seuil de collision en mètres           & 0.5           \\
 \end{longtable}
 
 \begin{longtable}{cp{11cm}r}
 
-\caption{Paramètres du modèle}
-\label{tab:model_parameters} \\
-\toprule
-\textit{Paramètre} & \textit{Définition} & \textit{Val.} \\
-\midrule
-\endfirsthead
-\toprule
-\textit{Paramètre} & \textit{Définition} & \textit{Val.} \\
-\midrule
-\endhead
-\midrule
-\endfoot
-\bottomrule
-\endlastfoot
+    \caption{Paramètres du modèle}
+    \label{tab:model_parameters}                                                                  \\
+    \toprule
+    \textit{Paramètre}     & \textit{Définition}                             & \textit{Val.}      \\
+    \midrule
+    \endfirsthead
+    \toprule
+    \textit{Paramètre}     & \textit{Définition}                             & \textit{Val.}      \\
+    \midrule
+    \endhead
+    \midrule
+    \endfoot
+    \bottomrule
+    \endlastfoot
 
-$\gamma$ & Facteur d'actualisation & 0.990 \\
-$\alpha$ & Coefficient d'entropie & 0.150 \\
-$\lambda$ & Coefficient de soft update & 0.005 \\
-\midrule
-$\eta_{\text{actor}}$ & Coefficient d'apprentissage de l'actor network & $3 \times 10^{-5}$ \\
-$\eta_{\text{critic}}$ & Coefficient d'apprentissage des critic networks & $3 \times 10^{-4}$ \\
-\midrule
-$N_{\text{batch}}$ & Taille du mini-batch & 64 \\
-$N_{\text{memory}}$ & Taille maximale du replay buffer & 100 000 \\
-
+    $\gamma$               & Facteur d'actualisation                         & 0.990              \\
+    $\alpha$               & Coefficient d'entropie                          & 0.150              \\
+    $\lambda$              & Coefficient de soft update                      & 0.005              \\
+    \midrule
+    $\eta_{\text{actor}}$  & Coefficient d'apprentissage de l'actor network  & $3 \times 10^{-5}$ \\
+    $\eta_{\text{critic}}$ & Coefficient d'apprentissage des critic networks & $3 \times 10^{-4}$ \\
+    \midrule
+    $N_{\text{batch}}$     & Taille du mini-batch                            & 64                 \\
+    $N_{\text{memory}}$    & Taille maximale du replay buffer                & 100 000            \\
 \end{longtable}
 
 
@@ -100,107 +97,107 @@ $N_{\text{memory}}$ & Taille maximale du replay buffer & 100 000 \\
 \subsection{Pseudo-code de l'algorithme SAC}
 
 \begin{algorithm}[H]
-\caption{Soft Actor-Critic}
-\label{alg:sac_training}
-
-\vspace{10pt}
-
-\textbf{inputs :}
-
-\hspace{15pt} $\theta$ : paramètres initiaux de la politique
-
-\hspace{15pt} $\phi_1$, $\phi_2$ : paramètres initiaux des fonctions de valeurs d'action
-
-\hspace{15pt} $\mathcal{D}$ : replay buffer vide
-
-\hspace{15pt} $\eta_{\text{critic}}$, $\eta_{\text{actor}}$ : taux d'apprentissage
-
-\vspace{10pt}
-
-
-\textbf{initialisation :}
-$\phi_{1, \text{target}} \leftarrow \phi_1$, 
-$\phi_{2, \text{target}} \leftarrow \phi_2$
-
-\vspace{10pt}
-
-\textcolor{PineGreen}{\texttt{\# On applique la procédure jusqu'à convergence... }}
-
-\For{\small{\texttt{chaque itération}}}{
-
-\vspace{10pt}
-
-    \For{\small{\texttt{chaque étape dans l'environnement}}}{
-
-        \textcolor{PineGreen}{\texttt{\# On observe $\mathbf{s}$ puis on exécute $\mathbf{a}$ dans l'environnement }}
-        
-        $\mathbf{a} \sim \pi_\theta(\cdot \mid \mathbf{s})$ 
-
-        $\mathbf{s}' \sim P(\cdot \mid \mathbf{s}, \; \mathbf{a})$
-
-        $r \leftarrow R(\mathbf{s}, \; \mathbf{a})$
-
-        \textcolor{PineGreen}{\texttt{\# On stocke les transitions dans le replay buffer }}
-        
-        $\mathcal{D} \leftarrow \mathcal{D} \; \cup \; (\mathbf{s}, \;  \mathbf{a},\;  r,\;  \mathbf{s}', \; d)$
-
-        \textcolor{PineGreen}{\texttt{\# Si $\mathbf{s}'$ est terminal, on recommence}}
-
-        \textbf{if} $d = 1$ \textbf{then} réinitialiser l'environnement 
-    }
+    \caption{Soft Actor-Critic}
+    \label{alg:sac_training}
 
     \vspace{10pt}
-    
-    \For{\small{\texttt{chaque étape de mise à jour}}}{
-        \textcolor{PineGreen}{\texttt{\# Échantillonner un batch de transitions aléatoirement}}
-    
-        $B \sim \mathcal{D}$
 
-        \textcolor{PineGreen}{\texttt{\# Calculer les targets des fonctions $Q$}}
-        
-        $\tilde{\mathbf{a}}' \sim \pi_\theta(\cdot \mid \mathbf{s}')$
-        
-        $
-        y \leftarrow r + \gamma(1 - d) \left( \min_{i \in \{1,\; 2\}} Q_{\phi_{i, \text{target}}} (\mathbf{s}', \; \tilde{\mathbf{a}}') - \alpha \log \pi(\tilde{\mathbf{a}}' \mid \mathbf{s}')\right)
-        $
+    \textbf{inputs :}
 
-        \textcolor{PineGreen}{\texttt{\# Mettre à jour $Q_{\phi_1}$ et $Q_{\phi_2}$ par descente de gradient, avec :}}
-        
-        $
-        \phi_i
-        \leftarrow
-        \phi_i - \eta_{\text{critic}}
-        \nabla_{\phi_i} \frac{1}{|B|} \sum_{(\mathbf{s},\;  \mathbf{a}, \; r, \; \mathbf{s}',\;  d) \in B} (Q_{\phi_i}(\mathbf{s}, \; \mathbf{a}) - y)^2
-        $
+    \hspace{15pt} $\theta$ : paramètres initiaux de la politique
 
-        \textcolor{PineGreen}{\texttt{\# Mettre à jour $\pi_\theta$ par montée de gradient, avec :}}
-        
-        $
-        \varepsilon \sim \mathcal{N}(0, \; I)
-        $
-        
-        $
-        \tilde{\textbf{a}}_\theta(\textbf{s}, \varepsilon) \leftarrow \tanh( \mu _\theta (\textbf{s}) + \sigma _\theta(\textbf{s})\odot \varepsilon) 
-        $
-        
-        $
-        \theta \leftarrow
-        \theta + \eta_{\text{actor}}
-        \nabla_{\theta} \frac{1}{|B|} \sum_{\mathbf{s} \in B} \left( \min_{i\in\{1, 2\}}Q_{\phi_i}(\mathbf{s}, \; \tilde{\mathbf{a}}_\theta ) -  \alpha \log \pi_\theta(\tilde{\mathbf{a}}_\theta  \mid \mathbf{s})\right)
-        $
+    \hspace{15pt} $\phi_1$, $\phi_2$ : paramètres initiaux des fonctions de valeurs d'action
 
-        \textcolor{PineGreen}{\texttt{\# Mettre à jour les target networks :}}
-        
-        $
-        \phi_{1, \text{target}} \leftarrow (1 - \lambda) \phi_{1, \text{target}} + \lambda\phi_{1}
-        $
+    \hspace{15pt} $\mathcal{D}$ : replay buffer vide
 
-        $
-        \phi_{2, \text{target}} \leftarrow (1 - \lambda) \phi_{2, \text{target}} + \lambda\phi_{2}
-        $
-        
+    \hspace{15pt} $\eta_{\text{critic}}$, $\eta_{\text{actor}}$ : taux d'apprentissage
+
+    \vspace{10pt}
+
+
+    \textbf{initialisation :}
+    $\phi_{1, \text{target}} \leftarrow \phi_1$,
+    $\phi_{2, \text{target}} \leftarrow \phi_2$
+
+    \vspace{10pt}
+
+    \textcolor{PineGreen}{\texttt{\# On applique la procédure jusqu'à convergence... }}
+
+    \For{\small{\texttt{chaque itération}}}{
+
+        \vspace{10pt}
+
+        \For{\small{\texttt{chaque étape dans l'environnement}}}{
+
+            \textcolor{PineGreen}{\texttt{\# On observe $\mathbf{s}$ puis on exécute $\mathbf{a}$ dans l'environnement }}
+
+            $\mathbf{a} \sim \pi_\theta(\cdot \mid \mathbf{s})$
+
+            $\mathbf{s}' \sim P(\cdot \mid \mathbf{s}, \; \mathbf{a})$
+
+            $r \leftarrow R(\mathbf{s}, \; \mathbf{a})$
+
+            \textcolor{PineGreen}{\texttt{\# On stocke les transitions dans le replay buffer }}
+
+            $\mathcal{D} \leftarrow \mathcal{D} \; \cup \; (\mathbf{s}, \;  \mathbf{a},\;  r,\;  \mathbf{s}', \; d)$
+
+            \textcolor{PineGreen}{\texttt{\# Si $\mathbf{s}'$ est terminal, on recommence}}
+
+            \textbf{if} $d = 1$ \textbf{then} réinitialiser l'environnement
+        }
+
+        \vspace{10pt}
+
+        \For{\small{\texttt{chaque étape de mise à jour}}}{
+            \textcolor{PineGreen}{\texttt{\# Échantillonner un batch de transitions aléatoirement}}
+
+            $B \sim \mathcal{D}$
+
+            \textcolor{PineGreen}{\texttt{\# Calculer les targets des fonctions $Q$}}
+
+            $\tilde{\mathbf{a}}' \sim \pi_\theta(\cdot \mid \mathbf{s}')$
+
+            $
+                y \leftarrow r + \gamma(1 - d) \left( \min_{i \in \{1,\; 2\}} Q_{\phi_{i, \text{target}}} (\mathbf{s}', \; \tilde{\mathbf{a}}') - \alpha \log \pi(\tilde{\mathbf{a}}' \mid \mathbf{s}')\right)
+            $
+
+            \textcolor{PineGreen}{\texttt{\# Mettre à jour $Q_{\phi_1}$ et $Q_{\phi_2}$ par descente de gradient, avec :}}
+
+            $
+                \phi_i
+                \leftarrow
+                \phi_i - \eta_{\text{critic}}
+                \nabla_{\phi_i} \frac{1}{|B|} \sum_{(\mathbf{s},\;  \mathbf{a}, \; r, \; \mathbf{s}',\;  d) \in B} (Q_{\phi_i}(\mathbf{s}, \; \mathbf{a}) - y)^2
+            $
+
+            \textcolor{PineGreen}{\texttt{\# Mettre à jour $\pi_\theta$ par montée de gradient, avec :}}
+
+            $
+                \varepsilon \sim \mathcal{N}(0, \; I)
+            $
+
+            $
+                \tilde{\textbf{a}}_\theta(\textbf{s}, \varepsilon) \leftarrow \tanh( \mu _\theta (\textbf{s}) + \sigma _\theta(\textbf{s})\odot \varepsilon)
+            $
+
+            $
+                \theta \leftarrow
+                \theta + \eta_{\text{actor}}
+                \nabla_{\theta} \frac{1}{|B|} \sum_{\mathbf{s} \in B} \left( \min_{i\in\{1, 2\}}Q_{\phi_i}(\mathbf{s}, \; \tilde{\mathbf{a}}_\theta ) -  \alpha \log \pi_\theta(\tilde{\mathbf{a}}_\theta  \mid \mathbf{s})\right)
+            $
+
+            \textcolor{PineGreen}{\texttt{\# Mettre à jour les target networks :}}
+
+            $
+                \phi_{1, \text{target}} \leftarrow (1 - \lambda) \phi_{1, \text{target}} + \lambda\phi_{1}
+            $
+
+            $
+                \phi_{2, \text{target}} \leftarrow (1 - \lambda) \phi_{2, \text{target}} + \lambda\phi_{2}
+            $
+
+        }
     }
-}
 \end{algorithm}
 
 

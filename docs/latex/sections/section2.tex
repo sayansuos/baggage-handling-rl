@@ -1,7 +1,7 @@
 \section{Apprentissage avec l'algorithme Soft Actor-Critic}
 
 \begin{tcolorbox}[colback=black!5,colframe=black,title=]
-Cette section présente l'algorithme Soft Actor-Critic (SAC) retenu pour l'apprentissage de la politique de navigation, ainsi que les différentes composantes de son architecture et de son processus d'apprentissage.
+    Cette section présente l'algorithme Soft Actor-Critic (SAC) retenu pour l'apprentissage de la politique de navigation, ainsi que les différentes composantes de son architecture et de son processus d'apprentissage.
 \end{tcolorbox}
 
 \noindent Les principaux paramètres utilisés pour l'entraînement du modèle ainsi que les hyperparamètres de l'algorithme SAC sont récapitulés dans la Table \ref{tab:model_parameters}. Le pseudo-code de l'algorithme est résumé dans l'Algorithme \ref{alg:sac_training}.
@@ -10,7 +10,7 @@ Cette section présente l'algorithme Soft Actor-Critic (SAC) retenu pour l'appre
 
 \noindent \textbf{Une politique $\pi(\mathbf{a}_t|\mathbf{s}_t)$ définit le comportement de l'agent en associant à chaque état une distribution de probabilité sur les actions.} En interagissant avec l'environnement, cette politique génère des trajectoires :
 $$
-\tau = (\mathbf{s}_0, \; \mathbf{a}_0, \; \mathbf{s}_1, \; \mathbf{a}_1, \; \ldots).
+    \tau = (\mathbf{s}_0, \; \mathbf{a}_0, \; \mathbf{s}_1, \; \mathbf{a}_1, \; \ldots).
 $$
 \noindent On note $\rho_\pi(\mathbf{s})$ la distribution des états visités lorsque l'agent suit la politique $\pi$, et $\rho_\pi(\mathbf{s}, \; \mathbf{a})$ la distribution conjointe des couples état-action rencontrés au cours de ces trajectoires.
 
@@ -34,7 +34,7 @@ $$
     J(\pi) = \mathbb{E}_{\tau \sim \pi}
     \left[ \sum _{t=0}^\infty \gamma^t (R(\mathbf{s}_t, \; \mathbf{a}_t) + \alpha \mathcal{H}(\pi(\cdot \mid \mathbf{s}_t))) \right],
 $$
-où l'entropie de la politique dans l'état $\mathbf{s}$ est défini par : 
+où l'entropie de la politique dans l'état $\mathbf{s}$ est défini par :
 $$
     \mathcal{H}(\pi) = \mathbb{E}_{\mathbf{a} \sim \pi(\cdot|\mathbf{s})}\left[-\log \pi(\mathbf{a} \mid \mathbf{s})\right].
 $$
@@ -45,22 +45,22 @@ $$
 \noindent Dans ce cadre, les fonctions de valeur associées à une politique $\pi$ sont définies par :
 $$
     V^\pi(\mathbf{s}) = \mathbb{E}_{\tau \sim \pi}
-    \left[ 
-    \sum _{t=0}^\infty \gamma^t \middle(R(\mathbf{s}_t, \; \mathbf{a}_t) + \alpha \mathcal{H}(\pi(\cdot \mid \mathbf{s}_t))\middle)
-    \; \middle| \;
-    \mathbf{s}_0 = \mathbf{s}
-    \right],
+    \left[
+        \sum _{t=0}^\infty \gamma^t \middle(R(\mathbf{s}_t, \; \mathbf{a}_t) + \alpha \mathcal{H}(\pi(\cdot \mid \mathbf{s}_t))\middle)
+        \; \middle| \;
+        \mathbf{s}_0 = \mathbf{s}
+        \right],
 $$
 $$
     Q^\pi(\mathbf{s}, \mathbf{a}) = \mathbb{E}_{\tau \sim \pi}
-    \left[ 
-    \sum _{t=0}^\infty \gamma^t R(\mathbf{s}_t, \; \mathbf{a}_t) + \alpha \sum _{t=1}^\infty\mathcal{H}(\pi(\cdot \mid \mathbf{s}_t))
-    \; \middle| \;
-    \mathbf{s}_0 = \mathbf{s}, \mathbf{a}_0 = \mathbf{a}
-    \right].
+    \left[
+        \sum _{t=0}^\infty \gamma^t R(\mathbf{s}_t, \; \mathbf{a}_t) + \alpha \sum _{t=1}^\infty\mathcal{H}(\pi(\cdot \mid \mathbf{s}_t))
+        \; \middle| \;
+        \mathbf{s}_0 = \mathbf{s}, \mathbf{a}_0 = \mathbf{a}
+        \right].
 $$
 
-\noindent Ainsi, les fonctions $V^\pi$ et $Q^\pi$ sont liées de la manière suivante : 
+\noindent Ainsi, les fonctions $V^\pi$ et $Q^\pi$ sont liées de la manière suivante :
 
 $$
     V^\pi(\mathbf{s}) = \mathbb{E}_{\mathbf{a} \sim \pi} [Q^\pi(\mathbf{s}, \; \mathbf{a}) + \alpha \mathcal{H}(\pi(\mathbf{a} \mid \mathbf{s}))]
@@ -71,7 +71,7 @@ $$
     Q^\pi(\mathbf{s}, \mathbf{a})
     = \mathbb{E}_{\mathbf{s}'\sim P, \; \mathbf{a}' \sim \pi}
     [
-    R(\mathbf{s}, \; \mathbf{a}) + \gamma (Q^\pi(\mathbf{s}', \; \mathbf{a}') + \alpha \mathcal{H}(\pi(\cdot \mid \mathbf{s}')))
+        R(\mathbf{s}, \; \mathbf{a}) + \gamma (Q^\pi(\mathbf{s}', \; \mathbf{a}') + \alpha \mathcal{H}(\pi(\cdot \mid \mathbf{s}')))
     ]
     = \mathbb{E}_{\mathbf{s}' \sim \rho_\pi} [R(\mathbf{s}, \; \mathbf{a}) + \gamma V^\pi(\mathbf{s}')]
 $$
@@ -84,20 +84,20 @@ $$
 
 \subsection{Apprentissage de la fonction de valeur d'action $Q_\phi$}
 
-\noindent L'équation de Bellman pour la fonction de valeur d'action peut être réécrite comme : 
+\noindent L'équation de Bellman pour la fonction de valeur d'action peut être réécrite comme :
 $$
     Q^\pi(\mathbf{s}, \mathbf{a})
     = \mathbb{E}_{\mathbf{s}'\sim P, \; \mathbf{a}' \sim \pi}
     [
-    R(\mathbf{s}, \; \mathbf{a}) + \gamma (Q^\pi(\mathbf{s}', \;  \mathbf{a}') - \alpha \log \pi( \mathbf{a}' \mid \mathbf{s}'))
+        R(\mathbf{s}, \; \mathbf{a}) + \gamma (Q^\pi(\mathbf{s}', \;  \mathbf{a}') - \alpha \log \pi( \mathbf{a}' \mid \mathbf{s}'))
     ]
 $$
 
-\noindent Cela signifie que les actions très probables entraînent un petit bonus alors que les actions peu probables entraînent un plus grand bonus, favorisant l'exploration. 
+\noindent Cela signifie que les actions très probables entraînent un petit bonus alors que les actions peu probables entraînent un plus grand bonus, favorisant l'exploration.
 
 \vspace{10pt}
 
-\noindent Cette équation permet de définir une cible d'apprentissage. En pratique, l'espérance est approximée par échantillonnage : 
+\noindent Cette équation permet de définir une cible d'apprentissage. En pratique, l'espérance est approximée par échantillonnage :
 $$
     Q^\pi(\mathbf{s}, \mathbf{a})
     \approx r + \gamma (Q^\pi(\mathbf{s}', \; \tilde{\mathbf{a}}') - \alpha \log \pi(\tilde{\mathbf{a}}' \mid \mathbf{s}'),
@@ -109,22 +109,22 @@ $$
 
 \vspace{10pt}
 
-\noindent Afin de limiter le biais de surestimation de la fonction de valeur, SAC utilise le principe du double-Q learning \citep{haarnoja2018sac, vanHasselt2010} : deux fonctions de valeur paramétrées par $\phi_1$ et $\phi_2$ sont apprises simultanément, et seule la plus petite estimation est utilisée pour calculer la cible d'apprentissage. La fonction de perte du critique est alors donnée par : 
+\noindent Afin de limiter le biais de surestimation de la fonction de valeur, SAC utilise le principe du double-Q learning \citep{haarnoja2018sac, vanHasselt2010} : deux fonctions de valeur paramétrées par $\phi_1$ et $\phi_2$ sont apprises simultanément, et seule la plus petite estimation est utilisée pour calculer la cible d'apprentissage. La fonction de perte du critique est alors donnée par :
 $$
-L(\phi_i) = \mathbb{E}_{(\mathbf{s}, \; \mathbf{a}, \; r, \; \mathbf{s}', \;  d) \sim \mathcal{D}} \left[\left( Q_{\phi_i}(\mathbf{s},\;  \mathbf{a}) - y(r, \;  \mathbf{s}', \;  \mathbf{a})\right)^2\right],
+    L(\phi_i) = \mathbb{E}_{(\mathbf{s}, \; \mathbf{a}, \; r, \; \mathbf{s}', \;  d) \sim \mathcal{D}} \left[\left( Q_{\phi_i}(\mathbf{s},\;  \mathbf{a}) - y(r, \;  \mathbf{s}', \;  \mathbf{a})\right)^2\right],
 $$
-\noindent où la cible est donnée par : 
+\noindent où la cible est donnée par :
 $$
-y(r, \; \mathbf{s}', \; \mathbf{a}) = r + \gamma(1 - d) \left( \min_{i \in\{1,2\}} Q_{\phi_{i, \text{target}}} (\mathbf{s}', \; \tilde{\mathbf{a}}') - \alpha \log \pi(\tilde{\mathbf{a}}' \mid \mathbf{s}')\right),
-\qquad
-\tilde{\mathbf{a}}' \sim \pi(\cdot \mid \mathbf{s}'). 
+    y(r, \; \mathbf{s}', \; \mathbf{a}) = r + \gamma(1 - d) \left( \min_{i \in\{1,2\}} Q_{\phi_{i, \text{target}}} (\mathbf{s}', \; \tilde{\mathbf{a}}') - \alpha \log \pi(\tilde{\mathbf{a}}' \mid \mathbf{s}')\right),
+    \qquad
+    \tilde{\mathbf{a}}' \sim \pi(\cdot \mid \mathbf{s}').
 $$
 
 \vspace{10pt}
 
 \noindent Afin de stabiliser l'apprentissage, chaque critic network est associé à un réseau cible (target network), dont les paramètres sont mis à jour progressivement selon la règle de soft update :
 $$
-\phi'_{i, \text{target}} \leftarrow (1 - \lambda)\phi_{i, \text{target}} + \lambda \phi_i,
+    \phi'_{i, \text{target}} \leftarrow (1 - \lambda)\phi_{i, \text{target}} + \lambda \phi_i,
 $$
 \noindent où $\lambda \ll 1$ est le coefficient de mise à jour.
 
@@ -138,20 +138,20 @@ $$
 
 \noindent La politique est optimisée de manière à maximiser la fonction de valeur tout en favorisant des politiques de forte entropie. Pour cela, on applique le reparameterization trick  \citep{kingma2022}, qui permet d'exprimer une action comme une transformation déterministe d'un bruit aléatoire. Plus particulièrement, on utilise une politique gaussienne suivie d'une transformation par tangente hyperbolique (squashed gaussian policy), afin de contraindre les actions dans l'intervalle $[-1, \, 1]$,
 $$
-\tilde{\mathbf{a}}_\theta (\mathbf{s}, \varepsilon) = \tanh (\mu_\theta(\mathbf{s}) + \sigma_\theta(\mathbf{s}) \odot \varepsilon), 
-\quad 
-\varepsilon \sim \mathcal{N}(0, \; I),
+    \tilde{\mathbf{a}}_\theta (\mathbf{s}, \varepsilon) = \tanh (\mu_\theta(\mathbf{s}) + \sigma_\theta(\mathbf{s}) \odot \varepsilon),
+    \quad
+    \varepsilon \sim \mathcal{N}(0, \; I),
 $$
-avant leur remise à l'échelle vers les bornes des actions. De cette manière, l'espérance peut être réécrite sous la forme : 
+avant leur remise à l'échelle vers les bornes des actions. De cette manière, l'espérance peut être réécrite sous la forme :
 $$
-\mathbb{E}_{\mathbf{a} \sim \pi_\theta} [Q^{\pi_\theta}(\mathbf{s}, \; \mathbf{a} ) - \alpha \log \pi_\theta(\mathbf{a} \mid \mathbf{s})] = \mathbb{E}_{\varepsilon \sim \mathcal{N}}[Q^{\pi_\theta}(\mathbf{s}, \; \tilde{\mathbf{a}}_\theta (\mathbf{s}, \; \varepsilon) ) - \alpha \log \pi_\theta(\tilde{\mathbf{a}}_\theta (\mathbf{s}, \; \varepsilon) \mid \mathbf{s})].
+    \mathbb{E}_{\mathbf{a} \sim \pi_\theta} [Q^{\pi_\theta}(\mathbf{s}, \; \mathbf{a} ) - \alpha \log \pi_\theta(\mathbf{a} \mid \mathbf{s})] = \mathbb{E}_{\varepsilon \sim \mathcal{N}}[Q^{\pi_\theta}(\mathbf{s}, \; \tilde{\mathbf{a}}_\theta (\mathbf{s}, \; \varepsilon) ) - \alpha \log \pi_\theta(\tilde{\mathbf{a}}_\theta (\mathbf{s}, \; \varepsilon) \mid \mathbf{s})].
 $$
 
 \vspace{10pt}
 
 \noindent En remplaçant la fonction $Q^{\pi_\theta}$ par son estimation fournie par les critic networks, l'objectif d'optimisation de l'actor devient alors :
 $$
-\max_\theta \mathbb{E}_{\mathbf{s} \sim \mathcal{D}, \; \varepsilon \sim \mathcal{N}} \left[ \min_{i \in \{1, 2\}}Q_{\phi_i}(\mathbf{s}, \; \tilde{\mathbf{a}}_\theta (\mathbf{s}, \; \varepsilon)) -  \alpha \log \pi_\theta(\tilde{\mathbf{a}}_\theta (\mathbf{s}, \; \varepsilon) \mid \mathbf{s})\right].
+    \max_\theta \mathbb{E}_{\mathbf{s} \sim \mathcal{D}, \; \varepsilon \sim \mathcal{N}} \left[ \min_{i \in \{1, 2\}}Q_{\phi_i}(\mathbf{s}, \; \tilde{\mathbf{a}}_\theta (\mathbf{s}, \; \varepsilon)) -  \alpha \log \pi_\theta(\tilde{\mathbf{a}}_\theta (\mathbf{s}, \; \varepsilon) \mid \mathbf{s})\right].
 $$
 
 \vspace{10pt}
@@ -230,7 +230,7 @@ $$
 
 \subsubsection{Normalisation des observations}
 
-\noindent Les différentes composantes de l'état présentent des échelles de valeurs hétérogènes. Afin de faciliter l'apprentissage et d'éviter qu'une variable domine les autres, les observations sont normalisées avant d'être fournies aux réseaux de neurones. 
+\noindent Les différentes composantes de l'état présentent des échelles de valeurs hétérogènes. Afin de faciliter l'apprentissage et d'éviter qu'une variable domine les autres, les observations sont normalisées avant d'être fournies aux réseaux de neurones.
 
 \vspace{10pt}
 

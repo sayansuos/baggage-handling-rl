@@ -1,7 +1,7 @@
 \section{Modélisation du problème}
 
 \begin{tcolorbox}[colback=black!5,colframe=black,title=]
-Cette section présente la modélisation du problème de navigation sous la forme d'un processus de décision de Markov (MDP). Les différentes composantes du modèle, à savoir l'espace des états, l'espace des actions et la fonction de récompense, sont détaillées dans les sous-sections suivantes.
+    Cette section présente la modélisation du problème de navigation sous la forme d'un processus de décision de Markov (MDP). Les différentes composantes du modèle, à savoir l'espace des états, l'espace des actions et la fonction de récompense, sont détaillées dans les sous-sections suivantes.
 \end{tcolorbox}
 
 \noindent Le MDP est représenté par le tuple $(S, \; A, \; P, \; R, \; \gamma)$ où :
@@ -30,7 +30,7 @@ Cette section présente la modélisation du problème de navigation sous la form
 
 \noindent À chaque instant $t$, l'agent observe un état $\mathbf{s}_t \in S$ défini par :
 $$
-\mathbf{s}_t = (\mathbf{M}_t, \; d_t, \; \mathbf{e}_t, \; \mathbf{v}_t, \; \mathbf{o}_t),
+    \mathbf{s}_t = (\mathbf{M}_t, \; d_t, \; \mathbf{e}_t, \; \mathbf{v}_t, \; \mathbf{o}_t),
 $$
 où :
 \begin{itemize}
@@ -38,20 +38,20 @@ où :
     \item $\mathbf{M}_t \in \{0,1\}^{K \times W \times H}$ représente l'environnement local de l'agent construit à partir des $K$ dernières observations. Chaque observation est une carte encodée de taille $W \times H$, centrée sur l'agent. Une cellule vaut 1 lorsqu'elle est occupée par un obstacle et 0 sinon.
 
     \item $d_t \in \mathbb{R}^{+}$ représente la distance euclidienne à l'objectif :
-    $$
-    d_t=\sqrt{(x_g-x_t)^2+(y_g-y_t)^2},
-    $$
-    où $(x_t, \; y_t)$ désigne la position de l'agent et $(x_g,y_g)$ la
-    position de la cible.
-    
+          $$
+              d_t=\sqrt{(x_g-x_t)^2+(y_g-y_t)^2},
+          $$
+          où $(x_t, \; y_t)$ désigne la position de l'agent et $(x_g,y_g)$ la
+          position de la cible.
+
     \item $\mathbf{e}_t=(\cos(\Delta\theta_t), \; \sin(\Delta\theta_t))$ représente l'erreur d'orientation de l'agent par rapport à l'objectif, avec :
-    $$
-    \Delta\theta_t=\theta_t^{g}-\theta_t,
-    $$
-    où $\theta_t^{g}$ désigne la direction de l'objectif dans le repère global.
-    
+          $$
+              \Delta\theta_t=\theta_t^{g}-\theta_t,
+          $$
+          où $\theta_t^{g}$ désigne la direction de l'objectif dans le repère global.
+
     \item $\mathbf{v}_t = (v_t, \; \omega_t)$ représente respectivement la vitesse linéaire et la vitesse angulaire du robot.
-    
+
     \item $\mathbf{o}_t = (\cos(\theta_t), \; \sin(\theta_t))$ représente l'orientation du robot, où $\theta_t$ correspond à son angle d'orientation dans le repère global.
 \end{itemize}
 
@@ -68,7 +68,7 @@ où :
 
 \noindent À chaque instant $t$, l'agent choisit une action $\mathbf{a}_t \in A$ qui correspond aux commandes de contrôle appliquées au robot :
 $$
-\mathbf{a}_t = (v_t, \; \omega_t),
+    \mathbf{a}_t = (v_t, \; \omega_t),
 $$
 \noindent où $v_t$ et $\omega_t$ désignent respectivement la vitesse linéaire et la vitesse angulaire du robot, avec $v_t \in [v_\text{min}, \; v_\text{max}]$ et $\omega_t \in [\omega_\text{min}, \; \omega_\text{max}]$.
 
@@ -81,7 +81,7 @@ $$
 
 \noindent La fonction de récompense est définie comme la somme de plusieurs termes :
 $$
-R = R_{\text{g}} + R_{\text{r}} + R_{\text{s}} + R_{\text{c}},
+    R = R_{\text{g}} + R_{\text{r}} + R_{\text{s}} + R_{\text{c}},
 $$
 \noindent où $R_{\text{g}}$ récompense la progression vers l'objectif, $R_{\text{r}}$ pénalise les rotations importantes, $R_{\text{s}}$ pénalise la proximité des obstacles et $R_{\text{c}}$ pénalise les collisions.
 
@@ -106,12 +106,12 @@ $$
 \noindent La récompense de progression est définie par :
 $$
     R_\text{g} = \begin{cases}
-        \beta_1 \times (d^g_{t-1} - d^g_t) + 2 \times v_t - 1 & \text{si } d^o_t \ge\xi_{\text{s}} \\
+        \beta_1 \times (d^g_{t-1} - d^g_t) + 2 \times v_t - 1            & \text{si } d^o_t \ge\xi_{\text{s}} \\
         0.2 \times \beta_1 \times (d^g_{t-1} - d^g_t) + 2 \times v_t - 1 & \text{sinon.}
     \end{cases}
-    $$
-    Un bonus supplémentaire est attribué lorsque l'objectif est atteint (i.e. $d^g_t < \xi_{\text{g}}$) :
-    $$
+$$
+Un bonus supplémentaire est attribué lorsque l'objectif est atteint (i.e. $d^g_t < \xi_{\text{g}}$) :
+$$
     R_{\text{g}} \leftarrow R_{\text{g}} + r_{\text{goal\_reward}},
     \qquad \text{où }
     r_{\text{goal\_reward}} > 0.
@@ -135,11 +135,11 @@ $$
 
 \subsubsection{Pénalité de sécurité}
 
-\noindent Lorsque la distance au plus proche obstacle devient inférieure au seuil de sécurité $\xi$, une pénalité est appliquée : 
+\noindent Lorsque la distance au plus proche obstacle devient inférieure au seuil de sécurité $\xi$, une pénalité est appliquée :
 $$
     R_\text{s} = \begin{cases}
         \beta_3 \times r_{\text{safety\_malus}} \times \left( \frac{1}{(d^o_t)^2} - \frac{1}{\xi^2} \right) & \text{si } d^o_t < \xi_{\text{s}}, \\
-        0 & \text{sinon},
+        0                                                                                                   & \text{sinon},
     \end{cases}
     \qquad \text{où }
     r_{\text{safety\_malus}} < 0.
@@ -154,7 +154,7 @@ Cette pénalité augmente rapidement lorsque le robot se rapproche d'un obstacle
 $$
     R_{\text{c}} = \begin{cases}
         r_{\text{collision\_malus}} & \text{si } d^o_t < \xi_{\text{c}}, \\
-        0 & \text{sinon},
+        0                           & \text{sinon},
     \end{cases}
     \qquad \text{où }
     r_{\text{collision\_malus}} < 0.
