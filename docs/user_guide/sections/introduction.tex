@@ -1,0 +1,13 @@
+\section*{ Introduction }
+\addcontentsline{toc}{section}{Introduction}
+\markboth{INTRODUCTION}{INTRODUCTION}
+
+\noindent Le transport de bagages par des véhicules guidés automatisés (AGV) en environnement aéroportuaire soulève des problématiques de navigation multi-agents en environnement dynamique. Au sein de notre projet, l'objectif est de minimiser le temps de transport tout en garantissant l'absence de collision, dans un cadre décentralisé où les agents ne disposent que d'observations locales et ne communiquent pas explicitement entre eux. Dans cette optique, un simulateur est actuellement développé afin de modéliser l’environnement étudié et d’expérimenter différentes approches d’apprentissage par renforcement.
+
+\vspace{10pt}
+
+\noindent Dans un premier temps, nous nous intéressons à un cadre plus général de navigation autonome, en considérant des robots mobiles autonomes (AMR). Cette approche permet d'étudier et de valider les méthodes d'apprentissages dans un environnement plus libre, avant de les adapter progressivement aux contraintes spécifiques du contexte aéroportuaire.
+
+\vspace{10pt}
+
+\noindent Dans cette première phase expérimentale, nous choisissons d'étudier un algorithme classique d'apprentissage par renforcement profond afin de prendre en main le simulateur et d'implémenter les principaux éléments du problème. Plus précisément, nous entraînons un agent unique dans un environnement comportant des obstacles statiques et dynamiques à l'aide de l'algorithme Soft Actor-Critic (SAC). Ce choix est motivé par le fait que SAC est une méthode off-policy, ce qui permet une meilleure efficacité d'apprentissage. De plus, elle est particulièrement adaptée aux espaces d'actions continues et est largement utilisée dans la littérature pour ses bonnes performances et sa stabilité \citep{haarnoja2018sac, openai2023}.
