@@ -100,7 +100,7 @@ def run_sac(
 
                 else:
                     actions[amr.id] = agent.choose_action(
-                        state[amr.id], deterministic=True
+                        state=state[amr.id], deterministic=True
                     )
 
             next_state, rewards, _, _, info = env.step(actions)
@@ -217,7 +217,9 @@ def evaluate_sac(
 
             for amr in env.agents:
 
-                actions[amr.id] = agent.choose_action(state[amr.id])
+                actions[amr.id] = agent.choose_action(
+                    state=state[amr.id], deterministic=True
+                )
 
             next_state, _, _, _, info = env.step(actions)
             state = next_state
