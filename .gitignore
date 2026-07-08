@@ -190,10 +190,8 @@ cython_debug/
 *.synctex.gz
 *.toc
 
-# Logs and generated figures
-logs/
-figures/train/
-figures/validation/
+# Figures
+docs/figures
 
 # PyCharm
 #  JetBrains specific template is maintained in a separate JetBrains.gitignore that can

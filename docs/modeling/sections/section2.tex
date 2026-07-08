@@ -166,7 +166,7 @@ $$
 
 \subsection{Architecture des réseaux}
 
-\noindent \textbf{Pour implémenter l'algorithme SAC, deux réseaux de neurones sont utilisés : un actor network, qui paramètre la politique $\pi_\theta$, et deux critic networks, qui estiment la fonction de valeur d'action $Q_\phi$.} Dans un premier temps, nous nous inspirons de l'architecture proposée par \cite{chen2020}, dans laquelle la politique est apprise à partir de cartes locales égocentriques à l'aide de l'algorithme Distributed Proximal Policy Optimization (DPPO).
+\noindent Pour implémenter l'algorithme SAC, deux réseaux de neurones sont utilisés : un actor network, qui paramètre la politique $\pi_\theta$, et deux critic networks, qui estiment la fonction de valeur d'action $Q_\phi$. Dans un premier temps, nous nous inspirons de l'architecture proposée par \cite{chen2020}, dans laquelle la politique est apprise à partir de cartes locales égocentriques à l'aide de l'algorithme Distributed Proximal Policy Optimization (DPPO).
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -183,7 +183,7 @@ $$
     \centering
     \caption{Architecture générale de l'extracteur de caractéristiques convolutionnel}
     \label{fig:feature_extractor}
-    \includegraphics[scale=0.35]{figures/feature_extractor.png}
+    \includegraphics[scale=0.35]{../figures/feature_extractor.png}
 \end{figure}
 
 \noindent L'ensemble des informations est ensuite projeté dans un espace latent de dimension fixe. Ce vecteur latent est fourni à un réseau entièrement connecté composé de deux couches cachées, illustré par la Figure \ref{fig:actor_network}. La sortie du réseau est divisée en deux branches : une première branche prédit la moyenne $\mu_\theta(\textbf{s})$ de la distribution d'action, tandis qu'une seconde branche prédit le logarithme de l'écart-type $\log \sigma_\theta(\textbf{s})$. Le logarithme de l'écart-type est borné afin d'éviter des valeurs trop grandes ou trop faibles, ce qui stabilise l'apprentissage.
@@ -192,7 +192,7 @@ $$
     \centering
     \caption{Architecture générale de l'actor network}
     \label{fig:actor_network}
-    \includegraphics[scale=0.35]{figures/actor_network.png}
+    \includegraphics[scale=0.35]{../figures/actor_network.png}
 \end{figure}
 
 \noindent À partir de ces deux sorties, une action est échantillonnée selon une loi gaussienne à l'aide du reparameterization trick. L'action est ensuite transformée par une fonction tangente hyperbolique, puis remise à l'échelle afin de respecter les bornes de l'espace d'action. L'action finale correspond donc aux deux commandes du robot : la vitesse linéaire $v_t$ et la vitesse angulaire $\omega_t$.
@@ -214,13 +214,13 @@ $$
 
 \vspace{10pt}
 
-\noindent La différence principale avec l'actor est que le critic reçoit également l'action en entrée. Une fois le vecteur latent de l'état obtenu, celui ci est concaténé avec l'action $(v_t, \; \omega_t)$. Le vecteur résultant est ensuite traité par un réseau entièrement connecté composé de deux couches cachées. Cette dernière couche produit une valeur scalaire qui correspond à l'estimation de $Q_\phi(\textbf{s}, \; \textbf{a})$.
+\noindent La différence principale avec l'actor est que le critic reçoit également l'action en entrée : une fois le vecteur latent de l'état obtenu, celui ci est concaténé avec l'action. Le vecteur résultant est ensuite traité par un réseau entièrement connecté composé de deux couches cachées. Cette dernière couche produit une valeur scalaire qui correspond à l'estimation de $Q_\phi(\textbf{s}, \; \textbf{a})$.
 
 \begin{figure}[h]
     \centering
     \caption{Architecture générale des critic networks}
     \label{fig:critic_network}
-    \includegraphics[scale=0.35]{figures/critic_network.png}
+    \includegraphics[scale=0.35]{../figures/critic_network.png}
 \end{figure}
 
 \noindent L'utilisation de deux critic networks permet de limiter le biais de surestimation des valeurs $Q$. Lors du calcul des cibles d'apprentissage et de la mise à jour de l'actor, SAC utilise la plus petite des deux estimations, ce qui rend l'apprentissage plus stable.
