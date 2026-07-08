@@ -10,7 +10,7 @@ from utils.plotting import plot_renders
 
 if __name__ == "__main__":
 
-    MODE = "train"
+    MODE = "demo"
     train_experiments = load_experiments()
     eval_experiments = load_experiments(obj="eval")
 

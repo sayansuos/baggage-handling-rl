@@ -1,0 +1,138 @@
+\documentclass[12pt,a4paper]{article}
+%%%%%%%%%%%%%%%%%%%%%%%%%
+%%% Packages utilisés %%%
+%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\usepackage[french]{babel}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[
+    a4paper,
+    top=2.2cm,
+    bottom=2.2cm,
+    left=2.2cm,
+    right=2.2cm
+]{geometry}
+\usepackage{newtxtext,newtxmath}
+\usepackage{setspace}
+\setstretch{1.15}
+\usepackage[dvipsnames]{xcolor}
+\usepackage{tcolorbox}
+
+\usepackage{amsmath,amsfonts,mathtools}
+\usepackage{graphicx}
+\usepackage{subcaption}
+\usepackage{wrapfig}
+\usepackage{float}
+\usepackage[ruled,vlined]{algorithm2e}
+
+\usepackage{array}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{longtable}
+\usepackage{multirow}
+
+
+\usepackage[colorlinks=true,allcolors=blue]{hyperref}
+\usepackage{cleveref}
+\usepackage[round]{natbib}
+
+\definecolor{darkgray}{gray}{0.35}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{document}
+\normalsize
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%	      PAGE DE GARDE        %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+\begin{titlepage}
+
+\begin{center}
+
+\centering
+\includegraphics[scale=0.06]{ecam-logo.jpg}
+
+\vspace{50pt}
+
+\rule{\linewidth}{0.4mm}
+\vspace{2pt}
+\begin{spacing}{1}
+\Large\textsc{Modélisation et protocole expérimental 1}
+\\ \vspace{5pt}
+\textbf{\Large{Étude d’un cas simple mono-agent avec l'algorithme SAC}}
+\end{spacing}
+\vspace{2pt}
+\rule{\linewidth}{0.4mm}
+\end{center}
+
+\vspace{10pt}
+
+\noindent \textbf{\textsc{Sujet du stage :}} Étude d'algorithmes d'apprentissage par renforcement pour l'optimisation en temps du transport des bagages par des véhicules guidés automatisés (AGV) en environnement aéroportuaire.
+
+\vspace{10pt}
+
+\noindent \textbf{\textsc{Auteure :}} Sayan \textsc{Suos} 
+
+\vfill
+\centering{Années 2025 -- 2026}
+\end{titlepage}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%		DEBUT	  	           %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\setcounter{tocdepth}{2}
+\tableofcontents
+\newpage
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%		INTRODUCTION	  	   %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\input{sections/introduction}
+\newpage
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%		PARTIES     	  	   %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\input{sections/section1}
+\newpage
+\input{sections/section2}
+\newpage
+\input{sections/section3}
+\newpage
+\input{sections/section4}
+\newpage
+\input{sections/section5}
+\newpage
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%		CONCLUSION		  	   %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%\input{sections/conclusion}
+%\newpage
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%		FIN				  	   %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\bibliographystyle{plainnat}
+\bibliography{references}
+\newpage
+\listoffigures
+\listoftables
+\newpage
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%		ANNEXES			  	   %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\input{sections/annexes}
+
+
+\end{document}
