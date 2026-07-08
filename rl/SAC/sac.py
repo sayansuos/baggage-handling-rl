@@ -28,7 +28,7 @@ def run_sac(
     trained_agent_id: str,
     warmup_steps: int = 1000,
     update_frequency: int = 4,
-    reset_frequency: int = 20,
+    reset_frequency: int = 5,
 ):
     """
     Train a SAC agent on an experiment, optionally initializing it from a previous policy.

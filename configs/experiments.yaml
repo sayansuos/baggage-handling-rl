@@ -1,9 +1,9 @@
 train_experiments:
   - name: exp1_empty
     env_config: exp1_empty
-    agent_config: null
-    reward_config: null
-    n_steps: 50_000
+    agent_config: agent_1
+    reward_config: reward_1
+    n_steps: 25_000
 
   - name: exp2_fixed_1
     env_config: exp2_fixed_1
@@ -13,39 +13,75 @@ train_experiments:
 
   - name: exp3_fixed_2
     env_config: exp3_fixed_2
-    agent_config: null
-    reward_config: null
-    n_steps: 200_000
+    agent_config: agent_1
+    reward_config: reward_1
+    n_steps: 100_000
 
   - name: exp4_fixed_3
     env_config: exp4_fixed_3
-    agent_config: null
-    reward_config: null
-    n_steps: 250_000
+    agent_config: agent_1
+    reward_config: reward_1
+    n_steps: 150_000
 
-  - name: exp5_fixed_random
-    env_config: exp5_fixed_random
-    agent_config: null
-    reward_config: null
-    n_steps: 300_000
+  - name: exp5_fixed_random_1
+    env_config: exp5_fixed_random_1
+    agent_config: agent_1
+    reward_config: reward_1
+    n_steps: 150_000
 
-  - name: exp6_random_1
-    env_config: exp6_random_1
-    agent_config: null
-    reward_config: null
-    n_steps: 300_000
+  - name: exp6_fixed_random_2
+    env_config: exp6_fixed_random_2
+    agent_config: agent_1
+    reward_config: reward_1
+    n_steps: 150_000
 
-  - name: exp7_random_2
-    env_config: exp7_random_2
-    agent_config: null
-    reward_config: null
-    n_steps: 300_000
+  - name: exp7_fixed_random_3
+    env_config: exp7_fixed_random_3
+    agent_config: agent_1
+    reward_config: reward_1
+    n_steps: 150_000
 
-  - name: exp8_warehouse
-    env_config: exp8_warehouse
-    agent_config: null
-    reward_config: null
-    n_steps: 600_000
+  - name: exp8_fixed_random_4
+    env_config: exp8_fixed_random_4
+    agent_config: agent_1
+    reward_config: reward_1
+    n_steps: 200
+
+  - name: exp9_random_1
+    env_config: exp9_random_1
+    agent_config: agent_1
+    reward_config: reward_1
+    n_steps: 200
+
+  - name: exp10_random_2
+    env_config: exp10_random_2
+    agent_config: agent_1
+    reward_config: reward_1
+    n_steps: 200
+
+  - name: exp11_warehouse_1
+    env_config: exp11_warehouse_1
+    agent_config: agent_1
+    reward_config: reward_1
+    n_steps: 200
+
+  - name: exp12_warehouse_2
+    env_config: exp12_warehouse_2
+    agent_config: agent_1
+    reward_config: reward_1
+    n_steps: 200
+
+  - name: exp13_crossing_1
+    env_config: exp13_crossing_1
+    agent_config: agent_1
+    reward_config: reward_1
+    n_steps: 200
+
+  - name: exp14_crossing_2
+    env_config: exp14_crossing_2
+    agent_config: agent_1
+    reward_config: reward_1
+    n_steps: 200
 
 eval_experiments:
   - name: eval1_random_1

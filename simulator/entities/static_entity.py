@@ -8,7 +8,9 @@ from simulator.geometry import (
 
 
 class StaticEntity(Entity):
-    """Base class for rectangular entities that remain fixed in the environment."""
+    """
+    Base class for rectangular entities that remain fixed in the environment.
+    """
 
     def __init__(self, width: float, height: float, num: int | None = None):
         """

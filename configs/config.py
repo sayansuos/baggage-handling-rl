@@ -16,14 +16,10 @@ class EnvConfig:
     nb_moving_obstacles: int = 0
     nb_targets: int = 2
 
-    margin: int = 4
+    margin: int = 5
     max_attempts: int = 100
     max_steps: int = 300
 
-    width_min: int = 1
-    width_max: int = 20
-    height_min: int = 1
-    height_max: int = 20
     thickness: int = 1
     radius_min: float = 0.5
     radius_max: float = 1

@@ -9,7 +9,9 @@ from simulator.entities.static_entity import StaticEntity
 
 
 class GridMap:
-    """Manage the occupancy grid and the local observations of the agents."""
+    """
+    Manage the occupancy grid and the local observations of the agents.
+    """
 
     def __init__(
         self,
@@ -38,6 +40,7 @@ class GridMap:
         """
         Return the static occupancy grid.
         """
+
         return self._grid
 
     @property
@@ -45,6 +48,7 @@ class GridMap:
         """
         Return the shape of the occupancy grid.
         """
+
         return self._grid.shape
 
     @property
@@ -52,6 +56,7 @@ class GridMap:
         """
         Return the current occupancy grid.
         """
+
         return self._update_grid()
 
     def _build_grid(self) -> np.ndarray:
@@ -93,6 +98,7 @@ class GridMap:
 
             if not entity.current_position:
                 continue
+
             r, c = self.world_to_grid(entity.current_position)
 
             pad = int(round(entity.radius))
@@ -130,8 +136,8 @@ class GridMap:
         center_r, center_c = self.world_to_grid((cx, cy))
 
         for local_r in range(size):
-            for local_c in range(size):
 
+            for local_c in range(size):
                 grid_r = center_r + local_r - half
                 grid_c = center_c + local_c - half
 
@@ -147,6 +153,7 @@ class GridMap:
 
         r = np.clip(r, 0, self._rows - 1)
         c = np.clip(c, 0, self._columns - 1)
+
         return int(r), int(c)
 
     def world_to_grid(self, pos: tuple[float, float]) -> tuple[int, int]:
@@ -157,13 +164,16 @@ class GridMap:
         x, y = pos
         col = int(round(x))
         row = self._rows - 1 - int(round(y))
+
         return row, col
 
     def grid_to_world(self, cell: tuple[int, int]) -> tuple[float, float]:
         """
         Convert grid coordinates back to world coordinates.
         """
+
         row, col = cell
         x = col
         y = self._rows - 1 - row
+
         return x, y

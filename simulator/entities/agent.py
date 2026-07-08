@@ -33,7 +33,6 @@ class Agent(MovingEntity):
         Update the agent state according to the applied action.
         """
 
-        self.old_v = self.v
         self.old_position = self.current_position
 
         # Update position
@@ -131,8 +130,8 @@ class Agent(MovingEntity):
         ax.add_patch(rect)
 
         if hasattr(self, "path"):
-            xs = [p[0] for p in self.path[self.path_index :]]
-            ys = [p[1] for p in self.path[self.path_index :]]
+            xs = [p[0] for p in self.path]
+            ys = [p[1] for p in self.path]
             ax.plot(xs, ys, "--", color=color, alpha=0.1, linewidth=2)
 
     def get_vision_field(

@@ -3,15 +3,7 @@ from abc import ABC, abstractmethod
 
 class Entity(ABC):
     """
-    Base class for every object in the environment
-    (robot, static obstacle, dynamic obstacle, etc.).
-
-    Attributes
-    ----------
-    num : int
-        Unique identifier of the object.
-    current_position : tuple
-        Current center position of the object.
+    Base class for all entities in the environment.
     """
 
     def __init__(self, num: int | None = None):
@@ -27,8 +19,9 @@ class Entity(ABC):
     @abstractmethod
     def bounds(self) -> tuple[float, float, float, float]:
         """
-        Return the object's bounds.
+        Return the bounding box of the entity.
         """
+
         pass
 
     @abstractmethod
@@ -40,16 +33,15 @@ class Entity(ABC):
         min_dist: float = 0.0,
     ) -> bool:
         """
-        Check collision between this entity and another entity.
-
-        This method dispatches the collision logic to the appropriate
-        shape-specific implementation of the other entity.
+        Check whether the entity collides with another entity.
         """
+
         pass
 
     @abstractmethod
     def render(self, ax) -> None:
         """
-        Default render method.
+        Render the entity.
         """
+
         pass

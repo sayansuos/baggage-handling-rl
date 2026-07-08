@@ -2,7 +2,7 @@ import heapq
 
 import numpy as np
 
-from simulator.entities import agent, moving_entity, node
+from simulator.entities import moving_entity, node
 from simulator.environment.gridmap import GridMap
 from simulator.geometry import get_relative_distance
 
@@ -13,7 +13,9 @@ def compute_astar_paths(
     moving_obstacles: list[moving_entity.MovingEntity],
     min_length: int | None = None,
 ):
-    """ """
+    """
+    Compute A* paths for all moving obstacles.
+    """
 
     pathfinder = AStar(grid_map.grid, int(radius_max // 2 + 1))
 
@@ -53,8 +55,9 @@ def compute_astar_paths(
 
 def _from_grid(grid_map: GridMap, pos: tuple[int, int]) -> tuple[float, float]:
     """
-    Convert grid coordinates back to world coordinates.
+    Convert grid coordinates to world coordinates.
     """
+
     return grid_map.grid_to_world(pos)
 
 
@@ -62,45 +65,33 @@ def _to_grid(grid_map: GridMap, pos: tuple[float, float]) -> tuple[int, int]:
     """
     Convert world coordinates to grid coordinates.
     """
+
     return grid_map.world_to_grid(pos)
 
 
 class AStar:
     """
-    A* path planning algorithm on a 2D occupancy grid.
-
-    The algorithm finds the shortest path between a start and a goal
-    while avoiding obstacles defined in the grid.
-
-    Grid format:
-    - 0 → free cell
-    - 1 → obstacle
-
-    Attributes
-    ----------
-    grid : np.ndarray
-        Occupancy grid used for navigation.
+    A* path planner on a 2D occupancy grid.
     """
 
     def __init__(self, grid: np.ndarray, margin: int | None = None):
         """
         Constructor
         """
+
         self.grid = grid
         if margin:
             self.inflate_obstacles(margin)
 
     def inflate_obstacles(self, margin: int):
         """
-        Inflate all obstacle cells in the occupancy grid.
-
-        Neighboring cells around each obstacle are marked as occupied
-        in order to create a safety margin for path planning.
+        Inflate the obstacles in the occupancy grid.
         """
 
         inflated = self.grid.copy()
         rows, cols = inflated.shape
         obstacle_cells = np.argwhere(self.grid == 1)
+
         for r, c in obstacle_cells:
             for dr in range(-margin, margin + 1):
                 for dc in range(-margin, margin + 1):
@@ -108,19 +99,18 @@ class AStar:
                     nc = c + dc
                     if 0 <= nr < rows and 0 <= nc < cols:
                         inflated[nr, nc] = 1
+
         self.grid = inflated
 
     def get_valid_neighbors(self, pos: tuple[int, int]) -> list[tuple[int, int]]:
         """
-        Return valid neighboring cells.
-
-        A valid neighbor:
-        - is inside the grid
-        - is not an obstacle (grid value = 0)
+        Return the valid neighboring cells of a grid position.
         """
 
         x, y = pos
         rows, cols = self.grid.shape
+        valid_moves = []
+
         possible_moves = [
             (x + 1, y),
             (x - 1, y),
@@ -131,10 +121,11 @@ class AStar:
             (x + 1, y - 1),
             (x - 1, y + 1),
         ]
-        valid_moves = []
+
         for r, c in possible_moves:
             if 0 <= r < rows and 0 <= c < cols and self.grid[r][c] == 0:
                 valid_moves.append((r, c))
+
         return valid_moves
 
     def reconstruct_path(self, target: node.Node) -> list[tuple[int, int]]:
@@ -144,9 +135,11 @@ class AStar:
 
         path = []
         current = target
+
         while current is not None:
             path.append(current.position)
             current = current.parent
+
         return path[::-1]
 
     def find_path(
@@ -165,6 +158,7 @@ class AStar:
         closed_set = set()
 
         while open_list:
+
             current_node = heapq.heappop(open_list)
             current_pos = current_node.position
 
@@ -174,12 +168,16 @@ class AStar:
             closed_set.add(current_pos)
 
             for neighbor_pos in self.get_valid_neighbors(current_pos):
+
                 if neighbor_pos in closed_set:
                     continue
+
                 new_g = current_node.g + get_relative_distance(
                     current_pos, neighbor_pos
                 )
+
                 if neighbor_pos not in open_dict:
+
                     neighbor_node = node.Node(
                         neighbor_pos,
                         new_g,
@@ -188,7 +186,9 @@ class AStar:
                     )
                     heapq.heappush(open_list, neighbor_node)
                     open_dict[neighbor_pos] = neighbor_node
+
                 elif new_g < open_dict[neighbor_pos].g:
+
                     neighbor_node = open_dict[neighbor_pos]
                     neighbor_node.g = new_g
                     neighbor_node.parent = current_node

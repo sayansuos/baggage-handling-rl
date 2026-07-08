@@ -6,30 +6,28 @@ train_environments:
     agent_mode: random
     env_mode: random
 
-    nb_agents: 2
+    nb_agents: 1
     nb_static_obstacles: 0
-    nb_moving_obstacles: 1
-    nb_targets: 2
+    nb_moving_obstacles: 0
+    nb_targets: 1
 
-    margin: 3
     max_attempts: 100
-    max_steps: 200
+    max_steps: 100
 
   - name: exp2_fixed_1
     width: 64
     height: 32
 
-    agent_mode: fixed
-    env_mode: fixed
+    agent_mode: fixed_1
+    env_mode: fixed_1
 
     nb_agents: 1
     nb_static_obstacles: 3
     nb_moving_obstacles: 0
     nb_targets: 1
 
-    margin: 3
     max_attempts: 100
-    max_steps: 110
+    max_steps: 100
 
   - name: exp3_fixed_2
     width: 64
@@ -39,13 +37,12 @@ train_environments:
     env_mode: fixed_2
 
     nb_agents: 1
-    nb_static_obstacles: 3
+    nb_static_obstacles: 6
     nb_moving_obstacles: 0
-    nb_targets: 2
+    nb_targets: 1
 
-    margin: 3
     max_attempts: 100
-    max_steps: 200
+    max_steps: 100
 
   - name: exp4_fixed_3
     width: 64
@@ -55,71 +52,104 @@ train_environments:
     env_mode: fixed_3
 
     nb_agents: 1
-    nb_static_obstacles: 3
-    nb_moving_obstacles: 0
-    nb_targets: 2
-
-    margin: 3
-    max_attempts: 100
-    max_steps: 200
-
-  - name: exp5_fixed_random
-    width: 64
-    height: 32
-
-    agent_mode: fixed_random
-    env_mode: fixed_random
-
-    nb_agents: 1
-    nb_static_obstacles: 3
-    nb_moving_obstacles: 0
-    nb_targets: 2
-
-    margin: 3
-    max_attempts: 100
-    max_steps: 200
-
-  - name: exp6_random_1
-    width: 64
-    height: 32
-
-    agent_mode: random
-    env_mode: random
-
-    nb_agents: 1
-    nb_static_obstacles: 4
+    nb_static_obstacles: 9
     nb_moving_obstacles: 0
     nb_targets: 1
 
-    width_min: 5
-    width_max: 15
-    height_min: 5
-    height_max: 10
+    max_attempts: 100
+    max_steps: 100
+
+  - name: exp5_fixed_random_1
+    width: 64
+    height: 32
+
+    agent_mode: fixed_2
+    env_mode: fixed_random_2
+
+    nb_agents: 1
+    nb_static_obstacles: 6
+    nb_moving_obstacles: 0
+    nb_targets: 1
 
     max_attempts: 100
-    max_steps: 200
+    max_steps: 100
 
-  - name: exp7_random_2
+  - name: exp6_fixed_random_2
+    width: 64
+    height: 32
+
+    agent_mode: fixed_3
+    env_mode: fixed_random_3
+
+    nb_agents: 1
+    nb_static_obstacles: 9
+    nb_moving_obstacles: 0
+    nb_targets: 1
+
+    max_attempts: 100
+    max_steps: 100
+
+  - name: exp7_fixed_random_3
+    width: 64
+    height: 32
+
+    agent_mode: fixed_3
+    env_mode: fixed_random_3
+
+    nb_agents: 1
+    nb_static_obstacles: 9
+    nb_moving_obstacles: 1
+    nb_targets: 1
+
+    max_attempts: 100
+    max_steps: 100
+
+  - name: exp8_fixed_random_4
+    width: 64
+    height: 32
+
+    agent_mode: fixed_3
+    env_mode: fixed_random_3
+
+    nb_agents: 1
+    nb_static_obstacles: 9
+    nb_moving_obstacles: 2
+    nb_targets: 1
+
+    max_attempts: 100
+    max_steps: 100
+
+  - name: exp9_random_1
     width: 64
     height: 32
 
     agent_mode: random
     env_mode: random
 
-    nb_agents: 1
-    nb_static_obstacles: 10
-    nb_moving_obstacles: 0
+    nb_agents: 2
+    nb_static_obstacles: 3
+    nb_moving_obstacles: 1
     nb_targets: 2
-
-    width_min: 2
-    width_max: 6
-    height_min: 1
-    height_max: 3
 
     max_attempts: 100
     max_steps: 200
 
-  - name: exp8_warehouse
+  - name: exp10_random_2
+    width: 64
+    height: 32
+
+    agent_mode: random
+    env_mode: random
+
+    nb_agents: 2
+    nb_static_obstacles: 3
+    nb_moving_obstacles: 2
+    nb_targets: 2
+
+    max_attempts: 100
+    max_steps: 200
+
+  - name: exp11_warehouse_1
     width: 64
     height: 32
 
@@ -127,11 +157,55 @@ train_environments:
     env_mode: warehouse
 
     nb_agents: 1
-    nb_moving_obstacles: 0
+    nb_moving_obstacles: 1
     nb_targets: 2
 
     margin: 2
+    max_attempts: 100
     max_steps: 200
+
+  - name: exp12_warehouse_2
+    width: 64
+    height: 32
+
+    agent_mode: random
+    env_mode: warehouse
+
+    nb_agents: 2
+    nb_moving_obstacles: 2
+    nb_targets: 2
+
+    margin: 2
+    max_attempts: 100
+    max_steps: 200
+
+  - name: exp13_crossing_1
+    width: 64
+    height: 32
+
+    agent_mode: crossing
+    env_mode: crossing
+
+    nb_agents: 2
+    nb_static_obstacles: 0
+    nb_moving_obstacles: 0
+
+    max_attempts: 100
+    max_steps: 100
+
+  - name: exp14_crossing_2
+    width: 64
+    height: 32
+
+    agent_mode: crossing
+    env_mode: crossing
+
+    nb_agents: 4
+    nb_static_obstacles: 0
+    nb_moving_obstacles: 0
+
+    max_attempts: 100
+    max_steps: 100
 
 eval_environments:
   - name: eval1_random_1
