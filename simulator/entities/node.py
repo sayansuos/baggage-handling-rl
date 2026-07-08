@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+
 class Node:
     """
     Represents a node used by the A* pathfinding algorithm.

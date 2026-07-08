@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from matplotlib.patches import Rectangle
 
 from simulator.entities.entity import Entity

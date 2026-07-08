@@ -1,0 +1,178 @@
+\section{Protocole expérimental}
+
+\begin{tcolorbox}[colback=black!5,colframe=black,title=]
+Cette section présente le protocole expérimental adopté pour entraîner et évaluer la politique apprise. Dans un premier temps, une stratégie de curriculum learning \citep{bengio2009, narvekar2020} est mise en œuvre afin d'apprendre progressivement les comportements de navigation. Dans un second temps, la politique est évaluée sur différentes familles d'environnements afin d'analyser ses performances et sa capacité de généralisation.
+\end{tcolorbox}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+\subsection{Curriculum d'entraînement}
+
+\noindent \textbf{L'objectif de cette étude est d'entraîner progressivement l'agent à résoudre des tâches de navigation de plus en plus complexes.} Pour cela, une stratégie de curriculum learning est adoptée : l'agent est d'abord confronté à des environnements simples, puis la difficulté est augmentée au fur et à mesure de l'apprentissage. Cette approche permet de stabiliser l'entraînement en évitant de confronter immédiatement l'agent à des situations trop complexes.
+
+\vspace{10pt}
+
+\noindent Le curriculum est constitué de huit expériences successives, présentées dans la Table \ref{tab:training_scenarios} et illustrées par la Figure \ref{fig:training_scenarios}. Les premières expériences visent à apprendre les comportements fondamentaux de navigation, tandis que les dernières introduisent progressivement des environnements plus variés et des interactions plus complexes.
+
+\vspace{10pt}
+
+\noindent Les scénarios sont caractérisés par la largeur et la hauteur de l'environnement ($W_{\text{env}}$ et $H_{\text{env}}$), le nombre d'agents ($N_{\text{a}}$), d'obstacles statiques ($N_{\text{s}}$), d'obstacles dynamiques ($N_{\text{m}}$), d'objectifs à atteindre ($N_{\text{g}}$) ainsi que par le nombre maximal d'étapes par épisode ($T_{\text{max}}$).
+
+\begin{longtable}{cp{6cm}ccccccc}
+
+\caption{Récapitulatif des scénarios d'entraînement} \label{tab:training_scenarios} \\
+\toprule
+\textit{Expérience} & \textit{Objectif} & $W_{\text{env}}$ & $H_{\text{env}}$ & $N_{\text{a}}$ & $N_{\text{s}}$ & $N_{\text{m}}$ & $N_{\text{g}}$ & $T_{\text{max}}$ \\
+\midrule
+\endfirsthead
+\toprule
+\textit{Expérience} & \textit{Objectif} & $W_{\text{env}}$ & $H_{\text{env}}$ & $N_{\text{a}}$ & $N_{\text{s}}$ & $N_{\text{m}}$ & $N_{\text{g}}$ & $T_{\text{max}}$ \\
+\midrule
+\endhead
+\midrule
+\endfoot
+\bottomrule
+\endlastfoot
+
+Exp. 1 & Apprendre la navigation vers une cible sans obstacle. & 64 & 32 & 1 & 0 & 0 & 2 & 200 \\
+\midrule
+Exp. 2 & Apprendre un premier contournement avec une colonne de petits obstacles. & 64 & 32 & 1 & 3 & 0 & 1 & 110 \\
+\midrule
+Exp. 3 & Apprendre plusieurs contournements successifs avec deux colonnes d'obstacles et deux objectifs. & 64 & 32 & 1 & 6 & 0 & 2 & 200 \\
+\midrule
+Exp. 4 & Apprendre à naviguer dans des passages plus contraints grâce à des obstacles plus volumineux. & 64 & 32 & 1 & 6 & 0 & 2 & 200 \\
+\midrule
+Exp. 5 & Développer la robustesse face à des obstacles de tailles et de positions variables. & 64 & 32 & 1 & 6 & 0 & 2 & 200 \\
+\midrule
+Exp. 6 & Généraliser à des configurations aléatoires composées de quelques obstacles moyens. & 64 & 32 & 1 & 3 -- 4 & 0 & 2 & 200 \\
+\midrule
+Exp. 7 & Généraliser à des environnements plus denses comportant plusieurs petits obstacles aléatoires. & 64 & 32 & 1 & 8 -- 10 & 0 & 2 & 200 \\
+\midrule
+Exp. 8 & Généraliser à un environnement structuré de type entrepôt composé d'allées et de rayonnages. & 64 & 32 & 1 & 12 & 0 & 2 & 200 \\
+
+\end{longtable}
+
+\noindent \textbf{Expérience 1 -- Navigation de base :} Dans un premier temps, l'agent évolue dans un environnement entièrement libre de tout obstacle. L'objectif est d'apprendre les bases de la navigation, c'est-à-dire rejoindre deux cibles en minimisant le temps de trajet tout en contrôlant correctement sa vitesse linéaire et sa vitesse angulaire. Cette première étape permet également de valider le bon fonctionnement de la fonction de récompense avant d'introduire des contraintes supplémentaires.
+
+\vspace{10pt}
+
+\noindent \textbf{Expérience 2 -- Premiers comportements d'évitement :} Une unique colonne de petits obstacles est ensuite placée au centre de l'environnement. Les positions initiales de l'agent et de la cible sont choisies de manière à ce que la trajectoire directe traverse nécessairement cette colonne. L'agent est ainsi contraint d'apprendre un premier comportement de contournement tout en poursuivant sa progression vers l'objectif.
+
+\vspace{10pt}
+
+\noindent \textbf{Expérience 3 -- Plusieurs contournements successifs :} La difficulté est augmentée en ajoutant une seconde colonne de petits obstacles. Deux objectifs successifs sont introduits : l'agent doit d'abord rejoindre une cible située au milieu de l'environnement, puis une seconde cible située à l'extrémité opposée. Cette configuration impose plusieurs phases de navigation et plusieurs manœuvres d'évitement au sein d'un même épisode.
+
+\vspace{10pt}
+
+\noindent \textbf{Expérience 4 -- Obstacles de plus grande taille :} La disposition générale des obstacles est conservée, mais leur taille est augmentée. Les passages deviennent plus étroits et les marges de manœuvre plus faibles. L'agent doit alors anticiper davantage ses trajectoires et produire des déplacements plus précis.
+
+\vspace{10pt}
+
+\noindent \textbf{Expérience 5 -- Variabilité des obstacles :} Les obstacles conservent une organisation similaire, mais leurs dimensions deviennent variables et leur position est légèrement décalée horizontalement ou verticalement. Cette étape vise à éviter que l'agent ne mémorise une configuration particulière de l'environnement et à améliorer sa robustesse face à de légères variations géométriques.
+
+\vspace{10pt}
+
+\noindent \textbf{Expérience 6 -- Premières généralisations :} Les obstacles ne sont plus prédéfinis mais générés aléatoirement à chaque épisode. Trois à quatre obstacles de taille moyenne sont placés en respectant les contraintes de génération (absence de recouvrement, marge minimale entre les objets, etc.). L'agent doit alors apprendre une stratégie de navigation capable de s'adapter à des configurations variées.
+
+\vspace{10pt}
+
+\noindent \textbf{Expérience 7 -- Environnement fortement encombré :} Le nombre d'obstacles générés aléatoirement est augmenté. Huit à dix petits obstacles sont placés aléatoirement dans l'environnement, créant des scènes plus denses et plus variées. Cette étape vise à développer une politique robuste capable de naviguer efficacement dans des environnements fortement encombrés.
+
+\vspace{10pt}
+
+\noindent \textbf{Expérience 8 -- Environnement de type entrepôt :} Enfin, l'agent est entraîné dans un environnement de type warehouse, explicité dans la section suivante.
+
+\begin{figure}[h]
+    \centering
+    \caption{Scénarios types utilisés pour le curriculum d'entraînement.}
+    \label{fig:training_scenarios}
+    \includegraphics[scale=0.55]{figures/train_renders.png}
+\end{figure}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+\subsection{Environnements de test}
+
+\noindent Les performances de la politique apprise sont évaluées sur plusieurs familles d'environnements présentant des niveaux de difficulté et des caractéristiques différentes. Ces scénarios sont présentés dans la Table \ref{tab:eval_scenarios} et illustrés dans la Figure \ref{fig:eval_scenarios}. \textbf{L'objectif est d'analyser non seulement les performances de navigation obtenues dans des scénarios similaires à ceux utilisés lors de l'entraînement, mais également la capacité de généralisation de l'agent sur des configurations plus variées.}
+
+
+\begin{longtable}{c p{6.5cm} r r r r r r r}
+
+\caption{Récapitulatif des scénarios d'évaluation} \label{tab:eval_scenarios} \\
+\toprule
+\textit{Évaluation} & \textit{Description} & $W_{\text{env}}$ & $H_{\text{env}}$ & $N_{\text{a}}$ & $N_{\text{s}}$ & $N_{\text{m}}$ & $N_{\text{g}}$ & $T_{\text{max}}$ \\
+\midrule
+\endfirsthead
+\toprule
+\textit{Évaluation} & \textit{Description} & $W_{\text{env}}$ & $H_{\text{env}}$ & $N_{\text{a}}$ & $N_{\text{s}}$ & $N_{\text{m}}$ & $N_{\text{g}}$ & $T_{\text{max}}$ \\
+\midrule
+\endhead
+\midrule
+\endfoot
+\bottomrule
+\endlastfoot
+
+Éval. 1 & Environnement aléatoire avec uniquement des obstacles statiques. & 64 & 32 & 1 & 3 -- 5 & 0 & 2 & 200 \\
+\midrule
+Éval. 2 & Environnement aléatoire avec obstacles statiques et dynamiques. & 64 & 32 & 1 & 3 -- 5 & 2 & 2 & 200 \\
+\midrule
+Éval. 3 & Environnement de type entrepôt avec obstacles statiques. & 64 & 32 & 1 & 12 & 0 & 2 & 200 \\
+\midrule
+Éval. 4 & Environnement de type entrepôt avec obstacles statiques et dynamiques. & 64 & 32 & 1 & 12 & 2 & 2 & 200 \\
+\midrule
+Éval. 5 & Scénario de croisement avec trajectoire vers une cible opposée.  & 64 & 32 & 1 & 0 & 3 & 1 & 200 \\
+
+\end{longtable}
+
+\noindent \textbf{Scénarios aléatoires -- random :} Les scénarios aléatoires sont générés automatiquement à chaque épisode en faisant varier la position des obstacles, de l'agent et de la cible, tout en respectant les contraintes de génération (absence de recouvrement, distance minimale entre les objets, etc.). Ils permettent d'évaluer la capacité de l'agent à généraliser à des configurations qu'il n'a jamais rencontrées au cours de l'entraînement. La difficulté peut être ajustée en faisant varier le nombre d'obstacles statiques et dynamiques.
+
+\vspace{10pt}
+
+\noindent \textbf{Scénarios de type entrepôt -- warehouse :} Les scénarios de type warehouse reproduisent un environnement structuré composé d'allées séparées par des obstacles rectangulaires représentant des rayonnages. Ils permettent d'évaluer la capacité de l'agent à planifier des trajectoires dans des espaces contraints, où les possibilités de déplacement sont limitées et où les passages sont plus étroits. Ce type d'environnement se rapproche des configurations rencontrées dans les systèmes automatisés de transport.
+
+\vspace{10pt}
+
+\noindent \textbf{Scénarios de type circulaire -- crossing :} Les scénarios de type crossing sont conçus pour générer de nombreuses interactions entre l'agent et des obstacles dynamiques. L'agent et les obstacles dynamiques sont disposés sur la périphérie de l'environnement et doivent rejoindre une cible située de l'autre côté, ce qui conduit à des trajectoires qui se croisent au centre de la scène. Ces scénarios permettent d'évaluer la robustesse de la politique dans des situations fortement conflictuelles, caractérisées par un risque élevé de collision et nécessitant des comportements d'évitement efficaces.
+
+\begin{figure}[h]
+    \centering
+    \caption{Scénarios types utilisés pour l'évaluation.}
+    \label{fig:eval_scenarios}
+    \includegraphics[scale=0.55]{figures/eval_renders.png}
+\end{figure}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+\subsection{Critères d'évaluation}
+
+\noindent Afin d'évaluer les performances de la politique apprise, plusieurs indicateurs sont considérés. \textbf{L'objectif est d'analyser à la fois la capacité de l'agent à atteindre sa cible, mais également l'efficacité des trajectoires produites et le respect des contraintes de sécurité.}
+
+\vspace{10pt}
+
+\begin{itemize}
+    \item Le principal indicateur est le taux de réussite (success rate), défini comme la proportion d'épisodes pour lesquels l'agent atteint l'ensemble de ses objectifs avant la fin de l'épisode. Cette métrique permet d'évaluer directement la capacité de l'algorithme à accomplir la tâche de navigation.
+
+    \item Le taux de collision (collision rate) correspond à la proportion d'épisodes interrompus à la suite d'une collision avec un obstacle. Il permet de mesurer le respect des contraintes de sécurité imposées au robot.
+
+    \item Le temps moyen de trajet (mean travel time) est également considéré. Il correspond au nombre moyen d'étapes nécessaires pour atteindre la cible. Cette métrique permet d'évaluer l'efficacité de la navigation en complément du taux de réussite, deux politiques pouvant atteindre la cible avec des temps de parcours très différents.
+
+    \item Enfin, le retour cumulé moyen (average return) est suivi au cours de l'apprentissage. Il correspond à la somme des récompenses obtenues au cours d'un épisode, moyennée sur plusieurs épisodes. Cet indicateur permet d'observer la convergence de l'algorithme et d'analyser l'influence de la fonction de récompense sur les comportements appris
+\end{itemize}
+
+\vspace{10pt}
+
+\noindent En plus de ces indicateurs globaux, une analyse plus fine sera réalisée en étudiant séparément les différentes composantes de la fonction de récompense (progression, sécurité, rotation et collision). Cette décomposition permettra de mieux comprendre les comportements développés par l'agent au cours de l'apprentissage et d'identifier l'influence de chaque terme de récompense sur la politique obtenue.
+
+\vspace{10pt}
+
+\noindent Ces différents indicateurs seront comparés pour l'ensemble des scénarios d'entraînement et d'évaluation, afin d'analyser l'influence du curriculum learning sur l'apprentissage ainsi que la capacité de généralisation de la politique. 
