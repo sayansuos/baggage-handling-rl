@@ -10,7 +10,7 @@ if __name__ == "__main__":
     if MODE == "demo":
         run_demo(
             experiments=train_experiments + eval_experiments,
-            best_exp=train_experiments[-1],
+            policy=train_experiments[-1],
             render=True,
         )
 
@@ -23,14 +23,14 @@ if __name__ == "__main__":
         )
         run_animation(
             experiments=train_experiments,
-            best_exp=train_experiments[-1],
+            policy=train_experiments[-1],
             path="figures/demo",
             file_name="train",
             fps=10,
         )
         run_animation(
             experiments=eval_experiments,
-            best_exp=train_experiments[-1],
+            policy=train_experiments[-1],
             path="figures/demo",
             file_name="eval",
             fps=10,

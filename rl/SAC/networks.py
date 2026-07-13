@@ -126,9 +126,7 @@ class ActorNetwork(torch.nn.Module):
         self.device = torch.device(
             "cuda"
             if torch.cuda.is_available()
-            else "mps"
-            if torch.mps.is_available()
-            else "cpu"
+            else "mps" if torch.mps.is_available() else "cpu"
         )
         self.to(self.device)
 
@@ -191,7 +189,12 @@ class ActorNetwork(torch.nn.Module):
         torch.save(self.state_dict(), self.checkpoint_path)
 
     def load_checkpoint(self):
-        self.load_state_dict(torch.load(self.checkpoint_path))
+        state_dict = torch.load(
+            self.checkpoint_path,
+            map_location=self.device,
+        )
+        self.load_state_dict(state_dict)
+        self.to(self.device)
 
 
 class CriticNetwork(torch.nn.Module):
@@ -231,9 +234,7 @@ class CriticNetwork(torch.nn.Module):
         self.device = torch.device(
             "cuda"
             if torch.cuda.is_available()
-            else "mps"
-            if torch.mps.is_available()
-            else "cpu"
+            else "mps" if torch.mps.is_available() else "cpu"
         )
         self.to(self.device)
         self.optimizer = torch.optim.Adam(self.parameters(), self.lr)
@@ -261,4 +262,9 @@ class CriticNetwork(torch.nn.Module):
         torch.save(self.state_dict(), self.checkpoint_path)
 
     def load_checkpoint(self):
-        self.load_state_dict(torch.load(self.checkpoint_path))
+        state_dict = torch.load(
+            self.checkpoint_path,
+            map_location=self.device,
+        )
+        self.load_state_dict(state_dict)
+        self.to(self.device)

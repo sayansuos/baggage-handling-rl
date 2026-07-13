@@ -68,7 +68,7 @@ train_environments:
 
     nb_agents: 1
     nb_static_obstacles: 0
-    nb_moving_obstacles: 10
+    nb_moving_obstacles: 3
     nb_targets: 1
 
     max_attempts: 100

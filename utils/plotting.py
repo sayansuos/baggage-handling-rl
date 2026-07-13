@@ -30,14 +30,14 @@ def plot_renders(
     experiments: list[Experiment],
     path: str,
     file_name: str = "",
-    min_ncols: int = 2,
+    max_ncols: int = 2,
 ):
     """Render the initial environment of each experiment and save them in a single comparison figure."""
 
     os.makedirs(path, exist_ok=True)
 
     n = len(experiments)
-    ncols = min(min_ncols, n)
+    ncols = min(max_ncols, n)
     nrows = math.ceil(n / ncols)
 
     fig, axes = plt.subplots(

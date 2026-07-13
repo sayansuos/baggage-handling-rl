@@ -13,7 +13,7 @@ from utils.plotting import plot_animation, plot_figures
 
 def run_demo(
     experiments: list[Experiment],
-    best_exp: Experiment,
+    policy: Experiment,
     render: bool = False,
     trained_agent_id: str = "agent_1",
 ):
@@ -38,7 +38,7 @@ def run_demo(
             reward_config=exp.reward_config,
             name=exp.name,
         )
-        agent = load_agent(env, best_exp, trained_agent_id)
+        agent = load_agent(env, policy, trained_agent_id)
         agent.load_checkpoints()
 
         state, _ = env.reset(seed=1234)
@@ -74,7 +74,7 @@ def run_demo(
 
 def run_animation(
     experiments: list[Experiment],
-    best_exp: Experiment,
+    policy: Experiment,
     path: str,
     file_name: str,
     fps: int = 20,
@@ -92,7 +92,7 @@ def run_animation(
         print(f"[ START ] {exp.name}")
 
         env = Environment(exp.env_config, exp.agent_config, exp.reward_config, exp.name)
-        agent = load_agent(env, best_exp, trained_agent_id)
+        agent = load_agent(env, policy, trained_agent_id)
         agent.load_checkpoints()
 
         state, _ = env.reset(seed=1234)
@@ -244,7 +244,7 @@ def run_validation(
     experiments: list[Experiment],
     n_episodes: int = 100,
     n_render: int = 5,
-    agent=None,
+    trained_agent_id="agent_1",
 ):
     """
     Evaluate a trained policy on the validation scenarios and save the resulting metrics and animations.
@@ -258,10 +258,10 @@ def run_validation(
     for exp in experiments:
         history, frames = evaluate_sac(
             exp=exp,
-            agent=agent,
+            agent=None,
             n_episodes=n_episodes,
             n_render=n_render,
-            trained_agent_id="agent_1",
+            trained_agent_id=trained_agent_id,
         )
 
         df_train = log_train(history, "logs/validation", exp.name)
@@ -315,7 +315,7 @@ def run_evaluation(
         df_train = log_train(history, "logs/evaluation", scenario.name)
         df_rewards = log_rewards(history, "logs/evaluation", scenario.name)
 
-        plot_figures(df_train, df_rewards, "figures/evaluation", exp.name, windom=100)
+        plot_figures(df_train, df_rewards, "figures/evaluation", exp.name, window=100)
 
         if n_render > 0:
             plot_animation(frames, "figures/evaluation", scenario.name, 10)

@@ -93,7 +93,7 @@ class Environment(gym.Env):
         """
 
         obs = {}
-        current_grid = self.grid
+        current_grid = self.grid_map.current_grid
 
         for agent in self.agents:
 
