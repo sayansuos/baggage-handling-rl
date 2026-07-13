@@ -8,5 +8,5 @@ rewards:
     goal_bonus: 400.0
     collision_malus: -150.0
     angular_malus: -2.0
-    safety_malus: -1.0
+    safety_malus: -2.0
     safety_threshold: 2.0

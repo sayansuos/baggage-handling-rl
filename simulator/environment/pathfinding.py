@@ -20,7 +20,6 @@ def compute_astar_paths(
     pathfinder = AStar(grid_map.grid, int(radius_max // 2 + 1))
 
     for entity in list(moving_obstacles):
-
         if not entity.target_positions or not entity.start_position:
             continue
 
@@ -41,7 +40,6 @@ def compute_astar_paths(
                 path = [entity.current_position]
 
         if min_length is not None and len(full_path) > 1:
-
             back_and_forth = full_path + full_path[::-1]
             extended_path = []
 
@@ -50,7 +48,7 @@ def compute_astar_paths(
 
             full_path = extended_path[:min_length]
 
-        entity.path.extend(full_path)
+        entity.path = full_path
 
 
 def _from_grid(grid_map: GridMap, pos: tuple[int, int]) -> tuple[float, float]:
@@ -158,7 +156,6 @@ class AStar:
         closed_set = set()
 
         while open_list:
-
             current_node = heapq.heappop(open_list)
             current_pos = current_node.position
 
@@ -168,7 +165,6 @@ class AStar:
             closed_set.add(current_pos)
 
             for neighbor_pos in self.get_valid_neighbors(current_pos):
-
                 if neighbor_pos in closed_set:
                     continue
 
@@ -177,7 +173,6 @@ class AStar:
                 )
 
                 if neighbor_pos not in open_dict:
-
                     neighbor_node = node.Node(
                         neighbor_pos,
                         new_g,
@@ -188,7 +183,6 @@ class AStar:
                     open_dict[neighbor_pos] = neighbor_node
 
                 elif new_g < open_dict[neighbor_pos].g:
-
                     neighbor_node = open_dict[neighbor_pos]
                     neighbor_node.g = new_g
                     neighbor_node.parent = current_node

@@ -40,12 +40,11 @@ class MovingEntity(Entity):
         Advance the entity to the next position along its predefined path.
         """
 
-        if self.path_index < len(self.path) - 1:
-            self.path_index += 1
-        else:
-            self.path_index = 0
+        if self.path:
+            if self.path_index < len(self.path) - 1:
+                self.path_index += 1
 
-        self.current_position = self.path[self.path_index]
+            self.current_position = self.path[self.path_index]
 
     def render(
         self,

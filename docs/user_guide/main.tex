@@ -38,6 +38,32 @@
 \usepackage{cleveref}
 
 \definecolor{darkgray}{gray}{0.35}
+\definecolor{lightgray}{RGB}{248,248,248}
+
+\usepackage{minted}
+\usemintedstyle{friendly}
+\tcbuselibrary{minted}
+\newtcblisting{codebox}[2][]{%
+    listing only,
+    listing engine=minted,
+    minted language=#2,
+    minted options={
+        fontsize=\small,
+        breaklines,
+        autogobble,
+        linenos,
+        xleftmargin=18pt,
+    },
+    colback=lightgray,
+    colframe=darkgray,
+    boxrule=0.4pt,
+    arc=1mm,
+    left=2mm,
+    right=2mm,
+    top=1mm,
+    bottom=1mm,
+    #1
+}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -90,6 +116,16 @@
 \input{sections/introduction}
 \newpage
 \input{sections/section1}
+\newpage
+\input{sections/section2}
+\newpage
+\input{sections/section3}
+\newpage
+\input{sections/section4}
+\newpage
+\input{sections/section5}
+\newpage
+\input{sections/section6}
 \newpage
 \bibliographystyle{plainnat}
 \bibliography{references}

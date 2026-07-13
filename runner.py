@@ -30,7 +30,6 @@ def run_demo(
         fig, ax = None, None
 
     for exp in experiments:
-
         print(f"[ START ] {exp.name}")
 
         env = Environment(
@@ -49,7 +48,6 @@ def run_demo(
             plt.pause(0.001)
 
         while not env.dones[trained_agent_id]:
-
             actions = {}
 
             for amr in env.agents:
@@ -91,7 +89,6 @@ def run_animation(
     frames = []
 
     for exp in experiments:
-
         print(f"[ START ] {exp.name}")
 
         env = Environment(exp.env_config, exp.agent_config, exp.reward_config, exp.name)
@@ -106,7 +103,6 @@ def run_animation(
         frames.append(np.asarray(fig.canvas.renderer.buffer_rgba()).copy())
 
         while not env.dones[trained_agent_id]:
-
             actions = {}
 
             for amr in env.agents:
@@ -151,7 +147,6 @@ def run_train_all(
     debugs = []
 
     while total_steps < n_steps:
-
         env = random.choice(experiments)
 
         print(
@@ -217,9 +212,7 @@ def run_train(
     print(f"\n[ TRAIN ] {len(experiments)} experiment(s)\n")
 
     for exp in experiments:
-
         if "mixed_curriculum" not in exp.name:
-
             history, debug, _ = run_sac(
                 exp=exp, previous_exp=previous_exp, trained_agent_id=trained_agent_id
             )
@@ -233,7 +226,6 @@ def run_train(
             previous_exp = exp
 
         else:
-
             run_train_all(
                 experiments=experiments,
                 previous_exp=previous_exp,
@@ -244,9 +236,7 @@ def run_train(
     duration = time.perf_counter() - start
 
     print(
-        f"\n[ SUMMARY ] "
-        f"{len(experiments)} experiment(s) completed "
-        f"in {duration:.1f}s\n"
+        f"\n[ SUMMARY ] {len(experiments)} experiment(s) completed in {duration:.1f}s\n"
     )
 
 
@@ -266,7 +256,6 @@ def run_validation(
     print(f"\n[ VALIDATION ] {len(experiments)} experiment(s)\n")
 
     for exp in experiments:
-
         history, frames = evaluate_sac(
             exp=exp,
             agent=agent,
@@ -275,8 +264,10 @@ def run_validation(
             trained_agent_id="agent_1",
         )
 
-        log_train(history, "logs/validation", exp.name)
-        log_rewards(history, "logs/validation", exp.name)
+        df_train = log_train(history, "logs/validation", exp.name)
+        df_rewards = log_rewards(history, "logs/validation", exp.name)
+
+        plot_figures(df_train, df_rewards, "figures/validation", exp.name, window=100)
 
         if n_render > 0:
             plot_animation(frames, "figures/validation", exp.name, 10)
@@ -284,9 +275,7 @@ def run_validation(
     duration = time.perf_counter() - start
 
     print(
-        f"\n[ SUMMARY ] "
-        f"{len(experiments)} experiment(s) completed "
-        f"in {duration:.1f}s\n"
+        f"\n[ SUMMARY ] {len(experiments)} experiment(s) completed in {duration:.1f}s\n"
     )
 
 
@@ -307,7 +296,6 @@ def run_evaluation(
     print(f"\n[ EVALUATION ] {len(experiments)} experiment(s)\n")
 
     for scenario in experiments:
-
         exp = Experiment(
             name=policy.name,
             env_config=scenario.env_config,
@@ -324,8 +312,10 @@ def run_evaluation(
             trained_agent_id=trained_agent_id,
         )
 
-        log_train(history, "logs/evaluation", scenario.name)
-        log_rewards(history, "logs/evaluation", scenario.name)
+        df_train = log_train(history, "logs/evaluation", scenario.name)
+        df_rewards = log_rewards(history, "logs/evaluation", scenario.name)
+
+        plot_figures(df_train, df_rewards, "figures/evaluation", exp.name, windom=100)
 
         if n_render > 0:
             plot_animation(frames, "figures/evaluation", scenario.name, 10)
@@ -333,7 +323,5 @@ def run_evaluation(
     duration = time.perf_counter() - start
 
     print(
-        f"\n[ SUMMARY ] "
-        f"{len(experiments)} experiment(s) completed "
-        f"in {duration:.1f}s\n"
+        f"\n[ SUMMARY ] {len(experiments)} experiment(s) completed in {duration:.1f}s\n"
     )

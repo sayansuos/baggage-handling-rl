@@ -1,16 +1,9 @@
-from runner import (
-    run_animation,
-    run_demo,
-    run_evaluation,
-    run_train,
-    run_validation,
-)
+from runner import run_animation, run_demo, run_evaluation, run_train, run_validation
 from utils.config_loader import load_experiments
 from utils.plotting import plot_renders
 
 if __name__ == "__main__":
-
-    MODE = "demo"
+    MODE = "train"
     train_experiments = load_experiments()
     eval_experiments = load_experiments(obj="eval")
 
@@ -44,10 +37,8 @@ if __name__ == "__main__":
         )
 
     elif MODE == "train":
-        run_train(experiments=train_experiments[8:9], previous_exp=train_experiments[7])
-        run_validation(experiments=train_experiments[8:9], n_episodes=100, n_render=5)
-        # run_train(experiments=train_experiments, previous_exp=None)
-        # run_validation(experiments=train_experiments, n_episodes=100, n_render=5)
+        run_train(experiments=train_experiments[4:5], previous_exp=train_experiments[3])
+        run_validation(experiments=train_experiments[4:5], n_episodes=100, n_render=5)
 
     elif MODE == "validation":
         run_validation(experiments=train_experiments[8:], n_episodes=500, n_render=5)

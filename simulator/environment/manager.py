@@ -108,7 +108,7 @@ class Manager:
         radius_max = self.env_config.radius_max
         min_dist = self.env_config.margin
         max_attempts = self.env_config.max_attempts
-        mode = self.env_config.env_mode
+        mode = self.env_config.agent_mode
 
         if "fixed" in mode:
             self._fixed_moving_obstacles(
@@ -204,7 +204,6 @@ class Manager:
         remainder = n % n_cols
 
         for col_idx, x in enumerate(x_positions):
-
             n_rows = base + (1 if col_idx < remainder else 0)
 
             y_positions = np.linspace(
@@ -214,7 +213,6 @@ class Manager:
             )
 
             for y in y_positions:
-
                 obstacle = static_entity.StaticEntity(
                     width=w,
                     height=h,
@@ -282,12 +280,10 @@ class Manager:
         h_max = max(h_min + 1, base // 4)
 
         for _ in range(n):
-
             placed = False
             attempts = 0
 
             while not placed and attempts < max_attempts:
-
                 w = np.random.randint(w_min, w_max + 1)
                 h = np.random.randint(h_min, h_max + 1)
 
@@ -326,7 +322,6 @@ class Manager:
 
         for i in x:
             for j in y:
-
                 obstacle = static_entity.StaticEntity(
                     width=w,
                     height=h,
@@ -349,13 +344,11 @@ class Manager:
         positions = []
 
         for a in angles:
-
             x = cx + r * np.cos(a)
             y = cy + r * np.sin(a)
             positions.append((x, y))
 
         for pos in positions:
-
             obstacle = static_entity.StaticEntity(
                 width=2,
                 height=2,
@@ -376,10 +369,18 @@ class Manager:
         Generate moving obstacles and targets on each side of the obstacle columns.
         """
 
-        top_limit = int(self.height * 0.2)
-        bot_limit = int(self.height * 0.8)
+        top_limit = int(self.height * 0.5)
+        bot_limit = int(self.height * 0.5)
 
         for i in range(self.nb_moving_obstacles):
+            side = np.random.choice(["top", "bot"])
+
+            if side == "top":
+                h_min, h_max = top_limit, self.height
+                h_min_t, h_max_t = 0, bot_limit
+            else:
+                h_min, h_max = 0, bot_limit
+                h_min_t, h_max_t = top_limit, self.height
 
             entity = moving_entity.MovingEntity(i + 1)
 
@@ -387,8 +388,8 @@ class Manager:
                 entity=entity,
                 w_min=0,
                 w_max=self.width,
-                h_min=top_limit,
-                h_max=self.height,
+                h_min=h_min,
+                h_max=h_max,
                 min_dist=min_dist,
                 max_attempts=max_attempts,
                 for_target=False,
@@ -398,13 +399,12 @@ class Manager:
             entity.current_position = pos
 
             for _ in range(nb_targets):
-
                 target = self._set_random_position(
                     entity=entity,
                     w_min=0,
                     w_max=self.width,
-                    h_min=0,
-                    h_max=bot_limit,
+                    h_min=h_min_t,
+                    h_max=h_max_t,
                     min_dist=min_dist,
                     max_attempts=max_attempts,
                     for_target=False,
@@ -427,7 +427,6 @@ class Manager:
         """
 
         for i in range(self.nb_moving_obstacles):
-
             entity = moving_entity.MovingEntity(num=i + 1)
 
             pos = self._set_random_position(
@@ -446,7 +445,6 @@ class Manager:
             entity.radius = np.random.uniform(radius_min, radius_max)
 
             for _ in range(nb_targets):
-
                 target = self._set_random_position(
                     entity=entity,
                     w_min=0,
@@ -468,7 +466,6 @@ class Manager:
         """
 
         for i in range(self.nb_moving_obstacles):
-
             moving_obstacle = moving_entity.MovingEntity(num=i + 1)
 
             pos, target = self._set_circular_position(
@@ -499,7 +496,6 @@ class Manager:
         right_limit = int(cx + obstacle_zone / 2)
 
         for i in range(self.nb_agents):
-
             entity = agent.Agent(self.agent_config, i + 1)
 
             pos = self._set_random_position(
@@ -519,7 +515,6 @@ class Manager:
             entity.path = [pos]
 
             for _ in range(nb_targets):
-
                 target = self._set_random_position(
                     entity=entity,
                     w_min=right_limit,
@@ -540,7 +535,6 @@ class Manager:
         """
 
         for i in range(self.nb_agents):
-
             entity = agent.Agent(self.agent_config, i + 1)
 
             pos = self._set_random_position(
@@ -562,7 +556,6 @@ class Manager:
             self.agents.append(entity)
 
             for _ in range(nb_targets):
-
                 target = self._set_random_position(
                     entity=entity,
                     w_min=0,
@@ -582,7 +575,6 @@ class Manager:
         """
 
         for i in range(self.nb_agents):
-
             entity = agent.Agent(self.agent_config, i + 1)
 
             pos, target = self._set_circular_position(entity, min_dist, max_attempts)
@@ -620,7 +612,6 @@ class Manager:
         i = 0
 
         while not is_free and i < max_attempts:
-
             pos = (
                 np.random.randint(w_min + pad, w_max - pad),
                 np.random.randint(h_min, h_max - pad),
@@ -651,7 +642,6 @@ class Manager:
         i = 0
 
         while not is_free and i < max_attempts:
-
             k = np.random.randint(len(positions))
             pos = positions[k]
             is_free = self._is_free(entity, pos, min_dist, False)

@@ -9,4 +9,4 @@ agents:
     omega_max: 1.05
 
     radius: 0.5
-    length_view: 11
+    length_view: 9

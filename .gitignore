@@ -179,6 +179,7 @@ cython_debug/
 .DS_Store
 
 # LaTeX generated files
+*_minted/
 *.aux
 *.bbl
 *.blg
