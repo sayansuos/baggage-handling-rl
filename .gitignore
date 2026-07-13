@@ -190,6 +190,7 @@ cython_debug/
 *.out
 *.synctex.gz
 *.toc
+*.latexindent.yaml
 
 # Figures
 docs/figures

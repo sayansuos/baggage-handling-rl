@@ -33,6 +33,8 @@
 \usepackage{longtable}
 \usepackage{multirow}
 
+\renewcommand{\arraystretch}{1.25}
+
 
 \usepackage[colorlinks=true,allcolors=blue]{hyperref}
 \usepackage{cleveref}
@@ -109,7 +111,6 @@
     \centering{Années 2025 -- 2026}
 \end{titlepage}
 
-\setcounter{tocdepth}{2}
 \tableofcontents
 \newpage
 
@@ -125,11 +126,12 @@
 \newpage
 \input{sections/section5}
 \newpage
-\input{sections/section6}
-\newpage
+
 \bibliographystyle{plainnat}
 \bibliography{references}
 \newpage
-
+\listoffigures
+\listoftables
+\newpage
 
 \end{document}

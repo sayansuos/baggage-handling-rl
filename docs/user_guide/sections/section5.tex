@@ -1,11 +1,182 @@
-\section{Personnalisation du simulateur}
+\section{Visualisation des résultats}
+\label{sec:visualisation_resultats}
 
-créer un nouvel environnement
+\noindent Cette section présente les différents outils permettant de visualiser les résultats produits par le simulateur. Elle décrit les fonctions permettant d'observer l'exécution d'une politique en temps réel, de générer des animations, de représenter graphiquement les scénarios ainsi que les principaux fichiers générés au cours des différentes phases d'exécution.
 
-modifier la récompense
+\subsection{Démonstration en temps réel}
 
-changer les observations
+\noindent La fonction \texttt{run\_demo} exécute un épisode pour chacune des expériences fournies. Lorsque le rendu est activé, l'évolution des agents et des obstacles est affichée en temps réel.
 
-ajouter des obstacles
+\begin{codebox}{python}
+run_demo(
+    experiments=eval_experiments,
+    policy=train_experiments[-1],
+    render=True,
+    trained_agent_id="agent_1",
+)
+\end{codebox}
 
-modifier les agents
+\begin{longtable}{
+        >{\ttfamily\small}p{0.2\textwidth}
+        >{\ttfamily\small}p{0.1\textwidth}
+        p{0.65\textwidth}
+    }
+    \caption{Paramètres de la fonction \texttt{run\_demo}.}
+    \label{tab:run_demo_parameters}                                                                                                                                                                 \\
+
+    \toprule
+    \textnormal{\textit{Paramètre}} & \textnormal{\textit{Par défaut}}                                                                                                       & \textit{Description} \\
+    \midrule
+    \endfirsthead
+
+    \toprule
+    \textnormal{\textit{Paramètre}} & \textnormal{\textit{Par défaut}}                                                                                                       & \textit{Description} \\
+    \midrule
+    \endhead
+
+    \midrule
+    \\
+    \endfoot
+
+    \bottomrule
+    \endlastfoot
+
+    experiments
+                                    & ---
+                                    & Liste des scénarios à exécuter. Un épisode est lancé pour chaque expérience de la liste.                                                                      \\
+
+    policy
+                                    & ---
+                                    & Expérience d'entraînement identifiant les poids de la politique à charger.                                                                                    \\
+
+    render
+                                    & False
+                                    & Active ou désactive le rendu graphique en temps réel. Lorsque la valeur est \texttt{False}, les épisodes sont exécutés sans affichage.                        \\
+
+    trained\_agent\_id
+                                    & agent\_1
+                                    & Identifiant de l'agent contrôlé par la politique chargée.                                                                                                     \\
+\end{longtable}
+
+
+\noindent Les actions sont calculées de manière déterministe durant la démonstration afin d'obtenir un comportement stable et reproductible de la politique entraînée.
+
+\subsection{Génération d'une animation}
+
+\noindent La fonction \texttt{run\_animation} exécute un épisode pour chaque scénario, enregistre les images successives du rendu puis les rassemble dans une animation.
+
+\begin{codebox}{python}
+run_animation(
+    experiments=eval_experiments,
+    policy=train_experiments[-1],
+    path="figures/animations",
+    file_name="evaluation",
+    fps=20,
+    trained_agent_id="agent_1",
+)
+\end{codebox}
+
+\begin{table}[h]
+    \centering
+    \caption{Paramètres de la fonction \texttt{run\_animation}.}
+    \label{tab:run_animation_parameters}
+    \begin{tabularx}{\textwidth}{>{\ttfamily\small}l >{\ttfamily\small}l X}
+        \toprule
+        \textnormal{\textit{Paramètre}}         &
+        \textnormal{\textit{Valeur par défaut}} &
+        \textit{Description}                                                                                                 \\
+        \midrule
+
+        experiments
+                                                & ---
+                                                & Liste des scénarios à exécuter et à inclure dans l'animation.              \\
+
+        policy
+                                                & ---
+                                                & Expérience d'entraînement identifiant les poids de la politique à charger. \\
+
+        path
+                                                & ---
+                                                & Dossier dans lequel les fichiers d'animation doivent être enregistrés.     \\
+
+        file\_name
+                                                & ---
+                                                & Nom utilisé pour les fichiers générés.                                     \\
+
+        fps
+                                                & 20
+                                                & Nombre d'images affichées par seconde dans l'animation produite.           \\
+
+        trained\_agent\_id
+                                                & agent\_1
+                                                & Identifiant de l'agent contrôlé par la politique.                          \\
+
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+\subsection{Génération d'une figure comparative des scénarios}
+
+\noindent La fonction \texttt{plot\_renders} génère une représentation statique de l'état initial de chaque expérience fournie. Les différents scénarios sont regroupés dans une même figure afin de faciliter leur comparaison visuelle. Pour chaque expérience, un environnement est créé puis réinitialisé avec une graine fixe avant d'être affiché dans une sous-figure portant le nom de l'expérience.
+
+\begin{codebox}{python}
+plot_renders(
+    experiments=eval_experiments,
+    path="figures/renders",
+    file_name="evaluation",
+    max_ncols=2,
+)
+\end{codebox}
+
+\begin{tcolorbox}[colback=YellowGreen!5,colframe=YellowGreen,title=Remarque]
+    La fonction utilise une graine fixe égale à \texttt{1234} lors de la réinitialisation des environnements. Elle permet ainsi de générer des représentations reproductibles des scénarios et de comparer leur organisation dans des conditions identiques.
+\end{tcolorbox}
+
+\begin{longtable}{
+        >{\ttfamily\small}p{0.2\textwidth}
+        >{\ttfamily\small}p{0.1\textwidth}
+        p{0.65\textwidth}
+    }
+    \caption{Paramètres de la fonction \texttt{plot\_renders}.}
+    \label{tab:plot_renders_parameters}                                                                                                                            \\
+
+    \toprule
+    \textnormal{\textit{Paramètre}}  &
+    \textnormal{\textit{Par défaut}} &
+    \textit{Description}                                                                                                                                           \\
+    \midrule
+    \endfirsthead
+
+    \toprule
+    \textnormal{\textit{Paramètre}}  &
+    \textnormal{\textit{Par défaut}} &
+    \textit{Description}                                                                                                                                           \\
+    \midrule
+    \endhead
+
+    \midrule
+    \\
+    \endfoot
+
+    \bottomrule
+    \endlastfoot
+
+    experiments
+                                     & ---
+                                     & Liste des expériences dont les environnements doivent être représentés. Une sous-figure est générée pour chaque expérience. \\
+
+    path
+                                     & ---
+                                     & Dossier dans lequel la figure comparative doit être enregistrée. pas.                                                       \\
+
+    file\_name
+                                     & ""
+                                     & Préfixe utilisé pour nommer le fichier généré. La figure est enregistrée sous la forme \texttt{<file\_name>\_renders.png}.  \\
+
+    max\_ncols
+                                     & 2
+                                     & Nombre maximal de colonnes utilisé pour organiser les sous-figures.                                                         \\
+\end{longtable}
+
+
+\subsection{Résultats générés}

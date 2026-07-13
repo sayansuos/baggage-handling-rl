@@ -1,3 +1,361 @@
 \section{Configuration du simulateur}
 
-Expliquer les fichiers de configuration
+\noindent La configuration du simulateur repose sur un ensemble de fichiers YAML regroupés dans le dossier \texttt{configs/}. Ces fichiers permettent de définir l'ensemble des paramètres nécessaires à l'exécution d'une expérience, notamment les caractéristiques des environnements, des agents, de la fonction de récompense ainsi que les expériences d'entraînement ou d'évaluation. Cette séparation entre la configuration et le code permet de modifier facilement le comportement du simulateur sans intervenir directement dans son implémentation.
+
+\begin{table}[h]
+    \centering
+    \caption{Description des fichiers de configuration.}
+    \label{tab:config_files}
+    \begin{tabularx}{\textwidth}{>{\ttfamily\small}l X}
+        \toprule
+        \textnormal{\textit{Élément}} & \textit{Description}                                                                                                                                                                                                           \\
+        \midrule
+        config.py                     & Définit les différentes classes de configuration (dataclasses) utilisées pour représenter les paramètres des environnements, des agents, des fonctions de récompense et des expériences après le chargement des fichiers YAML. \\
+
+        experiments.yaml              & Définit les expériences à exécuter.                                                                                                                                                                                            \\
+
+        environments.yaml             & Définit les scénarios et les environnements.                                                                                                                                                                                   \\
+
+        agent.yaml                    & Définit les paramètres des agents.                                                                                                                                                                                             \\
+
+        reward.yaml                   & Définit les paramètres de la fonction de récompense.                                                                                                                                                                           \\
+
+
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+\noindent Les fichiers de configuration sont automatiquement chargés par le module \texttt{config\_loader} (dans le dossier \texttt{utils/}), qui lit les fichiers YAML et instancie les différentes classes de configuration (\texttt{EnvironmentConfig}, \texttt{AgentConfig}, \texttt{RewardConfig} et \texttt{Experiment}). L'utilisateur n'a donc qu'à modifier les fichiers de configuration sans intervenir dans le code source.
+
+\vspace{10pt}
+
+\noindent Les sections suivantes détaillent le contenu de chacun de ces fichiers de configuration.
+
+\subsection{Configuration des expériences}
+
+\noindent Les expériences à exécuter sont définies dans le fichier \texttt{experiments.yaml}. Une expérience correspond à un scénario d'entraînement ou d'évaluation et associe un environnement, une configuration d'agent ainsi qu'une fonction de récompense. Ce fichier permet également de définir le nombre d'étapes d'entraînement ou le nombre d'épisodes selon le mode d'exécution.
+
+\vspace{10pt}
+
+\noindent Chaque expérience d'entraînement est définie par une entrée de la liste \texttt{train\_experiments}.
+
+\begin{codebox}{yaml}
+    train_experiments:
+      - name: random_1
+        env_config: random_1
+        agent_config: agent_1
+        reward_config: reward_1
+        n_steps: 50_000
+\end{codebox}
+\vspace{10pt}
+
+\noindent De même, chaque expérience d'évaluation est définie par une entrée de la liste \texttt{eval\_experiments}.
+
+\begin{codebox}{yaml}
+    eval_experiments:
+      - name: random_1
+        env_config: random_1
+        agent_config: agent_1
+        reward_config: reward_1
+        n_steps: null
+\end{codebox}
+
+\begin{table}[h]
+    \centering
+    \caption{Description des paramètres de \texttt{Experiment}.}
+    \label{tab:experiments_parameters}
+    \begin{tabularx}{\textwidth}{>{\ttfamily\small}l X}
+        \toprule
+        \textnormal{\textit{Paramètres}} & \textit{Description}                                                                                                  \\
+        \midrule
+        name                             & Nom de l'expérience. Ce nom est également utilisé pour identifier les fichiers de résultats et les poids sauvegardés. \\
+
+        env\_config                      & Nom de la configuration d'environnement à utiliser (définie dans \texttt{environment.yaml}).                          \\
+
+        agent\_config                    & Nom de la configuration de l'agent (définie dans \texttt{agent.yaml}).                                                \\
+
+        reward\_config                   & Nom de la fonction de récompense (définie dans \texttt{reward.yaml}).                                                 \\
+
+        n\_steps                         & Nombre d'étapes d'entraînement. Ce paramètre est utilisé uniquement pour les expériences d'entraînement.              \\
+
+
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+\noindent Plusieurs expériences peuvent être définies dans un même fichier. Elles sont exécutées dans l'ordre où elles apparaissent, ce qui permet notamment de mettre en place un curriculum d'apprentissage. Chaque expérience peut ainsi utiliser une configuration d'environnement différente afin d'augmenter progressivement la difficulté des scénarios, tandis que les poids du modèle appris lors d'une expérience sont réutilisés pour initialiser la suivante.
+
+\begin{tcolorbox}[colback=YellowGreen!5,colframe=YellowGreen,title=Remarque]
+
+    Les expériences d'entraînement sont exécutées pendant un nombre d'étapes défini par le paramètre \texttt{n\_steps}. Ce nombre doit être choisi en fonction de la difficulté du scénario ainsi que de la diversité des situations rencontrées durant l'apprentissage.
+
+    Les expériences d'évaluation n'utilisent pas ce paramètre. Elles sont exécutées sur un nombre fixe d'épisodes afin d'évaluer la politique préalablement entraînée. Ce nombre d'épisodes est défini dans le fichier \texttt{main.py}.
+
+\end{tcolorbox}
+
+\subsection{Configuration des environnements}
+
+\noindent Les environnements sont définis dans le fichier \texttt{environments.yaml}. Chaque environnement décrit un scénario de simulation en précisant les dimensions de la carte, les modes de génération des entités ainsi que les paramètres contrôlant la création des obstacles et le déroulement d'un épisode.
+
+\vspace{10pt}
+
+\noindent Chaque environnement est identifié par un nom unique, qui peut ensuite être référencé dans le fichier \texttt{experiments.yaml} à l'aide du paramètre \texttt{env\_config}.
+
+\begin{codebox}{yaml}
+random_1:
+  width: 64
+  height: 32
+
+  agent_mode: random
+  env_mode: random
+
+  nb_agents: 1
+  nb_static_obstacles: 4
+  nb_moving_obstacles: 2
+  nb_targets: 2
+
+  margin: 3
+  max_attempts: 100
+  max_steps: 300
+
+  thickness: 1
+  radius_min: 0.5
+  radius_max: 1.0
+\end{codebox}
+
+\begin{table}[h]
+    \centering
+    \caption{Description des paramètres de \texttt{EnvironmentConfig}.}
+    \label{tab:environment_parameters}
+    \begin{tabularx}{\textwidth}{>{\ttfamily\small}l X}
+        \toprule
+        \textnormal{\textit{Paramètre}} & \textit{Description}                                                                    \\
+        \midrule
+        width                           & Largeur de l'environnement.                                                             \\
+
+        height                          & Hauteur de l'environnement.                                                             \\
+
+        agent\_mode                     & Définit le mode de génération des agents et de leurs objectifs.                         \\
+
+        env\_mode                       & Définit le type d'environnement et la disposition des obstacles statiques.              \\
+
+        nb\_agents                      & Nombre d'agents présents dans le scénario.                                              \\
+
+        nb\_static\_obstacles           & Nombre d'obstacles statiques générés lorsque le mode d'environnement le permet.         \\
+
+        nb\_moving\_obstacles           & Nombre d'obstacles dynamiques générés.                                                  \\
+
+        nb\_targets                     & Nombre de positions cibles successives attribuées à chaque agent ou obstacle dynamique. \\
+
+        margin                          & Distance minimale imposée entre les entités lors de leur génération.                    \\
+
+        max\_attempts                   & Nombre maximal de tentatives pour générer une position valide avant l'abandon.          \\
+
+        max\_steps                      & Nombre maximal d'étapes autorisées pour un épisode.                                     \\
+
+        thickness                       & Épaisseur des murs délimitant l'environnement.                                          \\
+
+        radius\_min                     & Rayon minimal des obstacles dynamiques générés aléatoirement.                           \\
+
+        radius\_max                     & Rayon maximal des obstacles dynamiques générés aléatoirement.                           \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+\noindent Les paramètres \texttt{env\_mode} et \texttt{agent\_mode} déterminent la stratégie de génération des scénarios. Selon les valeurs choisies, les positions des agents, des obstacles statiques, des obstacles dynamiques et des cibles sont générées suivant des règles différentes, permettant de construire des environnements adaptés à différents niveaux de difficulté. Le code source de ces configurations se trouvent dans la classe \texttt{Manager}.
+
+\begin{table}[h]
+    \centering
+    \caption{Description des modes de génération.}
+    \label{tab:generation_modes}
+    \begin{tabularx}{\textwidth}{>{\ttfamily\small}l >{\ttfamily\small}l X}
+        \toprule
+        \textnormal{\textit{Paramètre}} &
+        \textnormal{\textit{Valeur}}    &
+        \textit{Description}                                                                                                                                                                                                                                                                                       \\
+        \midrule
+
+        \multirow{5}{*}{env\_mode}
+                                        & random
+                                        & Génère aléatoirement les positions et les dimensions des obstacles statiques dans l'environnement.                                                                                                                                                                       \\
+
+                                        & warehouse
+                                        & Génère une disposition prédéfinie d'obstacles statiques représentant des allées d'entrepôt.                                                                                                                                                                              \\
+
+                                        & crossing
+                                        & Génère les obstacles statiques autour du centre de l'environnement selon une disposition circulaire.                                                                                                                                                                     \\
+
+                                        & fixed\_n
+                                        & Génère les obstacles statiques sur \texttt{n} colonnes fixes, avec des dimensions déterministes.                                                                                                                                                                         \\
+
+                                        & fixed\_random\_n
+                                        & Génère les obstacles statiques sur \texttt{n} colonnes fixes, avec des dimensions aléatoires.                                                                                                                                                                            \\
+
+        \midrule
+
+        \multirow{3}{*}{agent\_mode}
+                                        & random
+                                        & Génère aléatoirement les positions initiales et les cibles des agents et des obstacles dynamiques, en respectant les contraintes de distance minimale.                                                                                                                   \\
+
+                                        & fixed\_n
+                                        & Génère les positions initiales et les cibles des agents de part et d'autre des \texttt{n} colonnes d'obstacles statiques. Les obstacles dynamiques sont placés dans la partie supérieure ou inférieure de l'environnement, avec des cibles situées dans la zone opposée. \\
+
+                                        & crossing
+                                        & Génère les positions initiales des agents et des obstacles dynamiques sur un cercle, puis leur attribue une cible diamétralement opposée afin de créer un scénario de croisement.                                                                                        \\
+
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+\noindent Selon le mode de génération sélectionné, certains paramètres de la configuration peuvent être ignorés. Par exemple, le mode \texttt{warehouse} repose sur une disposition prédéfinie des obstacles statiques et ne permet donc pas de contrôler directement leur nombre ou leurs dimensions. De même, dans les modes \texttt{fixed\_n}, \texttt{fixed\_random\_n} et \texttt{crossing}, les dimensions des obstacles sont déterminées automatiquement à partir des dimensions de l'environnement et du nombre d'obstacles demandé. Pour le mode \texttt{random}, les dimensions des obstacles sont également adaptées afin de respecter les contraintes géométriques imposées, notamment les distances minimales entre les différentes entités.
+
+\begin{tcolorbox}[colback=YellowGreen!5,colframe=YellowGreen,title=Remarque]
+    Les différents modes de génération ont été conçus pour produire des scénarios favorables à l'apprentissage par renforcement. Les positions des agents, des obstacles et des cibles ne sont donc pas uniquement générées de manière aléatoire, mais suivent des règles permettant de reproduire les situations recherchées (croisement, franchissement d'obstacles, etc.). Cette méthode favorise des interactions pertinentes entre les agents et leur environnement, tout en garantissant une diversité suffisante des scénarios rencontrés durant l'apprentissage.
+\end{tcolorbox}
+
+\subsection{Configuration des agents}
+
+\noindent Les caractéristiques des agents sont définies dans le fichier \texttt{agent.yaml}. Cette configuration regroupe les paramètres physiques du robot ainsi que les paramètres définissant son espace des observations et son espace des actions.
+
+\vspace{10pt}
+
+\noindent Chaque configuration d'agent est identifiée par un nom unique, qui peut ensuite être référencé dans le fichier \texttt{experiments.yaml} à l'aide du paramètre \texttt{agent\_config}.
+
+\begin{codebox}{yaml}
+agent_1:
+  n_maps: 3
+
+  v_min: 0.0
+  v_max: 5.0
+
+  omega_min: -1.047
+  omega_max: 1.047
+
+  radius: 0.5
+  length_view: 11
+\end{codebox}
+
+\begin{table}[h]
+    \centering
+    \caption{Description des paramètres de \texttt{AgentConfig}.}
+    \label{tab:agent_parameters}
+    \begin{tabularx}{\textwidth}{>{\ttfamily\small}l X}
+        \toprule
+        \textnormal{\textit{Paramètre}} &
+        \textit{Description}                                                                                                                             \\
+        \midrule
+
+        n\_maps
+                                        & Nombre de cartes locales successives conservées dans l'observation afin d'intégrer une information temporelle. \\
+
+        v\_min
+                                        & Vitesse linéaire minimale autorisée pour l'agent.                                                              \\
+
+        v\_max
+                                        & Vitesse linéaire maximale autorisée pour l'agent.                                                              \\
+
+        omega\_min
+                                        & Vitesse angulaire minimale autorisée pour l'agent.                                                             \\
+
+        omega\_max
+                                        & Vitesse angulaire maximale autorisée pour l'agent.                                                             \\
+
+        radius
+                                        & Rayon de l'agent utilisé pour la détection des collisions.                                                     \\
+
+        length\_view
+                                        & Taille de la carte locale observée par l'agent.                                                                \\
+
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+\noindent Les paramètres \texttt{v\_min}, \texttt{v\_max}, \texttt{omega\_min} et \texttt{omega\_max} définissent directement les bornes de l'espace des actions de l'agent. Les commandes calculées par l'algorithme d'apprentissage sont automatiquement ramenées dans ces intervalles avant d'être appliquées au simulateur.
+
+\begin{tcolorbox}[colback=YellowGreen!5,colframe=YellowGreen,title=Remarque]
+    Les paramètres \texttt{n\_maps} et \texttt{length\_view} contrôlent la quantité d'informations spatiales et temporelles disponible pour l'agent. Une carte locale plus grande ou un nombre plus important de cartes successives permettent de représenter plus précisément l'environnement et l'évolution des obstacles, mais augmentent également la dimension des observations traitées par l'algorithme d'apprentissage.
+\end{tcolorbox}
+
+
+\subsection{Configuration de la fonction de récompense}
+
+\noindent Les paramètres de la fonction de récompense sont définis dans le fichier \texttt{reward.yaml}. Cette configuration permet d'ajuster l'importance des différentes composantes de la récompense utilisées durant l'apprentissage, telles que la progression vers la cible, l'évitement des obstacles ou la limitation des rotations inutiles.
+
+\vspace{10pt}
+
+\noindent Chaque configuration de récompense est identifiée par un nom unique, qui peut ensuite être référencé dans le fichier \texttt{experiments.yaml} à l'aide du paramètre \texttt{reward\_config}.
+
+\begin{codebox}{yaml}
+reward_1:
+  beta1: 5.0
+  beta2: 0.1
+  beta3: 0.5
+
+  goal_bonus: 400.0
+  collision_malus: -100.0
+
+  angular_malus: -2.0
+
+  safety_malus: -1.0
+  safety_threshold: 2.0
+\end{codebox}
+
+\begin{longtable}{
+        >{\ttfamily\small}p{0.2\textwidth}
+        p{0.75\textwidth}
+    }
+    \caption{Description des paramètres de \texttt{RewardConfig}.}
+    \label{tab:reward_parameters}                                                                                               \\
+
+    \toprule
+    \textnormal{\textit{Paramètre}} & \textit{Description}                                                                      \\
+    \midrule
+    \endfirsthead
+
+    \toprule
+    \textnormal{\textit{Paramètre}} & \textit{Description}                                                                      \\
+    \midrule
+    \endhead
+
+    \midrule
+    \\
+    \endfoot
+
+    \bottomrule
+    \endlastfoot
+
+    beta1
+                                    & Pondération du terme de récompense lié à la progression vers la cible.                    \\
+
+    beta2
+                                    & Pondération du terme de récompense lié au respect des distances de sécurité.              \\
+
+    beta3
+                                    & Pondération du terme de récompense lié à la rotation de l'agent.                          \\
+
+    goal\_bonus
+                                    & Récompense attribuée lorsque l'agent atteint sa cible.                                    \\
+
+    collision\_malus
+                                    & Pénalité appliquée lorsqu'une collision est détectée.                                     \\
+
+    angular\_malus
+                                    & Pénalité appliquée en fonction de la vitesse angulaire de l'agent.                        \\
+
+    safety\_malus
+                                    & Pénalité appliquée lorsque l'agent évolue à une distance inférieure au seuil de sécurité. \\
+
+    safety\_threshold
+                                    & Distance de sécurité à partir de laquelle la pénalité de sécurité est appliquée.          \\
+\end{longtable}
+
+\noindent Les paramètres de cette configuration permettent d'ajuster l'importance relative des différentes composantes de la récompense. En modifiant les coefficients de pondération ou les bonus et pénalités associés à certains comportements, il est possible d'orienter l'apprentissage vers des politiques privilégiant, par exemple, une navigation plus rapide, plus prudente ou plus fluide.
+
+\vspace{10pt}
+
+\noindent La formulation mathématique complète de la fonction de récompense ainsi que le rôle de chacune de ses composantes sont présentés dans le document de modélisation.
+
+\begin{tcolorbox}[colback=YellowGreen!5,colframe=YellowGreen,title=Remarque]
+    La fonction de récompense influence directement le comportement appris par l'agent. Une modification importante de ses paramètres modifie l'objectif d'optimisation de l'algorithme d'apprentissage et nécessite un nouvel entraînement complet du modèle.
+\end{tcolorbox}
+

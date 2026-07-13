@@ -1,9 +1,251 @@
 \section{Utilisation du simulateur}
 
-Entrainement
+\noindent Cette section décrit les principaux modes d'exécution du simulateur ainsi que la procédure permettant d'entraîner, de valider et d'évaluer une politique d'apprentissage par renforcement. Elle présente également le déroulement général d'une expérience, depuis son lancement jusqu'à la production des résultats.
 
-Validation
+\vspace{10pt}
 
-Evaluation
+\noindent Les modes dédiés à la visualisation des résultats, tels que la démonstration en temps réel, la génération d'animations ou la représentation des scénarios, sont quant à eux décrits dans la section~\ref{sec:visualisation_resultats}.
 
-Sauvegarde
+\subsection{Modes d'exécution}
+
+\noindent Le simulateur propose plusieurs modes d'exécution permettant d'entraîner un agent, d'évaluer une politique existante ou encore de générer des visualisations des résultats. Le mode d'exécution est sélectionné dans le fichier \texttt{main.py} avant le lancement du programme.
+
+\begin{longtable}{
+        >{\ttfamily\small}p{0.2\textwidth}
+        p{0.75\textwidth}
+    }
+    \caption{Description des modes d'exécution.}
+    \label{tab:execution_mode}                                                                                                                                                                                                                                                                                                                                                                                                                                              \\
+
+    \toprule
+    \textnormal{\textit{Mode}} & \textit{Description}                                                                                                                                                                                                                                                                                                                                                                                                                       \\
+    \midrule
+    \endfirsthead
+
+    \toprule
+    \textnormal{\textit{Mode}} & \textit{Description}                                                                                                                                                                                                                                                                                                                                                                                                                       \\
+    \midrule
+    \endhead
+
+    \midrule
+    \\
+    \endfoot
+
+    \bottomrule
+    \endlastfoot
+
+    train
+                               & Entraîne successivement un agent SAC sur l'ensemble des expériences du curriculum d'entraînement. À la fin de chaque expérience, les poids du modèle sont sauvegardés avant d'être utilisés comme point de départ de l'expérience suivante. Les métriques et les figures associées sont ensuite sauvegardées afin d'analyser les performances de l'entraînement. Fait appel aux fonctions \texttt{run\_train} et \texttt{run\_validation}. \\
+
+    validation
+                               & Charge chaque politique entraînée et l'évalue uniquement sur le scénario correspondant à son entraînement. Les métriques et les figures associées sont ensuite sauvegardées afin d'analyser les performances de la politique sur son scénario d'apprentissage. Fait appel à la fonction \texttt{run\_validation}.                                                                                                                          \\
+
+    evaluation
+                               & Charge une politique entraînée et l'évalue sur l'ensemble des scénarios du curriculum d'évaluation. Ce mode permet d'étudier la capacité de généralisation des politiques apprises. Les métriques et les figures correspondantes sont sauvegardées. Fait appel à la fonction \texttt{run\_evaluation}.                                                                                                                                     \\
+
+    demo
+                               & Charge une politique entraînée et affiche une visualisation en temps réel d'une exécution pour chaque expérience des curriculums d'entraînement et d'évaluation. Fait appel à la fonction{run\_demo}.                                                                                                                                                                                                                                      \\
+
+    animation
+                               & Charge une politique entraînée et génère, pour chaque expérience des curriculums d'entraînement et d'évaluation, une animation de l'exécution (GIF et MP4) ainsi qu'une représentation du scénario sous forme de grille. Fait appel aux fonctions \texttt{plot\_renders} et \texttt{run\_animation}.                                                                                                                                       \\
+\end{longtable}
+
+\subsection{Workflow d'exécution}
+
+\noindent Après avoir configuré les expériences et sélectionné le mode d'exécution souhaité dans le fichier \texttt{main.py}, le simulateur est lancé depuis la racine du projet. Selon le mode choisi, il entraîne une nouvelle politique ou charge une politique préalablement entraînée afin de produire les métriques et les figures correspondantes.
+
+\vspace{10pt}
+
+\noindent Le lancement du simulateur s'effectue simplement à l'aide de la commande suivante :
+
+\begin{codebox}{bash}
+python main.py
+\end{codebox}
+
+\noindent La Figure~\ref{fig:workflow_execution} résume le déroulement classique d'une expérience, depuis la configuration des scénarios jusqu'à l'exploitation des résultats.
+
+\begin{figure}[h]
+    \centering
+    \caption{Schéma du workflow d'exécution}
+    \label{fig:workflow_execution}
+    % \includegraphics[scale=0.25]{../figures/archi-fonctionnelle.png}
+\end{figure}
+
+\subsection{Entraînement d'une politique}
+
+\noindent La fonction \texttt{run\_train} entraîne successivement une politique sur les expériences du curriculum d'entraînement. À la fin de chaque expérience, les poids du modèle, les métriques d'apprentissage et les figures associées sont sauvegardés.
+
+\begin{codebox}{python}
+run_train(
+    experiments=train_experiments,
+    previous_exp=None,
+    trained_agent_id="agent_1",
+)
+\end{codebox}
+
+
+
+\begin{longtable}{
+        >{\ttfamily\small}p{0.2\textwidth}
+        >{\ttfamily\small}p{0.1\textwidth}
+        p{0.65\textwidth}
+    }
+    \caption{Paramètres de la fonction \texttt{run\_train}.}
+    \label{tab:run_train_parameters}                                                                                                                                                                                                                                       \\
+
+    \toprule
+    \textnormal{\textit{Paramètre}} & \textnormal{\textit{Par défaut}}                                                                                                                                                                              & \textit{Description} \\
+    \midrule
+    \endfirsthead
+
+    \toprule
+    \textnormal{\textit{Paramètre}} & \textnormal{\textit{Par défaut}}                                                                                                                                                                              & \textit{Description} \\
+    \midrule
+    \endhead
+
+    \midrule
+    \\
+    \endfoot
+
+    \bottomrule
+    \endlastfoot
+
+    experiments
+                                    & ---
+                                    & Liste des expériences constituant le curriculum d'entraînement.                                                                                                                                                                      \\
+
+    previous\_exp
+                                    & None
+                                    & Expérience dont les poids doivent être chargés avant le début de l'entraînement. Lorsque la valeur est \texttt{None}, la première politique est initialisée sans poids provenant d'une expérience précédente.                        \\
+
+    trained\_agent\_id
+                                    & agent\_1
+                                    & Identifiant de l'agent dont la politique doit être entraînée.                                                                                                                                                                        \\
+\end{longtable}
+
+\noindent Lorsque plusieurs expériences sont fournies, elles sont exécutées dans l'ordre de la liste. Les poids obtenus à la fin d'une expérience sont alors utilisés pour initialiser la suivante, ce qui permet de mettre en œuvre un curriculum d'apprentissage.
+
+\begin{tcolorbox}[colback=YellowGreen!5,colframe=YellowGreen,title=Remarque]
+    Le paramètre \texttt{trained\_agent\_id} doit correspondre à l'identifiant de l'agent utilisé lors de l'entraînement de la politique. Si plusieurs agents ont été entraînés indépendamment, cet identifiant permet de charger les poids associés à l'agent souhaité.
+\end{tcolorbox}
+
+\subsection{Validation d'une politique}
+
+\noindent La fonction \texttt{run\_validation} évalue chaque politique sur le scénario correspondant à celui sur lequel elle a été entraînée. Elle sauvegarde les métriques, les figures et, lorsque cela est demandé, plusieurs épisodes sous forme d'animation.
+
+\begin{codebox}{python}
+run_validation(
+    experiments=train_experiments,
+    n_episodes=100,
+    n_render=5,
+    trained_agent_id="agent_1",
+)
+\end{codebox}
+
+\begin{longtable}{
+        >{\ttfamily\small}p{0.2\textwidth}
+        >{\ttfamily\small}p{0.1\textwidth}
+        p{0.65\textwidth}
+    }
+    \caption{Paramètres de la fonction \texttt{run\_validation}.}
+    \label{tab:run_validation_parameters}                                                                                                                                                                            \\
+
+    \toprule
+    \textnormal{\textit{Paramètre}} & \textnormal{\textit{Par défaut}}                                                                                                                        & \textit{Description} \\
+    \midrule
+    \endfirsthead
+
+    \toprule
+    \textnormal{\textit{Paramètre}} & \textnormal{\textit{Par défaut}}                                                                                                                        & \textit{Description} \\
+    \midrule
+    \endhead
+
+    \midrule
+    \\
+    \endfoot
+
+    \bottomrule
+    \endlastfoot
+
+    experiments
+                                    & ---
+                                    & Liste des expériences d'entraînement à valider. Chaque politique est évaluée sur le scénario correspondant à son apprentissage.                                                \\
+
+    n\_episodes
+                                    & 100
+                                    & Nombre d'épisodes exécutés pour estimer les performances de chaque politique.                                                                                                  \\
+
+    n\_render
+                                    & 5
+                                    & Nombre d'épisodes dont les images sont conservées afin de produire une animation. Une valeur égale à \texttt{0} désactive la génération des animations.                        \\
+
+    trained\_agent\_id
+                                    & agent\_1
+                                    & Identifiant de l'agent contrôlé par la politique évaluée.                                                                                                                      \\
+\end{longtable}
+
+\begin{tcolorbox}[colback=YellowGreen!5,colframe=YellowGreen,title=Remarque]
+    Contrairement à l'entraînement, les modes \texttt{validation} et \texttt{evaluation} utilisent une politique déterministe. Les actions sont donc directement calculées à partir de la moyenne de la distribution apprise, sans échantillonnage aléatoire, afin d'obtenir un comportement stable et reproductible.
+\end{tcolorbox}
+
+
+\subsection{Évaluation d'une politique}
+
+\noindent La fonction \texttt{run\_evaluation} évalue une politique donnée sur l'ensemble des scénarios du curriculum d'évaluation. Contrairement à la validation, la même politique est donc appliquée à plusieurs environnements afin d'étudier sa capacité de généralisation.
+
+\begin{codebox}{python}
+run_evaluation(
+    experiments=eval_experiments,
+    policy=train_experiments[-1],
+    n_episodes=100,
+    n_render=5,
+    trained_agent_id="agent_1",
+)
+\end{codebox}
+
+\begin{longtable}{
+        >{\ttfamily\small}p{0.2\textwidth}
+        >{\ttfamily\small}p{0.1\textwidth}
+        p{0.65\textwidth}
+    }
+    \caption{Paramètres de la fonction \texttt{run\_evaluation}.}
+    \label{tab:run_evaluation_parameters}                                                                                                                                                         \\
+
+    \toprule
+    \textnormal{\textit{Paramètre}} & \textnormal{\textit{Par défaut}}                                                                                                     & \textit{Description} \\
+    \midrule
+    \endfirsthead
+
+    \toprule
+    \textnormal{\textit{Paramètre}} & \textnormal{\textit{Par défaut}}                                                                                                     & \textit{Description} \\
+    \midrule
+    \endhead
+
+    \midrule
+    \\
+    \endfoot
+
+    \bottomrule
+    \endlastfoot
+
+    experiments
+                                    & ---
+                                    & Liste des scénarios sur lesquels la politique doit être évaluée. Il s'agit généralement de la liste \texttt{eval\_experiments}.                             \\
+
+    policy
+                                    & ---
+                                    & Expérience d'entraînement identifiant les poids de la politique à charger.                                                                                  \\
+
+    n\_episodes
+                                    & 100
+                                    & Nombre d'épisodes exécutés pour chaque scénario d'évaluation.                                                                                               \\
+
+    n\_render
+                                    & 5
+                                    & Nombre d'épisodes enregistrés sous forme d'animation pour chaque scénario. Une valeur égale à \texttt{0} désactive cette génération.                        \\
+
+    trained\_agent\_id
+                                    & agent\_1
+                                    & Identifiant de l'agent contrôlé par la politique évaluée.                                                                                                   \\
+\end{longtable}
+

@@ -1,10 +1,13 @@
 \section{Structure du projet}
 
+\noindent Cette section présente l'organisation générale du projet ainsi que l'architecture du simulateur. Elle décrit tout d'abord la structure des principaux fichiers et dossiers du dépôt, puis le fonctionnement global du simulateur au travers de son architecture fonctionnelle. Enfin, elle introduit les principales classes constituant le simulateur ainsi que leurs relations afin de faciliter la compréhension de son implémentation.
+
 \subsection{Organisation des fichiers}
 
 \noindent Le projet est organisé en plusieurs dossiers, chacun regroupant un ensemble de fonctionnalités spécifiques. Le rôle des principaux fichiers et dossiers est résumé dans le Tableau~\ref{tab:project_structure}.
 
-\begin{table}[H]
+
+\begin{table}[h]
     \centering
     \caption{Description des principaux éléments du projet.}
     \label{tab:project_structure}
@@ -13,39 +16,31 @@
         \textnormal{\textit{Élément}} & \textit{Description}                                                                                                                                                                                                                                                                                                                         \\
         \midrule
         configs/                      & Fichiers de configuration du simulateur, regroupant les paramètres des environnements, des agents, des fonctions de récompense et des expériences d'entraînement.                                                                                                                                                                            \\
+
         docs/                         & Documentation du projet, comprenant le manuel d'utilisation, le document de modélisation ainsi que les comptes rendus du projet.                                                                                                                                                                                                             \\
+
         figures/                      & Figures, graphiques et animations générés lors de l'entraînement et de l'évaluation du modèle.                                                                                                                                                                                                                                               \\
+
         logs/                         & Journaux d'exécution et métriques générés lors de l'entraînement et de l'évaluation du modèle.                                                                                                                                                                                                                                               \\
 
         rl/                           & Implémentation des algorithmes d'apprentissage par renforcement ainsi que des réseaux de neurones associés.                                                                                                                                                                                                                                  \\
 
         simulator/                    & Cœur du simulateur. Ce dossier regroupe les principaux composants de la simulation (environnement, agents, obstacles), les outils nécessaires à l'apprentissage par renforcement (observations, fonction de récompense), la gestion des interactions entre les entités ainsi que le calcul des trajectoires des obstacles dynamiques par A*. \\
         utils/                        & Fonctions utilitaires utilisées par l'ensemble du projet (visualisation, journalisation, chargement des configurations, etc.).                                                                                                                                                                                                               \\
+
         main.py                       & Point d'entrée du projet, permettant de sélectionner le mode d'exécution du simulateur.                                                                                                                                                                                                                                                      \\
         runner.py                     & Fonctions responsables du lancement des entraînements, des validations, des évaluations et de la génération des animations.                                                                                                                                                                                                                  \\
         \bottomrule
     \end{tabularx}
 \end{table}
 
+\begin{tcolorbox}[colback=YellowGreen!5,colframe=YellowGreen,title=Remarque]
+    Le dossier \texttt{simulator/} contient l'ensemble des composants nécessaires au fonctionnement du simulateur. Dans la plupart des cas, l'utilisateur n'a pas besoin de modifier ce dossier : la personnalisation du comportement du simulateur s'effectue principalement à travers les fichiers de configuration présentés dans la section suivante.
+\end{tcolorbox}
+
 \subsection{Architecture du simulateur}
 
 \noindent La Figure~\ref{fig:archi-fonctionnelle} présente l'architecture fonctionnelle du simulateur ainsi que les principales étapes d'exécution d'une expérience.
-
-\vspace{10pt}
-
-\noindent Quel que soit le mode d'exécution sélectionné (\texttt{train}, \texttt{validation}, \texttt{evaluation}, \texttt{animation} ou \texttt{demo}), le programme débute dans le fichier \texttt{main.py}. Celui-ci charge les fichiers de configuration afin d'initialiser l'environnement de simulation, les agents ainsi que les scénarios définis par l'utilisateur. Il sélectionne ensuite le mode d'exécution souhaité puis appelle les fonctions correspondantes du fichier \texttt{runner.py}.
-
-\vspace{10pt}
-
-\noindent Une fois cette phase d'initialisation terminée, le comportement du simulateur dépend du mode d'exécution choisi dans le \texttt{runner}.
-
-\vspace{10pt}
-
-\noindent En mode \texttt{train}, un agent est entraîné à l'aide de l'algorithme Soft Actor-Critic (SAC). À chaque interaction avec l'environnement, les observations sont utilisées pour sélectionner une action, qui est ensuite appliquée à l'environnement afin de produire un nouvel état et une récompense. Les transitions sont stockées dans le \texttt{Replay Buffer} et utilisées pour mettre à jour les réseaux de neurones. À la fin de l'entraînement, les poids du modèle ainsi que les différentes métriques sont enregistrés.
-
-\vspace{10pt}
-
-\noindent Les modes \texttt{validation}, \texttt{evaluation}, \texttt{animation} et \texttt{demo} utilisent quant à eux un modèle préalablement entraîné. Les poids sauvegardés sont chargés afin de calculer les actions de l'agent au cours de la simulation. Selon le mode sélectionné, le simulateur produit ensuite les métriques d'évaluation, les figures de résultats, une animation ou une démonstration en temps réel.
 
 \begin{figure}[h]
     \centering
@@ -53,6 +48,20 @@
     \label{fig:archi-fonctionnelle}
     \includegraphics[scale=0.25]{../figures/archi-fonctionnelle.png}
 \end{figure}
+
+\noindent Quel que soit le mode d'exécution sélectionné (\texttt{train}, \texttt{validation}, \texttt{evaluation}, \texttt{animation} ou \texttt{demo}), le programme débute dans le fichier \texttt{main.py}. Celui-ci charge les fichiers de configuration afin d'initialiser l'environnement de simulation, les agents ainsi que les scénarios définis par l'utilisateur. Il sélectionne ensuite le mode d'exécution souhaité puis appelle les fonctions correspondantes du fichier \texttt{runner.py}. Une fois cette phase d'initialisation terminée, le comportement du simulateur dépend du mode d'exécution choisi dans le \texttt{runner}.
+
+\vspace{10pt}
+
+\noindent En mode \texttt{train}, un agent est entraîné à l'aide de l'algorithme Soft Actor-Critic (SAC). À chaque interaction avec l'environnement, les observations de l'environnement sont transmises à l'algorithme SAC, qui sélectionne une action ensuite appliquée à l'environnement. Cela produit un nouvel état et une récompense. Les transitions sont stockées dans le \texttt{Replay Buffer} et utilisées pour mettre à jour les réseaux de neurones. À la fin de l'entraînement, les poids du modèle ainsi que les différentes métriques sont enregistrés.
+
+\vspace{10pt}
+
+\noindent Les modes \texttt{validation}, \texttt{evaluation}, \texttt{animation} et \texttt{demo} utilisent quant à eux un modèle préalablement entraîné. Les poids du modèle préalablement entraîné sont chargés afin de calculer les actions de l'agent. Selon le mode sélectionné, le simulateur produit ensuite les métriques d'évaluation, les figures de résultats, une animation ou une visualisation en temps réel.
+
+\begin{tcolorbox}[colback=YellowGreen!5,colframe=YellowGreen,title=Remarque]
+    Quel que soit le mode d'exécution choisi, la boucle principale de simulation reste identique. Seules les opérations réalisées autour de cette boucle (apprentissage, chargement des poids, génération de figures ou affichage en temps réel) diffèrent selon le mode sélectionné.
+\end{tcolorbox}
 
 \subsection{Organisation des classes}
 
@@ -62,18 +71,22 @@
     \centering
     \caption{Diagramme de classes simplifié du simulateur.}
     \label{fig:diag-classes}
-    % \includegraphics[scale=0.25]{../figures/archi-fonctionnelle.png}
+    \includegraphics[scale=0.55]{../figures/diag-classes.png}
 \end{figure}
+
+\begin{tcolorbox}[colback=YellowGreen!5,colframe=YellowGreen,title=Remarque]
+    Le diagramme de classes présenté est volontairement simplifié. Les attributs et les méthodes des différentes classes n'y sont pas représentés afin de privilégier une vue d'ensemble de l'architecture du simulateur et des principales relations entre ses composants.
+\end{tcolorbox}
 
 \noindent La classe \texttt{Entity} constitue la classe de base des objets présents dans l'environnement. Elle définit les propriétés communes aux différentes entités, notamment leur position, leurs dimensions ainsi que les mécanismes de détection des collisions.
 
 \vspace{10pt}
 
-\noindent Deux classes héritent de cette classe : la classe \texttt{StaticEntity} représente les obstacles statiques de l'environnement, tandis que la classe \texttt{MovingEntity} représente les entités capables de se déplacer. La classe \texttt{Agent} hérite elle-même de \texttt{MovingEntity} et complète son comportement avec les propriétés nécessaires à la navigation et à l'apprentissage par renforcement, telles que les commandes de vitesse, les observations locales et l'état de l'agent.
+\noindent Deux classes héritent de cette celle-ci : la classe \texttt{StaticEntity} qui représente les obstacles statiques de l'environnement, ainsi que la classe \texttt{MovingEntity} qui représente les entités capables de se déplacer, telles que des obstacles dynamiques. La classe \texttt{Agent} hérite de cette dernière et complète son comportement avec les propriétés nécessaires à la navigation et à l'apprentissage par renforcement.
 
 \vspace{10pt}
 
-\noindent La classe \texttt{Environment} regroupe les agents, les obstacles statiques et les obstacles dynamiques composant un scénario. Elle est responsable de leur initialisation (via la classe \texttt{Manager}), de l'application des actions, de la mise à jour de la simulation, du calcul des observations et des récompenses, ainsi que de la détection de la fin d'un épisode.
+\noindent La classe \texttt{Environment} regroupe les agents, les obstacles statiques et les obstacles dynamiques qui composent un scénario. Elle est responsable de leur initialisation (via la classe \texttt{Manager}), de l'application des actions et trajectoires, de la mise à jour de la simulation, du calcul des observations et des récompenses, ainsi que de la détection de la fin d'un épisode.
 
 \vspace{10pt}
 
@@ -82,8 +95,3 @@
 \vspace{10pt}
 
 \noindent Enfin, l'apprentissage par renforcement est assuré par la classe \texttt{SACAgent}, qui s'appuie sur un \texttt{ReplayBuffer} ainsi que sur les réseaux de neurones \texttt{FeaturesExtractor}, \texttt{ActorNetwork} et \texttt{CriticNetwork}. Les paramètres des environnements, des agents et de la fonction de récompense sont quant à eux définis respectivement par les classes \texttt{EnvironmentConfig}, \texttt{AgentConfig} et \texttt{RewardConfig}.
-
-
-\subsection{Principaux composants du simulateur}
-
-env -- agent -- obstacle rl -- config -- visu
