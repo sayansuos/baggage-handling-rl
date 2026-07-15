@@ -29,6 +29,7 @@ def run_sac(
     warmup_steps: int = 1000,
     update_frequency: int = 4,
     reset_frequency: int = 5,
+    debug_frequency: int = 20,
 ):
     """
     Train a SAC agent on an experiment, optionally initializing it from a previous policy.
@@ -78,7 +79,7 @@ def run_sac(
         state, _ = env.reset()
         score = 0.0
 
-        if env.episode % 20 == 0:
+        if env.episode % debug_frequency == 0:
             env.debug = True
 
         else:

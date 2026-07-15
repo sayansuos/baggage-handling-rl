@@ -14,20 +14,16 @@ from utils.plotting import plot_animation, plot_figures
 def run_demo(
     experiments: list[Experiment],
     policy: Experiment,
-    render: bool = False,
     trained_agent_id: str = "agent_1",
 ):
     """
-    Run a trained policy on one episode for each experiment, with optional real-time rendering.
+    Run a trained policy on one episode for each experiment, with real-time rendering.
     """
 
     print(f"\n[ TEST ] {len(experiments)} experiment(s)\n")
 
-    if render:
-        plt.ion()
-        fig, ax = plt.subplots(figsize=(10, 8))
-    else:
-        fig, ax = None, None
+    plt.ion()
+    fig, ax = plt.subplots(figsize=(10, 8))
 
     for exp in experiments:
         print(f"[ START ] {exp.name}")
@@ -43,9 +39,8 @@ def run_demo(
 
         state, _ = env.reset(seed=1234)
 
-        if render:
-            env.render(ax=ax)
-            plt.pause(0.001)
+        env.render(ax=ax)
+        plt.pause(0.001)
 
         while not env.dones[trained_agent_id]:
             actions = {}
@@ -59,15 +54,13 @@ def run_demo(
             next_state, _, _, _, _ = env.step(actions)
             state = next_state
 
-            if render:
-                env.render(ax=ax)
-                plt.pause(0.001)
+            env.render(ax=ax)
+            plt.pause(0.001)
 
         print(f"[ DONE ] {exp.name}")
 
-    if render:
-        plt.ioff()
-        plt.close(fig)
+    plt.ioff()
+    plt.close(fig)
 
     print("\n[ TEST ] completed\n")
 
