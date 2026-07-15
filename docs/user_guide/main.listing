@@ -1,6 +1,8 @@
-plot_renders(
-    experiments=eval_experiments,
-    path="figures/renders",
-    file_name="evaluation",
-    max_ncols=2,
-)
+def run_animation(
+    experiments: list[Experiment],
+    policy: Experiment,
+    path: str,
+    file_name: str,
+    fps: int = 20,
+    trained_agent_id: str = "agent_1",
+) -> None:

@@ -1,4 +1,5 @@
 \section{Configuration du simulateur}
+\label{sec:configuration}
 
 \noindent La configuration du simulateur repose sur un ensemble de fichiers YAML regroupés dans le dossier \texttt{configs/}. Ces fichiers permettent de définir l'ensemble des paramètres nécessaires à l'exécution d'une expérience, notamment les caractéristiques des environnements, des agents, de la fonction de récompense ainsi que les expériences d'entraînement ou d'évaluation. Cette séparation entre la configuration et le code permet de modifier facilement le comportement du simulateur sans intervenir directement dans son implémentation.
 
@@ -14,7 +15,7 @@
 
         experiments.yaml              & Définit les expériences à exécuter.                                                                                                                                                                                            \\
 
-        environments.yaml             & Définit les scénarios et les environnements.                                                                                                                                                                                   \\
+        environments.yaml             & Définit les environnements.                                                                                                                                                                                                    \\
 
         agent.yaml                    & Définit les paramètres des agents.                                                                                                                                                                                             \\
 
@@ -25,15 +26,15 @@
     \end{tabularx}
 \end{table}
 
-\noindent Les fichiers de configuration sont automatiquement chargés par le module \texttt{config\_loader} (dans le dossier \texttt{utils/}), qui lit les fichiers YAML et instancie les différentes classes de configuration (\texttt{EnvironmentConfig}, \texttt{AgentConfig}, \texttt{RewardConfig} et \texttt{Experiment}). L'utilisateur n'a donc qu'à modifier les fichiers de configuration sans intervenir dans le code source.
+\begin{tcolorbox}[colback=YellowGreen!5,colframe=YellowGreen,title=Remarque]
+    Les fichiers de configuration sont automatiquement chargés par le module \texttt{config\_loader} (dans le dossier \texttt{utils/}), qui lit les fichiers YAML et instancie les différentes classes de configuration (\texttt{EnvironmentConfig}, \texttt{AgentConfig}, \texttt{RewardConfig} et \texttt{Experiment}). L'utilisateur n'a donc qu'à modifier les fichiers de configuration sans intervenir dans le code source.
+\end{tcolorbox}
 
-\vspace{10pt}
-
-\noindent Les sections suivantes détaillent le contenu de chacun de ces fichiers de configuration.
+\noindent Les sections suivantes détaillent le contenu de chaque fichier de configuration.
 
 \subsection{Configuration des expériences}
 
-\noindent Les expériences à exécuter sont définies dans le fichier \texttt{experiments.yaml}. Une expérience correspond à un scénario d'entraînement ou d'évaluation et associe un environnement, une configuration d'agent ainsi qu'une fonction de récompense. Ce fichier permet également de définir le nombre d'étapes d'entraînement ou le nombre d'épisodes selon le mode d'exécution.
+\noindent Les expériences à exécuter sont définies dans le fichier \texttt{experiments.yaml}. Une expérience correspond à un scénario d'entraînement ou d'évaluation et associe un environnement, une configuration d'agent ainsi qu'une fonction de récompense. Ce fichier permet également de définir le nombre d'étapes d'entraînement.
 
 \vspace{10pt}
 
@@ -70,26 +71,26 @@
         \midrule
         name                             & Nom de l'expérience. Ce nom est également utilisé pour identifier les fichiers de résultats et les poids sauvegardés. \\
 
-        env\_config                      & Nom de la configuration d'environnement à utiliser (définie dans \texttt{environment.yaml}).                          \\
+        env\_config                      & Nom de la configuration d'environnement (définie dans \texttt{environment.yaml}).                                     \\
 
         agent\_config                    & Nom de la configuration de l'agent (définie dans \texttt{agent.yaml}).                                                \\
 
         reward\_config                   & Nom de la fonction de récompense (définie dans \texttt{reward.yaml}).                                                 \\
 
-        n\_steps                         & Nombre d'étapes d'entraînement. Ce paramètre est utilisé uniquement pour les expériences d'entraînement.              \\
+        n\_steps                         & Nombre d'étapes d'entraînement.                                                                                       \\
 
 
         \bottomrule
     \end{tabularx}
 \end{table}
 
-\noindent Plusieurs expériences peuvent être définies dans un même fichier. Elles sont exécutées dans l'ordre où elles apparaissent, ce qui permet notamment de mettre en place un curriculum d'apprentissage. Chaque expérience peut ainsi utiliser une configuration d'environnement différente afin d'augmenter progressivement la difficulté des scénarios, tandis que les poids du modèle appris lors d'une expérience sont réutilisés pour initialiser la suivante.
+\noindent Les expériences sont exécutées dans l'ordre où elles apparaissent, ce qui permet notamment de mettre en place un curriculum d'apprentissage. Chaque expérience peut ainsi utiliser une configuration d'environnement différente afin d'augmenter progressivement la difficulté des scénarios, tandis que les poids du modèle appris lors d'une expérience sont réutilisés pour initialiser la suivante.
 
 \begin{tcolorbox}[colback=YellowGreen!5,colframe=YellowGreen,title=Remarque]
 
     Les expériences d'entraînement sont exécutées pendant un nombre d'étapes défini par le paramètre \texttt{n\_steps}. Ce nombre doit être choisi en fonction de la difficulté du scénario ainsi que de la diversité des situations rencontrées durant l'apprentissage.
 
-    Les expériences d'évaluation n'utilisent pas ce paramètre. Elles sont exécutées sur un nombre fixe d'épisodes afin d'évaluer la politique préalablement entraînée. Ce nombre d'épisodes est défini dans le fichier \texttt{main.py}.
+    Les expériences d'évaluation n'utilisent pas ce paramètre. Elles sont exécutées sur un nombre fixe d'épisodes afin d'évaluer la politique préalablement entraînée. Ce nombre d'épisodes est défini dans la fonction \texttt{run\_evaluation} présentée dans la section~\ref{subsec:run_evaluation}.
 
 \end{tcolorbox}
 
@@ -141,7 +142,7 @@ random_1:
 
         nb\_agents                      & Nombre d'agents présents dans le scénario.                                              \\
 
-        nb\_static\_obstacles           & Nombre d'obstacles statiques générés lorsque le mode d'environnement le permet.         \\
+        nb\_static\_obstacles           & Nombre d'obstacles statiques générés, lorsque le mode d'environnement le permet.        \\
 
         nb\_moving\_obstacles           & Nombre d'obstacles dynamiques générés.                                                  \\
 
@@ -207,7 +208,7 @@ random_1:
     \end{tabularx}
 \end{table}
 
-\noindent Selon le mode de génération sélectionné, certains paramètres de la configuration peuvent être ignorés. Par exemple, le mode \texttt{warehouse} repose sur une disposition prédéfinie des obstacles statiques et ne permet donc pas de contrôler directement leur nombre ou leurs dimensions. De même, dans les modes \texttt{fixed\_n}, \texttt{fixed\_random\_n} et \texttt{crossing}, les dimensions des obstacles sont déterminées automatiquement à partir des dimensions de l'environnement et du nombre d'obstacles demandé. Pour le mode \texttt{random}, les dimensions des obstacles sont également adaptées afin de respecter les contraintes géométriques imposées, notamment les distances minimales entre les différentes entités.
+\noindent Selon le mode de génération sélectionné, certains paramètres de la configuration peuvent être ignorés. Par exemple, le mode \texttt{warehouse} repose sur une disposition prédéfinie des obstacles statiques et ne permet donc pas de contrôler directement leur nombre ou leurs dimensions. De même, dans les modes \texttt{fixed\_n}, \texttt{fixed\_random\_n} et \texttt{crossing}, les dimensions des obstacles sont déterminées automatiquement à partir des dimensions de l'environnement et du nombre d'obstacles demandé. Pour le mode \texttt{random}, les dimensions maximales des obstacles sont également adaptées.
 
 \begin{tcolorbox}[colback=YellowGreen!5,colframe=YellowGreen,title=Remarque]
     Les différents modes de génération ont été conçus pour produire des scénarios favorables à l'apprentissage par renforcement. Les positions des agents, des obstacles et des cibles ne sont donc pas uniquement générées de manière aléatoire, mais suivent des règles permettant de reproduire les situations recherchées (croisement, franchissement d'obstacles, etc.). Cette méthode favorise des interactions pertinentes entre les agents et leur environnement, tout en garantissant une diversité suffisante des scénarios rencontrés durant l'apprentissage.
