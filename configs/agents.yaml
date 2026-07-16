@@ -10,3 +10,6 @@ agents:
 
     radius: 0.5
     length_view: 9
+
+    collision_threshold: 0.5
+    reach_threshold: 0.5

@@ -5,8 +5,13 @@ rewards:
     beta2: 0.1
     beta3: 0.5
 
+    linear_bonus_factor: 2.0
+    progress_reduction_factor: 0.2
+    angular_malus_factor: -2.0
+    safety_malus_factor: -1.0
+
     goal_bonus: 400.0
-    collision_malus: -150.0
-    angular_malus: -2.0
-    safety_malus: -8.0
+    step_malus: -1
+    collision_malus: -100.0
+
     safety_threshold: 2.0
