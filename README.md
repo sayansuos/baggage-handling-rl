@@ -67,7 +67,7 @@ python -m venv .venv
 The project is controlled from `main.py`. Before running an experiment, select the desired execution mode by modifying the `MODE` variable:
 
 ```python
-MODE = "simulation"
+MODE = "train"
 ```
 
 Available modes are:
