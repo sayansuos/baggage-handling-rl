@@ -61,6 +61,10 @@ python main.py
     \includegraphics[scale=0.2]{../figures/user-workflow.png}
 \end{figure}
 
+\noindent La Figure~\ref{fig:workflow_execution} résume les principaux traitements réalisés par chaque mode d'exécution. Après la sélection d'un mode dans \texttt{main.py}, la fonction correspondante de \texttt{runner.py} est exécutée. Selon le mode choisi, le simulateur entraîne une politique, l'évalue sur un ou plusieurs scénarios, ou génère des visualisations. Les résultats obtenus sont ensuite automatiquement enregistrés dans les dossiers dédiés : les poids des réseaux dans \texttt{rl/SAC/weights/}, les métriques dans \texttt{logs/} et les figures ou animations dans \texttt{figures/}.
+
+\vspace{10pt}
+
 \noindent Les modes dédiés à la visualisation des résultats (\texttt{demo} et \texttt{animation}) sont décrits dans la section~\ref{sec:visualisation_resultats}.
 
 \subsection{Entraînement d'une politique}

@@ -1,8 +1,5 @@
-def run_animation(
-    experiments: list[Experiment],
-    policy: Experiment,
-    path: str,
-    file_name: str,
-    fps: int = 20,
-    trained_agent_id: str = "agent_1",
-) -> None:
+run_train(
+    experiments=train_experiments[5:],
+    previous_exp=train_experiments[-6],
+    trained_agent_id="agent_1",
+)

@@ -283,17 +283,17 @@ def run_animation(
         p{0.6\textwidth}
     }
     \caption{Fichiers générés dans le dossier \texttt{rl/SAC/weights/}.}
-    \label{tab:weights_files}                                                                        \\
+    \label{tab:weights_files}                                                                      \\
 
     \toprule
     \textnormal{\textit{Fichier}} &
-    \textit{Description}                                                                             \\
+    \textit{Description}                                                                           \\
     \midrule
     \endfirsthead
 
     \toprule
     \textnormal{\textit{Fichier}} &
-    \textit{Description}                                                                             \\
+    \textit{Description}                                                                           \\
     \midrule
     \endhead
 
@@ -305,19 +305,19 @@ def run_animation(
     \endlastfoot
 
     <name>\_actor.pt
-                                  & Poids du réseau \texttt{ActorNetwork}.                           \\
+                                  & Poids du réseau \texttt{ActorNetwork}.                         \\
 
     <name>\_critic\_1.pt
-                                  & Poids du premier réseau critique (\texttt{CriticNetwork}).       \\
+                                  & Poids du premier réseau critique \texttt{CriticNetwork}.       \\
 
     <name>\_critic\_2.pt
-                                  & Poids du second réseau critique (\texttt{CriticNetwork}).        \\
+                                  & Poids du second réseau critique \texttt{CriticNetwork}.        \\
 
     <name>\_target\_critic\_1.pt
-                                  & Poids du premier réseau critique cible (\texttt{CriticNetwork}). \\
+                                  & Poids du premier réseau critique cible \texttt{CriticNetwork}. \\
 
     <name>\_target\_critic\_2.pt
-                                  & Poids du second réseau critique cible (\texttt{CriticNetwork}).  \\
+                                  & Poids du second réseau critique cible \texttt{CriticNetwork}.  \\
 \end{longtable}
 
 \noindent Les poids des réseaux de neurones constituent le cœur de la politique apprise. Ils correspondent aux paramètres optimisés au cours de l'entraînement et déterminent directement les actions sélectionnées par l'agent à partir de ses observations. Leur sauvegarde permet de réutiliser une politique sans avoir à la réentraîner, que ce soit pour la validation, l'évaluation, les démonstrations ou la génération d'animations. Elle permet également de reprendre un entraînement à partir d'une politique préalablement apprise.
