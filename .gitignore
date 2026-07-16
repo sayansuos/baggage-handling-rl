@@ -192,8 +192,11 @@ cython_debug/
 *.toc
 *.latexindent.yaml
 
-# Figures
+# Directories
 docs/figures
+docs/modeling_report
+docs/user_guide
+
 
 # PyCharm
 #  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
