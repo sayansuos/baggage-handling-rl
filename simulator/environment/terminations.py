@@ -16,12 +16,10 @@ def compute_closest(
     entities = static_obstacles + moving_obstacles + agents
 
     for a in agents:
-
         min_distance = np.inf
         closest_entity = None
 
         for other in entities:
-
             if other == a or other.current_position is None:
                 continue
 
@@ -30,7 +28,7 @@ def compute_closest(
                 min_distance = dist
                 closest_entity = other
 
-            if dist < 0.5:
+            if dist < a.collision_threshold:
                 a.state = "collided"
 
         metrics[a.id] = {
@@ -61,9 +59,7 @@ def compute_terminated(agents: list[agent.Agent]) -> dict:
     """
 
     for agent in agents:
-
         if agent.state == "reached":
-
             if agent.target_index < len(agent.target_positions) - 1:
                 agent.target_index += 1
                 agent.state = "active"
@@ -80,7 +76,6 @@ def compute_truncated(agents: list[agent.Agent]) -> dict:
     """
 
     for agent in agents:
-
         if agent.state == "collided":
             agent.state = "truncated"
 

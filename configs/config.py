@@ -27,7 +27,6 @@ class EnvConfig:
 
 @dataclass
 class AgentConfig:
-
     n_maps: int = 3
 
     v_min: float = 0.0
@@ -38,6 +37,9 @@ class AgentConfig:
     radius: float = 0.5
     length_view: int = 11
 
+    collision_threshold: float = 0.5
+    reach_threshold: float = 0.5
+
 
 @dataclass
 class RewardConfig:
@@ -45,10 +47,15 @@ class RewardConfig:
     beta2: float = 0.1
     beta3: float = 0.5
 
+    linear_bonus_factor: float = 2.0
+    progress_reduction_factor: float = 0.2
+    angular_malus_factor: float = -2.0
+    safety_malus_factor: float = -1.0
+
     goal_bonus: float = 400.0
+    step_malus: float = -1
     collision_malus: float = -100.0
-    angular_malus: float = -2.0
-    safety_malus: float = -1.0
+
     safety_threshold: float = 2.0
 
 

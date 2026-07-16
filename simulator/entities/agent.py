@@ -28,6 +28,9 @@ class Agent(MovingEntity):
         self.travel_time: int = 0
         self._closest_dist: float = np.inf
 
+        self.collision_threshold = agent_config.collision_threshold
+        self.reach_threshold = agent_config.reach_threshold
+
     def step(self, action: dict, dt: float = 1) -> tuple[float, float, int]:
         """
         Update the agent state according to the applied action.
@@ -52,7 +55,7 @@ class Agent(MovingEntity):
             self.travel_time += 1
             motion_count = 1
 
-            if self._goal_relative_distance < 0.5:
+            if self._goal_relative_distance < self.reach_threshold:
                 self.state = "reached"
 
         return (v, abs(self.omega), motion_count)
