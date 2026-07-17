@@ -4,6 +4,21 @@ import numpy as np
 
 
 @dataclass
+class SACConfig:
+    obs_size: int = 7
+    tau: float = 0.005
+    alpha: float = 0.15
+    batch_size: int = 64
+    critic_lr: float = 3e-4
+    actor_lr: float = 3e-5
+    gamma: float = 0.99
+    reparam_noise: float = 1e-6
+    feature_size: int = 64
+    hidden_size: int = 128
+    mem_size: int = 100_000
+
+
+@dataclass
 class EnvConfig:
     width: int = 96
     height: int = 48

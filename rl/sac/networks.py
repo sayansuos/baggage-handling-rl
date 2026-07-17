@@ -73,7 +73,6 @@ class ActorNetwork(torch.nn.Module):
         min_action: np.ndarray,
         max_action: np.ndarray,
         map_shape: tuple,
-        map_channels: int,
         obs_size: int,
         n_actions: int,
         feature_size: int,
@@ -126,7 +125,9 @@ class ActorNetwork(torch.nn.Module):
         self.device = torch.device(
             "cuda"
             if torch.cuda.is_available()
-            else "mps" if torch.mps.is_available() else "cpu"
+            else "mps"
+            if torch.mps.is_available()
+            else "cpu"
         )
         self.to(self.device)
 
@@ -201,7 +202,6 @@ class CriticNetwork(torch.nn.Module):
     def __init__(
         self,
         map_shape: tuple,
-        map_channels: int,
         obs_size: int,
         feature_size: int,
         hidden_size: int,
@@ -234,7 +234,9 @@ class CriticNetwork(torch.nn.Module):
         self.device = torch.device(
             "cuda"
             if torch.cuda.is_available()
-            else "mps" if torch.mps.is_available() else "cpu"
+            else "mps"
+            if torch.mps.is_available()
+            else "cpu"
         )
         self.to(self.device)
         self.optimizer = torch.optim.Adam(self.parameters(), self.lr)

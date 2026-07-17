@@ -1,33 +1,19 @@
 import torch
 from gymnasium import spaces
 
-from configs.config import Experiment
+from configs.config import Experiment, SACConfig
 from rl.sac import memory, networks
 
 
 class SACAgent(torch.nn.Module):
-    def __init__(
-        self,
-        exp: Experiment,
-        action_space: spaces.Box,
-        obs_size: int = 7,
-        tau: float = 0.005,
-        alpha: float = 0.15,
-        batch_size: int = 64,
-        critic_lr: float = 3e-4,
-        actor_lr: float = 3e-5,
-        gamma: float = 0.99,
-        reparam_noise: float = 1e-6,
-        feature_size: int = 64,
-        hidden_size: int = 128,
-        mem_size: int = 100_000,
-    ):
+    def __init__(self, exp: Experiment, action_space: spaces.Box):
         """
         Constructor
         """
 
         super(SACAgent, self).__init__()
 
+        self.sac_config = SACConfig()
         self.env_name = exp.name
 
         self.map_shape = (
@@ -35,30 +21,30 @@ class SACAgent(torch.nn.Module):
             exp.agent_config.length_view,
             exp.agent_config.length_view,
         )  # Local map size
-        self.map_channels = exp.agent_config.n_maps
-        self.obs_size = obs_size
+        self.obs_size = self.sac_config.obs_size
 
         self.n_actions = action_space.shape[0]  # = 2 bc action = (v, omega)
         self.min_action = action_space.low
         self.max_action = action_space.high
 
-        self.tau = tau  # Soft update coefficient
-        self.alpha = alpha  # Entropy weight (exploitation/exploration)
-        self.critic_lr = critic_lr
-        self.actor_lr = actor_lr
-        self.gamma = gamma  # Discount factor
-        self.reparam_noise = reparam_noise
+        self.tau = self.sac_config.tau  # Soft update coefficient
+        self.alpha = self.sac_config.alpha  # Entropy weight (exploitation/exploration)
+        self.critic_lr = self.sac_config.critic_lr
+        self.actor_lr = self.sac_config.actor_lr
+        self.gamma = self.sac_config.gamma  # Discount factor
+        self.reparam_noise = self.sac_config.reparam_noise
 
-        self.batch_size = batch_size  # Nb of transitions sampled from the RB
-        self.feature_size = feature_size  # Dim of the latent vector
-        self.hidden_size = hidden_size  # Hidden layers size
+        self.batch_size = (
+            self.sac_config.batch_size
+        )  # Nb of transitions sampled from the RB
+        self.feature_size = self.sac_config.feature_size  # Dim of the latent vector
+        self.hidden_size = self.sac_config.hidden_size  # Hidden layers size
 
-        self.mem_size = mem_size  # Maximal size of the RB
+        self.mem_size = self.sac_config.mem_size  # Maximal size of the RB
         self.memory = memory.ReplayBuffer(self.map_shape, self.n_actions, self.mem_size)
 
         self.q1 = networks.CriticNetwork(
             self.map_shape,
-            self.map_channels,
             self.obs_size,
             self.feature_size,
             self.hidden_size,
@@ -68,7 +54,6 @@ class SACAgent(torch.nn.Module):
         )
         self.q2 = networks.CriticNetwork(
             self.map_shape,
-            self.map_channels,
             self.obs_size,
             self.feature_size,
             self.hidden_size,
@@ -79,7 +64,6 @@ class SACAgent(torch.nn.Module):
 
         self.target_q1 = networks.CriticNetwork(
             self.map_shape,
-            self.map_channels,
             self.obs_size,
             self.feature_size,
             self.hidden_size,
@@ -89,7 +73,6 @@ class SACAgent(torch.nn.Module):
         )
         self.target_q2 = networks.CriticNetwork(
             self.map_shape,
-            self.map_channels,
             self.obs_size,
             self.feature_size,
             self.hidden_size,
@@ -102,7 +85,6 @@ class SACAgent(torch.nn.Module):
             self.min_action,
             self.max_action,
             self.map_shape,
-            self.map_channels,
             self.obs_size,
             self.n_actions,
             self.feature_size,
