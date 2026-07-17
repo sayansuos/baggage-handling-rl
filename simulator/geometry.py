@@ -10,9 +10,9 @@ def get_heading_error(
     """
 
     dx, dy = goal_relative_position
-    goal_angle = np.arctan2(dy, dx)
-    error = goal_angle - theta
-    error = np.arctan2(np.sin(error), np.cos(error))
+    goal_angle = np.arctan2(dy, dx)  # Compute the direction angle
+    error = goal_angle - theta  # Compute the difference
+    error = np.arctan2(np.sin(error), np.cos(error))  # Normalize to [-pi, pi]
 
     return float(error)
 
@@ -25,6 +25,7 @@ def get_normalized_heading_error(
     Return heading error encoded as cos/sin.
     """
 
+    # Compute the angular error
     error = get_heading_error(goal_relative_position, theta)
 
     return np.array(
@@ -39,9 +40,11 @@ def get_normalized_relative_distance(
     env_height: int,
 ) -> np.ndarray:
     """
-    Normalize a relative distance between 0 and 1.
+    Normalize a relative distance between 0 and 1, with respect to the environment
+    diagonal.
     """
 
+    # Maximum distance = hypotenuse of the environment
     max_distance = np.hypot(env_width, env_height)
 
     return np.array(
@@ -54,7 +57,8 @@ def get_normalized_position(
     pos: tuple[float, float], env_width: int, env_height: int
 ) -> np.ndarray:
     """
-    Normalize a relative position to [-1, 1].
+    Normalize a relative position between 0 and 1, with respect to the environment
+    dimensions.
     """
 
     x, y = pos
@@ -67,7 +71,7 @@ def get_normalized_motion(
     motion: tuple[float, float], v_max: float, omega_max: float
 ) -> np.ndarray:
     """
-    Normalize a motion.
+    Normalize the linear and angular velocities with respect to their maximum values.
     """
 
     v, omega = motion
@@ -110,27 +114,33 @@ def get_distance_rectangle_rectangle(
     y2_max: float,
 ) -> float:
     """
-    Compute the minimum Euclidean distance between two
-    axis-aligned rectangles.
+    Compute the minimum Euclidean distance between two axis-aligned rectangles.
     """
 
+    # Compute the horizontal and vertical gaps between the rectangles
     dx = max(x1_min - x2_max, x2_min - x1_max, 0)
     dy = max(y1_min - y2_max, y2_min - y1_max, 0)
 
-    return np.hypot(dx, dy)
+    # Compute the  distance between the closest points
+    dist = np.hypot(dx, dy)
+
+    return dist
 
 
 def get_distance_circle_circle(
     cx1: float, cy1: float, radius1: float, cx2: float, cy2: float, radius2: float
 ) -> float:
     """
-    Compute the minimum Euclidean distance between two
-    axis-aligned circles.
+    Compute the minimum Euclidean distance between two circles.
     """
 
+    # Compute the distance between the circle centers
     d = np.linalg.norm(np.array((cx1, cy1)) - np.array((cx2, cy2)))
 
-    return float(d - radius1 - radius2)
+    # Substract the radius
+    dist = d - radius1 - radius2
+
+    return float(dist)
 
 
 def get_distance_rectangle_circle(
@@ -143,11 +153,15 @@ def get_distance_rectangle_circle(
     radius,
 ) -> float:
     """
-    Compute the minimum Euclidean distance between an
-    axis-aligned rectangle an a circle.
+    Compute the minimum Euclidean distance between an axis-aligned rectangle an a
+    circle.
     """
 
+    # Find the closest point on the rectangle to the circle center
     closest_x = np.clip(cx, x_min, x_max)
     closest_y = np.clip(cy, y_min, y_max)
 
-    return max(0, np.linalg.norm([cx - closest_x, cy - closest_y]) - radius)
+    # Compute the distance between the circle boundary and the rectangle
+    dist = np.linalg.norm([cx - closest_x, cy - closest_y]) - radius
+
+    return max(0, dist)

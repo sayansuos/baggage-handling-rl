@@ -22,24 +22,29 @@ class MovingEntity(Entity):
         Constructor
         """
 
-        super().__init__(num)
+        super().__init__(num=num)
 
+        self.num: int = num
+
+        self.current_position: tuple[float, float] | None = None
         self.start_position: tuple[float, float] | None = None
         self.target_positions: list[tuple[float, float]] = []
 
-        self.radius: float = 0.5
         self.theta: float = 0
         self.v: float = 0
         self.omega: float = 0
+        self.radius: float = 0.5
 
         self.path: list[tuple[int, int] | tuple[float, float]] = []
         self.path_index: int = 0
 
-    def step(self):
+    def step(self) -> None:
         """
         Advance the entity to the next position along its predefined path.
         """
 
+        # If no predefinded path, do not move
+        # Else, advance to the next position along the predefined path
         if self.path:
             if self.path_index < len(self.path) - 1:
                 self.path_index += 1
@@ -50,12 +55,14 @@ class MovingEntity(Entity):
         self,
         ax,
         color: str | tuple[float, float, float, float] = "black",
-    ):
+    ) -> None:
         """
         Default render method for moving entities.
         """
 
         assert self.current_position is not None
+
+        # Draw the moving entity current position
         x, y = self.current_position
         circle = Circle(
             (x, y),
@@ -69,7 +76,7 @@ class MovingEntity(Entity):
     @property
     def id(self) -> str:
         """
-        Advance the entity to the next position along its predefined path.
+        Return the unique identifier of the moving entity.
         """
 
         return f"moving_obstacle_{self.num}"
@@ -81,7 +88,8 @@ class MovingEntity(Entity):
         """
 
         assert self.current_position is not None
-        return self.bounds_at(self.current_position)
+
+        return self.bounds_at(pos=self.current_position)
 
     def bounds_at(self, pos: tuple[float, float]) -> tuple[float, float, float, float]:
         """
@@ -89,6 +97,7 @@ class MovingEntity(Entity):
         """
 
         x, y = pos
+
         return (
             x - self.radius,
             y - self.radius,
@@ -102,7 +111,8 @@ class MovingEntity(Entity):
         """
 
         assert self.current_position is not None
-        return get_relative_position(pos, self.current_position)
+
+        return get_relative_position(pos1=pos, pos2=self.current_position)
 
     def get_relative_distance(self, pos: tuple[float, float]) -> float:
         """
@@ -110,14 +120,15 @@ class MovingEntity(Entity):
         """
 
         assert self.current_position is not None
-        return get_relative_distance(self.current_position, pos)
+
+        return get_relative_distance(pos1=self.current_position, pos2=pos)
 
     def get_distance(self, other: StaticEntity | MovingEntity) -> float:
         """
         Compute the distance between the entity and another entity.
         """
 
-        return other._get_distance_circle(self)
+        return other._get_distance_circle(circle=self)
 
     def collides_with(
         self,
@@ -126,13 +137,22 @@ class MovingEntity(Entity):
         min_dist: float,
     ) -> bool:
         """
-        Check whether the entity would collide with another entity at the given positions.
+        Check whether the entity would collide with another entity at the given
+        positions.
         """
 
         assert other.current_position
-        return bool(
-            other._collide_circle(self, other.current_position, new_pos, min_dist)
+
+        collides_with = bool(
+            other._collide_circle(
+                circle=self,
+                pos_self=other.current_position,
+                pos_other=new_pos,
+                min_dist=min_dist,
+            )
         )
+
+        return collides_with
 
     def _get_distance_circle(self, circle: MovingEntity) -> float:
         """
@@ -141,11 +161,19 @@ class MovingEntity(Entity):
 
         assert self.current_position is not None
         assert circle.current_position is not None
+
+        # Extract the geometry of both circular entities
         cx1, cy1 = self.current_position
         radius1 = self.radius
         cx2, cy2 = circle.current_position
         radius2 = circle.radius
-        return get_distance_circle_circle(cx1, cy1, radius1, cx2, cy2, radius2)
+
+        # Compute the distance
+        dist = get_distance_circle_circle(
+            cx1=cx1, cy1=cy1, radius1=radius1, cx2=cx2, cy2=cy2, radius2=radius2
+        )
+
+        return dist
 
     def _get_distance_rectangle(self, rect: StaticEntity) -> float:
         """
@@ -154,10 +182,24 @@ class MovingEntity(Entity):
 
         assert self.current_position is not None
         assert rect.current_position is not None
-        x_min, y_min, x_max, y_max = rect.get_bounds_at(rect.current_position)
+
+        # Extract the rectangle bounds and the circle geometry
+        x_min, y_min, x_max, y_max = rect.get_bounds_at(pos=rect.current_position)
         cx, cy = self.current_position
         radius = self.radius
-        return get_distance_rectangle_circle(x_min, y_min, x_max, y_max, cx, cy, radius)
+
+        # Compute the distance
+        dist = get_distance_rectangle_circle(
+            x_min=x_min,
+            y_min=y_min,
+            x_max=x_max,
+            y_max=y_max,
+            cx=cx,
+            cy=cy,
+            radius=radius,
+        )
+
+        return dist
 
     def _collide_circle(
         self,
@@ -170,12 +212,18 @@ class MovingEntity(Entity):
         Check whether two circular entities collide at the given positions.
         """
 
+        # Extract the geometry of both circular entities
         cx1, cy1 = pos_self
         radius1 = self.radius
         cx2, cy2 = pos_other
         radius2 = circle.radius
-        dist = get_distance_circle_circle(cx1, cy1, radius1, cx2, cy2, radius2)
-        return dist <= min_dist
+
+        # Compute the distance
+        dist = get_distance_circle_circle(
+            cx1=cx1, cy1=cy1, radius1=radius1, cx2=cx2, cy2=cy2, radius2=radius2
+        )
+
+        return bool(dist <= min_dist)
 
     def _collide_rectangle(
         self,
@@ -185,14 +233,27 @@ class MovingEntity(Entity):
         min_dist: float,
     ) -> bool:
         """
-        Check whether the entity collides with a rectangular obstacle at the given positions.
+        Check whether the entity collides with a rectangular obstacle at the given
+        positions.
         """
 
-        x_min, y_min, x_max, y_max = rect.get_bounds_at(pos_other)
+        # Extract the rectangle bounds and the circle geometry
+        x_min, y_min, x_max, y_max = rect.get_bounds_at(pos=pos_other)
         cx, cy = pos_self
         radius = self.radius
-        dist = get_distance_rectangle_circle(x_min, y_min, x_max, y_max, cx, cy, radius)
-        return dist <= min_dist
+
+        # Compute the distance
+        dist = get_distance_rectangle_circle(
+            x_min=x_min,
+            y_min=y_min,
+            x_max=x_max,
+            y_max=y_max,
+            cx=cx,
+            cy=cy,
+            radius=radius,
+        )
+
+        return bool(dist <= min_dist)
 
     def _get_next_pos(self, v: float, dt: float = 1) -> tuple[float, float]:
         """
@@ -200,7 +261,10 @@ class MovingEntity(Entity):
         """
 
         assert self.current_position is not None
+
+        # Update the position according to the current heading.
         x, y = self.current_position
         x += v * np.cos(self.theta) * dt
         y += v * np.sin(self.theta) * dt
+
         return x, y

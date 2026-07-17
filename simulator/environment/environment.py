@@ -35,39 +35,34 @@ class Environment(gym.Env):
         Constructor
         """
 
-        # Initialization
+        # Initialize the environment state
+        self.name: str = name
+        self.env_id: int = env_id
 
-        self.env_config = env_config
-        self.agent_config = agent_config
-        self.rewards_config = reward_config
-        self.env_manager = Manager(self.env_config, self.agent_config)
+        self.episode: int = 0
+        self.step_count: int = 0
+        self.debug: bool = debug
 
-        # Build environment
+        # Store the environment configurations
+        self.env_config: EnvConfig = env_config
+        self.agent_config: AgentConfig = agent_config
+        self.reward_config: RewardConfig = reward_config
 
-        self.name = name
-        self.env_id = env_id
-        self.episode = 0
-        self.total_step = 0
-        self.step_count = 0
-        self.debug = debug
-
+        # Create the observation and action spaces
         self.observation_space, self.action_space = get_multi_spaces(
             nb_agents=self.env_config.nb_agents,
             agent_config=self.agent_config,
         )
 
-        # Get global structures
-
+        # Generate the static obstacles
+        self.env_manager: Manager = Manager(
+            env_config=self.env_config, agent_config=self.agent_config
+        )
         self.static_obstacles = self.env_manager.generate_static_obstacles()
 
     # ---------------------------------------------------------------
     # PROPERTIES
     # ---------------------------------------------------------------
-
-    @property
-    def timeout(self):
-        """"""
-        return self.step_count >= self.env_config.max_steps
 
     @property
     def grid(self) -> np.ndarray:
@@ -76,8 +71,17 @@ class Environment(gym.Env):
         """
         return self.grid_map.grid
 
+    @property
+    def timeout(self) -> bool:
+        """
+        Return whether the maximum episode length has been reached.
+        """
+        return bool(self.step_count >= self.env_config.max_steps)
+
     def done(self, agent_id: str | None = None) -> bool:
-        """"""
+        """
+        Return whether one or all agents are done.
+        """
         if not agent_id:
             return all(done for done in self.dones.values())
         else:
@@ -93,36 +97,42 @@ class Environment(gym.Env):
         """
 
         obs = {}
+
+        # Retrieve the current occupancy grid.
         current_grid = self.grid_map.current_grid
 
         for agent in self.agents:
-
-            map = self.grid_map.get_local_grid(
-                agent, current_grid, self.agent_config.length_view
+            # Update the history of local occupancy maps.
+            local_map = self.grid_map.get_local_grid(
+                agent=agent,
+                current_grid=current_grid,
+                size=self.agent_config.length_view,
             )[np.newaxis, :, :]
             if agent.local_maps == []:
-                local_maps = [map for _ in range(self.agent_config.n_maps)]
+                local_maps = [local_map for _ in range(self.agent_config.n_maps)]
             else:
                 local_maps = agent.local_maps
                 local_maps.pop(0)
                 local_maps.append(map)
             agent.local_maps = local_maps
 
+            # Compute the normalized observation components
             goal_relative_distance = get_normalized_relative_distance(
-                agent._goal_relative_distance,
-                self.env_config.width,
-                self.env_config.height,
+                distance=agent._goal_relative_distance,
+                env_width=self.env_config.width,
+                env_height=self.env_config.height,
             )
             heading_error = get_normalized_heading_error(
-                agent._goal_relative_position, agent.theta
+                goal_relative_position=agent._goal_relative_position, theta=agent.theta
             )
             motion = get_normalized_motion(
-                agent._motion,
-                self.agent_config.v_max,
-                self.agent_config.omega_max,
+                motion=agent._motion,
+                v_max=self.agent_config.v_max,
+                omega_max=self.agent_config.omega_max,
             )
             orientation = np.array(list(agent._orientation), dtype=np.float32)
 
+            # Store the observation
             obs[agent.id] = {
                 "local_map": np.concatenate(agent.local_maps, axis=0),
                 "goal_relative_distance": goal_relative_distance,
@@ -140,6 +150,7 @@ class Environment(gym.Env):
 
         n = len(self.agents)
 
+        # Compute the environment performance metrics
         mean_time_travel = sum(agent.travel_time for agent in self.agents) / n
         success_rate = sum(agent.state == "terminated" for agent in self.agents) / n
         collision_rate = sum(agent.state == "truncated" for agent in self.agents) / n
@@ -148,18 +159,19 @@ class Environment(gym.Env):
             self.sum_abs_omega / self.motion_count if self.motion_count > 0 else 0.0
         )
 
+        # Build detailed information for each agent
         if self.debug:
-
             info = {}
 
             for agent in self.agents:
-
                 if agent.current_position is not None:
                     x, y = agent.current_position
                 else:
                     x, y = None, None
+
                 heading_error = get_heading_error(
-                    agent._goal_relative_position, agent.theta
+                    goal_relative_position=agent._goal_relative_position,
+                    theta=agent.theta,
                 )
 
                 if rewards_info is None:
@@ -195,8 +207,8 @@ class Environment(gym.Env):
                     **self.reward_sums,
                 }
 
+        # Build global environment statistics
         else:
-
             info = {
                 "experiment": self.name,
                 "episode": self.episode,
@@ -220,20 +232,18 @@ class Environment(gym.Env):
             np.random.seed(seed)
         super().reset(seed=seed)
 
-        # Reset episode number and step count
-
+        # Reset the episode counter
         self.step_count = 0
         self.episode += 1
 
-        # Change moving entities setups and compute paths
-
+        # Reset the moving entities and rebuild the occupancy grid
         self.moving_obstacles, self.agents = self.env_manager.reset()
         self.grid_map = GridMap(
-            self.env_config,
-            self.agent_config,
-            self.static_obstacles,
-            self.moving_obstacles,
-            self.agents,
+            env_config=self.env_config,
+            agent_config=self.agent_config,
+            static_obstacles=self.static_obstacles,
+            moving_obstacles=self.moving_obstacles,
+            agents=self.agents,
         )
         compute_astar_paths(
             grid_map=self.grid_map,
@@ -242,16 +252,14 @@ class Environment(gym.Env):
             min_length=self.env_config.max_steps,
         )
 
-        # Get entities interactions
-
+        # Compute the interactions between entities
         self._closest = compute_closest(
             static_obstacles=self.static_obstacles,
             moving_obstacles=self.moving_obstacles,
             agents=self.agents,
         )
 
-        # Reset metrics
-
+        # Reset the episode metrics
         self.dones: dict = {agent.id: False for agent in self.agents}
         self.rewards: dict = {agent.id: 0 for agent in self.agents}
         self.reward_total = 0
@@ -265,6 +273,7 @@ class Environment(gym.Env):
         self.sum_abs_omega = 0.0
         self.motion_count = 0
 
+        # Compute obs and info
         obs = self._get_obs()
         info = self._get_info()
 
@@ -275,35 +284,30 @@ class Environment(gym.Env):
         Advance the environment by one simulation step.
         """
 
-        # Update step counts
-
+        # Update the episode counter
         self.step_count += 1
-        self.total_step += 1
 
-        # Update obstacles
-
+        # Update the moving obstacles
         for obs in self.moving_obstacles:
             obs.step()
 
-        # Update agents
-
+        # Update the agents and the environment metrics
         for agent in self.agents:
-            v, omega, motion_count = agent.step(action)
+            v, omega, motion_count = agent.step(action=action)
             self.sum_v += v
             self.sum_abs_omega += omega
             self.motion_count += motion_count
 
-        # Get all metrics
-
+        # Compute the interactions between entities
         self._closest = compute_closest(
             static_obstacles=self.static_obstacles,
             moving_obstacles=self.moving_obstacles,
             agents=self.agents,
         )
-        obs = self._get_obs()
 
+        # Compute the episode rewards
         rewards, rewards_info = compute_rewards(
-            reward_config=self.rewards_config, agents=self.agents
+            reward_config=self.reward_config, agents=self.agents
         )
         self.rewards = rewards
         self.reward_total += sum(rewards.values())
@@ -311,11 +315,14 @@ class Environment(gym.Env):
             for reward_name, reward_value in agent_rewards_info.items():
                 self.reward_sums[reward_name] += reward_value
 
+        # Compute the termination conditions
         terminated, truncated, self.dones = compute_dones(
             agents=self.agents, timeout=self.timeout
         )
 
-        info = self._get_info(rewards_info)
+        # Compute obs and info
+        obs = self._get_obs()
+        info = self._get_info(rewards_info=rewards_info)
 
         return obs, rewards, terminated, truncated, info
 
@@ -324,25 +331,36 @@ class Environment(gym.Env):
         Default render method for the global environment.
         """
 
+        # Create a new figure when no axes are provided
         if ax is None:
             _, ax = plt.subplots(figsize=(10, 8))
 
+        # Configure the plot
         ax.clear()
         ax.set_aspect("equal", adjustable="box")
-
         W, H = self.env_config.width, self.env_config.height
 
+        # Draw the static obstacles
         for entity in self.static_obstacles:
-            entity.render(ax)
+            entity.render(ax=ax)
 
+        # Draw the moving obstacles
         for i, entity in enumerate(self.moving_obstacles):
-            entity.render(ax)
+            entity.render(ax=ax, color="black")
 
+        # Draw the agents and build the legend
         handles = []
         labels = []
         colors = plt.colormaps["tab10"]
         for i, agent in enumerate(self.agents):
-            agent.render(ax, 0, W, 0, H, colors(i))
+            agent.render(
+                ax=ax,
+                width_min=0,
+                width_max=W,
+                height_min=0,
+                height_max=H,
+                color=colors(i),
+            )
             handles.append(
                 plt.Line2D(
                     [],
@@ -356,6 +374,7 @@ class Environment(gym.Env):
             labels.append(agent.id)
             ax.scatter([], [], color=colors(i), label=agent.id)
 
+        # Configure the axes and legend
         ax.set_xlim(0, W)
         ax.set_ylim(0, H)
         ax.set_xlabel("x")

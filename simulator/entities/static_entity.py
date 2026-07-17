@@ -19,15 +19,22 @@ class StaticEntity(Entity):
         Constructor
         """
 
-        super().__init__(num)
-        self.width = width
-        self.height = height
+        super().__init__(num=num)
 
-    def render(self, ax, color: str | tuple[float, float, float, float] = "black"):
+        self.num: int = num
+        self.current_position: tuple[float, float] | None = None
+
+        self.width: float = width
+        self.height: float = height
+
+    def render(
+        self, ax, color: str | tuple[float, float, float, float] = "black"
+    ) -> None:
         """
         Default render method for static entities.
         """
 
+        # Draw the static entity as a rectangle
         x_min, y_min, x_max, y_max = self.bounds
         rect = Rectangle(
             (x_min, y_min),
@@ -51,6 +58,7 @@ class StaticEntity(Entity):
         """
 
         assert self.current_position is not None
+
         return self.get_bounds_at(self.current_position)
 
     def get_bounds_at(
@@ -61,6 +69,7 @@ class StaticEntity(Entity):
         """
 
         x, y = pos
+
         return (
             x - self.width / 2,
             y - self.height / 2,
@@ -73,7 +82,7 @@ class StaticEntity(Entity):
         Compute the distance between the entity and another entity.
         """
 
-        return other._get_distance_rectangle(self)
+        return other._get_distance_rectangle(rect=self)
 
     def collides_with(
         self,
@@ -86,9 +95,17 @@ class StaticEntity(Entity):
         """
 
         assert other.current_position is not None
-        return bool(
-            other._collide_rectangle(self, other.current_position, new_pos, min_dist)
+
+        collides_with = bool(
+            other._collide_rectangle(
+                rect=self,
+                pos_self=other.current_position,
+                pos_other=new_pos,
+                min_dist=min_dist,
+            )
         )
+
+        return collides_with
 
     def _get_distance_circle(self, circle: MovingEntity) -> float:
         """
@@ -97,10 +114,24 @@ class StaticEntity(Entity):
 
         assert circle.current_position is not None
         assert self.current_position is not None
-        x_min, y_min, x_max, y_max = self.get_bounds_at(self.current_position)
+
+        # Extract the rectangle bounds and the circle geometry
+        x_min, y_min, x_max, y_max = self.get_bounds_at(pos=self.current_position)
         cx, cy = circle.current_position
         radius = circle.radius
-        return get_distance_rectangle_circle(x_min, y_min, x_max, y_max, cx, cy, radius)
+
+        # Compute the distance
+        dist = get_distance_rectangle_circle(
+            x_min=x_min,
+            y_min=y_min,
+            x_max=x_max,
+            y_max=y_max,
+            cx=cx,
+            cy=cy,
+            radius=radius,
+        )
+
+        return dist
 
     def _get_distance_rectangle(self, rect: MovingEntity) -> float:
         """
@@ -109,11 +140,24 @@ class StaticEntity(Entity):
 
         assert rect.current_position is not None
         assert self.current_position is not None
-        x1_min, y1_min, x1_max, y1_max = self.get_bounds_at(self.current_position)
-        x2_min, y2_min, x2_max, y2_max = rect.get_bounds_at(rect.current_position)
-        return get_distance_rectangle_rectangle(
-            x1_min, y1_min, x1_max, y1_max, x2_min, y2_min, x2_max, y2_max
+
+        # Extract the bounds of both rectangles.
+        x1_min, y1_min, x1_max, y1_max = self.get_bounds_at(pos=self.current_position)
+        x2_min, y2_min, x2_max, y2_max = rect.get_bounds_at(pos=rect.current_position)
+
+        # Compute the distance
+        dist = get_distance_rectangle_rectangle(
+            x1_min=x1_min,
+            y1_min=y1_min,
+            x1_max=x1_max,
+            y1_max=y1_max,
+            x2_min=x2_min,
+            y2_min=y2_min,
+            x2_max=x2_max,
+            y2_max=y2_max,
         )
+
+        return dist
 
     def _collide_circle(
         self,
@@ -126,10 +170,22 @@ class StaticEntity(Entity):
         Check whether a rectangular entity and a circular entity collide.
         """
 
-        x_min, y_min, x_max, y_max = self.get_bounds_at(pos_self)
+        # Extract the rectangle bounds and the circle geometry
+        x_min, y_min, x_max, y_max = self.get_bounds_at(pos=pos_self)
         cx, cy = pos_other
         radius = circle.radius
-        dist = get_distance_rectangle_circle(x_min, y_min, x_max, y_max, cx, cy, radius)
+
+        # Compute the distance
+        dist = get_distance_rectangle_circle(
+            x_min=x_min,
+            y_min=y_min,
+            x_max=x_max,
+            y_max=y_max,
+            cx=cx,
+            cy=cy,
+            radius=radius,
+        )
+
         return bool(dist <= min_dist)
 
     def _collide_rectangle(
@@ -143,9 +199,20 @@ class StaticEntity(Entity):
         Check whether two rectangular entities collide.
         """
 
+        # Extract the bounds of both rectangles.
         x1_min, y1_min, x1_max, y1_max = self.get_bounds_at(pos_self)
         x2_min, y2_min, x2_max, y2_max = rect.get_bounds_at(pos_other)
+
+        # Compute the distance
         dist = get_distance_rectangle_rectangle(
-            x1_min, y1_min, x1_max, y1_max, x2_min, y2_min, x2_max, y2_max
+            x1_min=x1_min,
+            y1_min=y1_min,
+            x1_max=x1_max,
+            y1_max=y1_max,
+            x2_min=x2_min,
+            y2_min=y2_min,
+            x2_max=x2_max,
+            y2_max=y2_max,
         )
+
         return bool(dist <= min_dist)

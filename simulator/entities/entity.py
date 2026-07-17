@@ -14,7 +14,8 @@ class Entity(ABC):
         """
 
         super().__init__()
-        self.num = num
+
+        self.num: int = num
         self.current_position: tuple[float, float] | None = None
 
     @property
