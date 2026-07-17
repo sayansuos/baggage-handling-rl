@@ -59,8 +59,8 @@ train_environments:
     max_attempts: 100
     max_steps: 100
 
-  - name: exp5_empty_2
-    width: 64
+  - name: exp5_crossing_1
+    width: 32
     height: 32
 
     agent_mode: crossing
@@ -68,42 +68,27 @@ train_environments:
 
     nb_agents: 1
     nb_static_obstacles: 0
-    nb_moving_obstacles: 5
+    nb_moving_obstacles: 4
 
     max_attempts: 100
     max_steps: 100
 
-  # - name: exp5_empty_2
-  #   width: 64
-  #   height: 32
-
-  #   agent_mode: fixed_3
-  #   env_mode: random
-
-  #   nb_agents: 1
-  #   nb_static_obstacles: 0
-  #   nb_moving_obstacles: 6
-  #   nb_targets: 1
-
-  #   max_attempts: 100
-  #   max_steps: 100
-
-  - name: exp6_fixed_random_2
+  - name: exp6_empty_2
     width: 64
     height: 32
 
     agent_mode: fixed_3
-    env_mode: fixed_random_3
+    env_mode: random
 
     nb_agents: 1
-    nb_static_obstacles: 9
-    nb_moving_obstacles: 1
+    nb_static_obstacles: 0
+    nb_moving_obstacles: 6
     nb_targets: 1
 
     max_attempts: 100
     max_steps: 100
 
-  - name: exp7_fixed_random_3
+  - name: exp7_fixed_random_1
     width: 64
     height: 32
 
