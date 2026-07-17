@@ -626,35 +626,37 @@ class Manager:
         entity: static_entity.StaticEntity | moving_entity.MovingEntity | agent.Agent,
         min_dist: float,
         max_attempts: int,
-    ) -> tuple[tuple[int, int], tuple[int, int]]:
+    ) -> tuple[tuple[float, float], tuple[float, float]] | None:
         """
-        Generate a start position and its opposite target.
+        Generate a random position on a circle and its opposite target.
         """
 
-        n = self.nb_agents + self.nb_moving_obstacles
+        cx = self.width / 2
+        cy = self.height / 2
+        radius = min(self.width, self.height) / 2 - 5
 
-        cx, cy = self.width / 2, self.height / 2
-        r = min(self.width, self.height) // 2 - 5
-        angles = np.linspace(0, 2 * np.pi, n, endpoint=False)
-        positions = [(cx + r * np.cos(a), cy + r * np.sin(a)) for a in angles]
+        for _ in range(max_attempts):
+            angle = np.random.uniform(0, 2 * np.pi)
 
-        is_free = False
-        i = 0
+            pos = (
+                cx + radius * np.cos(angle),
+                cy + radius * np.sin(angle),
+            )
 
-        while not is_free and i < max_attempts:
-            k = np.random.randint(len(positions))
-            pos = positions[k]
-            is_free = self._is_free(entity, pos, min_dist, False)
-            i += 1
+            if self._is_free(
+                new=entity,
+                pos=pos,
+                min_dist=min_dist,
+                for_target=False,
+            ):
+                opposite_angle = angle + np.pi
 
-        opposite_angle = angles[k] + np.pi
+                target = (
+                    cx + radius * np.cos(opposite_angle),
+                    cy + radius * np.sin(opposite_angle),
+                )
 
-        target = (
-            cx + r * np.cos(opposite_angle),
-            cy + r * np.sin(opposite_angle),
-        )
-
-        return pos, target
+                return pos, target
 
     def _is_free(
         self,
