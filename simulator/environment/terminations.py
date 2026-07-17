@@ -13,30 +13,39 @@ def compute_closest(
     """
 
     metrics = {}
+
+    # Get all entity
     entities = static_obstacles + moving_obstacles + agents
 
-    for a in agents:
+    for ag in agents:
         min_distance = np.inf
         closest_entity = None
 
+        # Search for the closest entity
         for other in entities:
-            if other == a or other.current_position is None:
+            if other == ag or other.current_position is None:
                 continue
 
-            dist = a.get_distance(other)
+            # Compute the distance
+            dist = ag.get_distance(other=other)
+
+            # Update the closest entity if needed
             if dist < min_distance:
                 min_distance = dist
                 closest_entity = other
 
-            if dist < a.collision_threshold:
-                a.state = "collided"
+            # Update the agent state if needed
+            if dist < agent.collision_threshold:
+                ag.state = "collided"
 
-        metrics[a.id] = {
+        # Store the closest entity metrics
+        metrics[ag.id] = {
             "closest_distance": min_distance,
             "closest_entity": closest_entity,
         }
 
-        a._closest_dist = min_distance
+        # Update the agent closest distance
+        ag._closest_dist = min_distance
 
     return metrics
 
@@ -46,9 +55,14 @@ def compute_dones(agents: list[agent.Agent], timeout: bool) -> tuple[dict, dict,
     Compute the termination status of all agents.
     """
 
+    # Compute terminal states
     terminated = compute_terminated(agents=agents)
+
+    # Compute truncated states
     truncated = compute_truncated(agents=agents)
-    dones = {a.id: terminated[a.id] or truncated[a.id] or timeout for a in agents}
+
+    # Mark an agent as done after termination, truncation, or timeout
+    dones = {ag.id: terminated[ag.id] or truncated[ag.id] or timeout for ag in agents}
 
     return terminated, truncated, dones
 
@@ -58,16 +72,18 @@ def compute_terminated(agents: list[agent.Agent]) -> dict:
     Compute the termination state of all agents.
     """
 
-    for agent in agents:
-        if agent.state == "reached":
-            if agent.target_index < len(agent.target_positions) - 1:
-                agent.target_index += 1
-                agent.state = "active"
+    for ag in agents:
+        if ag.state == "reached":
+            # If a target remains, continue
+            if ag.target_index < len(ag.target_positions) - 1:
+                ag.target_index += 1
+                ag.state = "active"
 
+            # Else, convert reached state into terminated state
             else:
-                agent.state = "terminated"
+                ag.state = "terminated"
 
-    return {agent.id: agent.state == "terminated" for agent in agents}
+    return {ag.id: ag.state == "terminated" for ag in agents}
 
 
 def compute_truncated(agents: list[agent.Agent]) -> dict:
@@ -75,8 +91,9 @@ def compute_truncated(agents: list[agent.Agent]) -> dict:
     Compute the truncation state of all agents.
     """
 
-    for agent in agents:
-        if agent.state == "collided":
-            agent.state = "truncated"
+    for ag in agents:
+        # Convert collision state into truncated state
+        if ag.state == "collided":
+            ag.state = "truncated"
 
-    return {agent.id: agent.state == "truncated" for agent in agents}
+    return {ag.id: ag.state == "truncated" for ag in agents}
