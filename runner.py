@@ -39,7 +39,7 @@ def run_demo(
         )
 
         # Create the SAC agent using the selected trained policy
-        agent = load_agent(env, policy, trained_agent_id)
+        agent = load_agent(env=env, exp=policy, trained_agent_id=trained_agent_id)
         agent.load_checkpoints()
 
         # Reset the environment
@@ -51,17 +51,17 @@ def run_demo(
 
         # Run the episode until the trained agent is done
         while not env.dones[trained_agent_id]:
-            actions = {}
+            action = {}
 
             # Select deterministic action for all agents
             for ag in env.agents:
-                actions[ag.id] = agent.choose_action(
-                    state[ag.id],
+                action[ag.id] = agent.choose_action(
+                    state=state[ag.id],
                     deterministic=True,
                 )
 
             # Apply all actions and advance the environment by one step
-            next_state, _, _, _, _ = env.step(actions)
+            next_state, _, _, _, _ = env.step(action=action)
 
             # Replace the current observation with the next observation
             state = next_state
@@ -105,10 +105,15 @@ def run_animation(
         print(f"[ START ] {exp.name}")
 
         # Create the environment from the experiment configuration
-        env = Environment(exp.env_config, exp.agent_config, exp.reward_config, exp.name)
+        env = Environment(
+            env_config=exp.env_config,
+            agent_config=exp.agent_config,
+            reward_config=exp.reward_config,
+            name=exp.name,
+        )
 
         # Create the SAC agent using the selected trained policy
-        agent = load_agent(env, policy, trained_agent_id)
+        agent = load_agent(env=env, exp=policy, trained_agent_id=trained_agent_id)
         agent.load_checkpoints()
 
         # Reset the environment
@@ -121,17 +126,17 @@ def run_animation(
 
         # Run the episode until the trained agent is done
         while not env.dones[trained_agent_id]:
-            actions = {}
+            action = {}
 
             # Select deterministic action for all agents
             for ag in env.agents:
-                actions[ag.id] = agent.choose_action(
-                    state[ag.id],
+                action[ag.id] = agent.choose_action(
+                    state=state[ag.id],
                     deterministic=True,
                 )
 
             # Apply all actions and advance the environment by one step
-            next_state, _, _, _, _ = env.step(actions)
+            next_state, _, _, _, _ = env.step(action=action)
 
             # Replace the current observation with the next observation
             state = next_state
@@ -148,7 +153,7 @@ def run_animation(
     plt.close(fig)
 
     # Save the animation
-    plot_animation(frames, path, file_name, fps)
+    plot_animation(frames=frames, path=path, file_name=file_name, fps=fps)
 
     print("\n[ SAVE ] completed\n")
 
@@ -228,12 +233,17 @@ def run_train_all(
         d["episode"] = i
 
     # Save training metrics
-    df_train = log_train(histories, "logs/train", exp_name)
-    log_debug(debugs, "logs/train", exp_name)
-    df_rewards = log_rewards(histories, "logs/train", exp_name)
+    df_train = log_train(metrics=histories, path="logs/train", file_name=exp_name)
+    log_debug(metrics=debugs, path="logs/train", file_name=exp_name)
+    df_rewards = log_rewards(metrics=histories, path="logs/train", file_name=exp_name)
 
     # Generate training figures
-    plot_figures(df_train, df_rewards, "figures/train", exp_name)
+    plot_figures(
+        df_perf=df_train,
+        df_rewards=df_rewards,
+        path="figures/train",
+        file_name=exp_name,
+    )
 
 
 def run_train(
@@ -262,12 +272,19 @@ def run_train(
             )
 
             # Save training metrics
-            df_train = log_train(history, "logs/train", exp.name)
-            log_debug(debug, "logs/train", exp.name)
-            df_rewards = log_rewards(history, "logs/train", exp.name)
+            df_train = log_train(metrics=history, path="logs/train", file_name=exp.name)
+            log_debug(metrics=debug, path="logs/train", file_name=exp.name)
+            df_rewards = log_rewards(
+                metrics=history, path="logs/train", file_name=exp.name
+            )
 
             # Generate training figures
-            plot_figures(df_train, df_rewards, "figures/train", exp.name)
+            plot_figures(
+                df_perf=df_train,
+                df_rewards=df_rewards,
+                path="figures/train",
+                file_name=exp.name,
+            )
 
             # Use the current experiment as initialization for the next stage
             previous_exp = exp
@@ -319,15 +336,27 @@ def run_validation(
         )
 
         # Run the trained policy over multiple episodes
-        df_train = log_train(history, "logs/validation", exp.name)
-        df_rewards = log_rewards(history, "logs/validation", exp.name)
+        df_train = log_train(
+            metrics=history, path="logs/validation", file_name=exp.name
+        )
+        df_rewards = log_rewards(
+            metrics=history, path="logs/validation", file_name=exp.name
+        )
 
         # Generate training figures
-        plot_figures(df_train, df_rewards, "figures/validation", exp.name, window=100)
+        plot_figures(
+            df_perf=df_train,
+            df_rewards=df_rewards,
+            path="figures/validation",
+            file_name=exp.name,
+            window=100,
+        )
 
         # Save an animation when rendering is enabled
         if n_render > 0:
-            plot_animation(frames, "figures/validation", exp.name, 10)
+            plot_animation(
+                frames=frames, path="figures/validation", file_name=exp.name, fps=10
+            )
 
     # Compute the total training duration
     duration = time.perf_counter() - start
@@ -376,15 +405,30 @@ def run_evaluation(
         )
 
         # Run the trained policy over multiple episodes
-        df_train = log_train(history, "logs/evaluation", scenario.name)
-        df_rewards = log_rewards(history, "logs/evaluation", scenario.name)
+        df_train = log_train(
+            metrics=history, path="logs/evaluation", file_name=scenario.name
+        )
+        df_rewards = log_rewards(
+            metrics=history, path="logs/evaluation", file_name=scenario.name
+        )
 
         # Generate training figures
-        plot_figures(df_train, df_rewards, "figures/evaluation", exp.name, window=100)
+        plot_figures(
+            df_perf=df_train,
+            df_rewards=df_rewards,
+            path="figures/evaluation",
+            file_name=exp.name,
+            window=100,
+        )
 
         # Save an animation when rendering is enabled
         if n_render > 0:
-            plot_animation(frames, "figures/evaluation", scenario.name, 10)
+            plot_animation(
+                frames=frames,
+                path="figures/evaluation",
+                file_name=scenario.name,
+                fps=10,
+            )
 
     # Compute the total training duration
     duration = time.perf_counter() - start
