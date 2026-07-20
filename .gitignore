@@ -196,6 +196,7 @@ cython_debug/
 docs/figures
 docs/modeling_report
 docs/user_guide
+docs/training_report
 
 
 # PyCharm
