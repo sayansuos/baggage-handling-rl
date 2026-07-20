@@ -35,7 +35,7 @@ def compute_closest(
                 closest_entity = other
 
             # Update the agent state if needed
-            if dist < agent.collision_threshold:
+            if dist < ag.collision_threshold:
                 ag.state = "collided"
 
         # Store the closest entity metrics

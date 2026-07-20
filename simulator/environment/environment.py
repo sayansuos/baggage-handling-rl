@@ -113,7 +113,7 @@ class Environment(gym.Env):
             else:
                 local_maps = agent.local_maps
                 local_maps.pop(0)
-                local_maps.append(map)
+                local_maps.append(local_map)
             agent.local_maps = local_maps
 
             # Compute the normalized observation components

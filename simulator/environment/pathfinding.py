@@ -32,7 +32,7 @@ def compute_astar_paths(
         for target in entity.target_positions:
             start_grid = _to_grid(grid_map=grid_map, pos=start)
             target_grid = _to_grid(grid_map=grid_map, pos=target)
-            path = pathfinder.find_path(start_pos=start_grid, _pos=target_grid)
+            path = pathfinder.find_path(start_pos=start_grid, target_pos=target_grid)
 
             # Convert the grid coordinates to world ones
             if path:
