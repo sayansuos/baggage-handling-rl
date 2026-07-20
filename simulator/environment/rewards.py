@@ -39,9 +39,10 @@ def compute_rewards(
             progress = agent._old_goal_relative_distance - current  # Distance progress
             omega = abs(agent.omega)  # Angular velocity
 
-            ###
+            ### -----------------------------------------------------
             ### Compute the progress reward
-            ###
+            ### -----------------------------------------------------
+
             reward_progress = beta1 * progress
 
             # Reduce progress_reward if near obstacles
@@ -58,23 +59,26 @@ def compute_rewards(
             if agent.state == "reached":
                 reward_progress += goal_bonus
 
-            ###
+            ### -----------------------------------------------------
             ### Compute the rotation penalty
-            ###
+            ### -----------------------------------------------------
+
             reward_rotation = beta2 * angular_malus_factor * (omega**2)
 
-            ###
+            ### -----------------------------------------------------
             ### Compute the obstacle penalty
-            ###
+            ### -----------------------------------------------------
+
             if agent._closest_dist < safety_threshold:
                 d = max(agent._closest_dist, 0.1)
                 reward_safety = (
                     beta3 * safety_malus_factor * (1 / d**2 - 1 / safety_threshold**2)
                 )
 
-            ###
+            ### -----------------------------------------------------
             ### Compute the collision penalty
-            ###
+            ### -----------------------------------------------------
+
             if agent.state == "collided":
                 reward_collision = collision_malus
 
