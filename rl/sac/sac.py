@@ -19,6 +19,7 @@ def load_agent(env: Environment, exp: Experiment, trained_agent_id: str) -> SACA
         exp=exp,
         action_space=env.action_space[trained_agent_id],
     )
+
     return agent
 
 
@@ -30,25 +31,25 @@ def run_sac(
     update_frequency: int = 4,
     reset_frequency: int = 5,
     debug_frequency: int = 20,
-):
+) -> tuple[list[dict], list[dict], SACAgent]:
     """
     Train a SAC agent on an experiment, optionally initializing it from a previous policy.
     """
 
-    # Create environment and SAC Agent
-
+    # Create the training environment from the experiment configuration
     env = Environment(
-        exp.env_config,
-        exp.agent_config,
-        exp.reward_config,
-        exp.name,
+        env_config=exp.env_config,
+        agent_config=exp.agent_config,
+        reward_config=exp.reward_config,
+        name=exp.name,
     )
 
+    # Create a new SAC agent when no previous experiment is provided
     if previous_exp is None:
-        agent = load_agent(env, exp, trained_agent_id)
-
+        agent = load_agent(env=env, exp=exp, trained_agent_id=trained_agent_id)
+    # Otherwise, initialize the agent from a previously trained policy
     else:
-        agent = load_agent(env, previous_exp, trained_agent_id)
+        agent = load_agent(env=env, exp=previous_exp, trained_agent_id=trained_agent_id)
         agent.load_checkpoints()
         agent.env_name = f"{exp.name}"
         agent.actor.checkpoint_path = f"rl/SAC/weights/{exp.name}_actor.pt"
@@ -60,68 +61,82 @@ def run_sac(
         agent.target_q2.checkpoint_path = (
             f"rl/SAC/weights/{exp.name}_target_critic_2.pt"
         )
+        # Disable random warmup since the replay starts from an existing policy
         warmup_steps = 0
 
+    # Initialize metrics, scores and counters
     history = []
     debug = []
     best_score = -np.inf
     scores = []
-
     total_steps = 0
     episode = 0
 
+    # Disable random warmup since the replay starts from an existing policy
     while total_steps < exp.n_steps:
         episode += 1
 
+        # Periodically regenerate the static obstacle configuration
         if episode % reset_frequency == 0:
             env.static_obstacles = env.env_manager.generate_static_obstacles()
 
-        state, _ = env.reset()
+        # Reset the environment
+        state, _ = env.reset(seed=None)
         score = 0.0
 
+        # Reset the environment
         if env.episode % debug_frequency == 0:
             env.debug = True
-
         else:
             env.debug = False
 
+        # Run the episode until the trained agent is done
+        # or the maximum training step count is reached.
         while not env.dones[trained_agent_id] and total_steps < exp.n_steps:
+            action = {}
 
-            actions = {}
+            # Select one action for each agent
+            for ag in env.agents:
+                # Apply the training policy to the selected agent
+                if ag.id == trained_agent_id:
+                    if total_steps < warmup_steps:  # Use random actions during warmup
+                        action[ag.id] = env.action_space[trained_agent_id].sample()
+                    else:  # Use stochastics actions from the learned policy afterward
+                        action[ag.id] = agent.choose_action(
+                            state=state[ag.id], deterministic=False
+                        )
 
-            for amr in env.agents:
-
-                if amr.id == trained_agent_id:
-                    # Warmup to fill the RB with random data
-                    if total_steps < warmup_steps:
-                        actions[amr.id] = env.action_space[trained_agent_id].sample()
-                    # Then, we use the policy to fill the RB
-                    else:
-                        actions[amr.id] = agent.choose_action(state[amr.id])
-
+                # Control the other agents using the deterministic policy
                 else:
-                    actions[amr.id] = agent.choose_action(
-                        state=state[amr.id], deterministic=True
+                    action[ag.id] = agent.choose_action(
+                        state=state[ag.id], deterministic=True
                     )
 
-            next_state, rewards, _, _, info = env.step(actions)
+            # Apply all actions and advance the environment by one step
+            next_state, reward, _, _, info = env.step(action=action)
 
+            # Store the trained agent transition in the replay buffer
             agent.store_transition(
-                state[trained_agent_id],
-                actions[trained_agent_id],
-                rewards[trained_agent_id],
-                next_state[trained_agent_id],
-                env.dones[trained_agent_id],
+                state=state[trained_agent_id],
+                action=action[trained_agent_id],
+                reward=reward[trained_agent_id],
+                next_state=next_state[trained_agent_id],
+                done=env.dones[trained_agent_id],
             )
 
-            score += rewards[trained_agent_id]
+            # Replace the current observation with the next observation
             state = next_state
+
+            # Update metrics and counters
+            score += reward[trained_agent_id]
             total_steps += 1
 
+            # Update the SAC networks at the requested frequency
             if total_steps >= warmup_steps and total_steps % update_frequency == 0:
                 agent.learn()
 
-            if env.debug:  # Store metrics for debug logs
+            # Store detailed metrics during debug episodes
+            if env.debug:
                 for agent_id, info in info.items():
                     debug.append(
                         {
@@ -145,16 +160,20 @@ def run_sac(
                         }
                     )
 
+        # Store episode-level metrics for non-debug episodes
         if not env.debug:
             history.append(info)
 
+        # Update scores
         scores.append(score)
         avg_score = np.mean(scores[-100:])
 
+        # Save the network parameters when a new best average is reached
         if avg_score > best_score:
             best_score = avg_score
             agent.save_checkpoints()
 
+        # Display the current training progression
         print(
             f"[ {exp.name} ] Step {total_steps:06d}/{exp.n_steps} | Episode {episode:04d} | "
             f"Return = {score:8.3f} "
@@ -172,7 +191,6 @@ def run_sac(
 
 def evaluate_sac(
     exp: Experiment,
-    agent: SACAgent | None,
     n_episodes: int,
     n_render: int,
     trained_agent_id: str,
@@ -181,6 +199,7 @@ def evaluate_sac(
     Evaluate a trained SAC agent over multiple episodes and optionally record rendered frames.
     """
 
+    # Create the evaluation environment from the experiment configuration
     env = Environment(
         exp.env_config,
         exp.agent_config,
@@ -188,48 +207,60 @@ def evaluate_sac(
         exp.name,
     )
 
-    if agent is None:
-        agent = load_agent(env, exp, trained_agent_id)
-        agent.load_checkpoints()
+    # Load the trained agent using exp.name = policy
+    agent = load_agent(env=env, exp=exp, trained_agent_id=trained_agent_id)
+    agent.load_checkpoints()
 
+    # Initialize metrics and frames
     history = []
     render = n_render > 0
     frames = [] if render else None
 
+    # Create the figure
     fig, ax = plt.subplots(figsize=(10, 8))
 
+    # Run the requested number of evaluation episodes
     for i in range(n_episodes):
-
+        # Run the requested number of evaluation episodes
         if i == n_render:
             render = False
             plt.close(fig)
 
+        # Generate a new static obstacle configuration for each episode
         env.static_obstacles = env.env_manager.generate_static_obstacles()
+
+        # Reset the environment
         state, _ = env.reset(seed=1234 + i)
 
+        # Record the initial environment state when rendering is enabled
         if render:
             env.render(ax)
             fig.canvas.draw()
             frames.append(np.asarray(fig.canvas.renderer.buffer_rgba()).copy())
 
+        # Record the initial environment state when rendering is enabled
         while not env.dones[trained_agent_id]:
+            action = {}
 
-            actions = {}
-
-            for amr in env.agents:
-
-                actions[amr.id] = agent.choose_action(
-                    state=state[amr.id], deterministic=True
+            # Select deterministic action for all agents
+            for ag in env.agents:
+                action[ag.id] = agent.choose_action(
+                    state=state[ag.id], deterministic=True
                 )
 
-            next_state, _, _, _, info = env.step(actions)
+            # Apply all actions and advance the environment by one step
+            next_state, _, _, _, info = env.step(action=action)
+
+            # Replace the current observation with the next observation
             state = next_state
 
+            # Record the current environment frame when rendering is enabled
             if render:
                 env.render(ax)
                 fig.canvas.draw()
                 frames.append(np.asarray(fig.canvas.renderer.buffer_rgba()).copy())
 
+        # Store the metrics
         history.append(info)
 
     return history, frames
