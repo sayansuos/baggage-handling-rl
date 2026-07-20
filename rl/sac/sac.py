@@ -151,7 +151,7 @@ def run_sac(
                             "min_obstacle_distance": info["min_obstacle_distance"],
                             "v": info["v"],
                             "omega": info["omega"],
-                            "reward": rewards[agent_id],
+                            "reward": reward[agent_id],
                             "reward_progress": info["reward_progress"],
                             "reward_rotation": info["reward_rotation"],
                             "reward_safety": info["reward_safety"],
