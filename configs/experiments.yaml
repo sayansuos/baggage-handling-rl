@@ -27,7 +27,7 @@ train_experiments:
     env_config: exp5_crossing_1
     agent_config: agent_1
     reward_config: reward_1
-    n_steps: 250_000
+    n_steps: 300_000
 
   - name: exp6_empty_2
     env_config: exp6_empty_2
