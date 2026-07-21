@@ -45,15 +45,15 @@ def compute_rewards(
 
             reward_progress = beta1 * progress
 
+            # Reward high speed
+            reward_progress += linear_bonus_factor * agent.v
+
             # Reduce progress_reward if near obstacles
             if agent._closest_dist < safety_threshold:
                 reward_progress *= progress_reduction_factor
 
             # Penalize steps
-            reward_progress -= step_malus
-
-            # Reward high speed
-            reward_progress += linear_bonus_factor * agent.v
+            reward_progress += step_malus
 
             # Reward target reach
             if agent.state == "reached":

@@ -11,7 +11,7 @@ rewards:
     safety_malus_factor: -1.5
 
     goal_bonus: 400.0
-    step_malus: 2.0
-    collision_malus: -100.0
+    step_malus: -2.0
+    collision_malus: -200.0
 
-    safety_threshold: 2.0
+    safety_threshold: 3.0

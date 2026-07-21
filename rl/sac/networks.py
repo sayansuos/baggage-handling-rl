@@ -28,8 +28,8 @@ class FeatureExtractor(torch.nn.Module):
             torch.nn.Conv2d(map_shape[0], 4, kernel_size=3, padding=1),
             # Extract spatial features from the stacked local maps
             torch.nn.ReLU(),
-            # Reduce each feature map to a fixed 3 x 3 spatial representation
-            torch.nn.AdaptiveAvgPool2d((3, 3)),
+            # Reduce each feature map to a fixed 5 x 5 spatial representation
+            torch.nn.AdaptiveMaxPool2d((5, 5)),
             # Flatten the convolutional output into a 1D vector
             torch.nn.Flatten(),
         )
@@ -37,7 +37,7 @@ class FeatureExtractor(torch.nn.Module):
         # Determine the size of the convolutional feature vector automatically
         with torch.no_grad():
             dummy = torch.zeros(1, *map_shape)
-            cnn_output_size = self.cnn(dummy).shape[1]  # 4 * 3 * 3 = 36
+            cnn_output_size = self.cnn(dummy).shape[1]  # 4 * 5 * 5 = 100
 
         # Determine the size of the convolutional feature vector automatically
         self.fc = torch.nn.Sequential(
@@ -159,9 +159,7 @@ class ActorNetwork(torch.nn.Module):
         self.device = torch.device(
             "cuda"
             if torch.cuda.is_available()
-            else "mps"
-            if torch.backends.mps.is_available()
-            else "cpu"
+            else "mps" if torch.backends.mps.is_available() else "cpu"
         )
         self.to(self.device)
 
@@ -325,9 +323,7 @@ class CriticNetwork(torch.nn.Module):
         self.device = torch.device(
             "cuda"
             if torch.cuda.is_available()
-            else "mps"
-            if torch.backends.mps.is_available()
-            else "cpu"
+            else "mps" if torch.backends.mps.is_available() else "cpu"
         )
         self.to(self.device)
 

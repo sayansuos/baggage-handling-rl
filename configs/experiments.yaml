@@ -3,13 +3,13 @@ train_experiments:
     env_config: exp1_empty_1
     agent_config: agent_1
     reward_config: reward_1
-    n_steps: 70_000
+    n_steps: 100_000
 
   - name: exp2_fixed_1
     env_config: exp2_fixed_1
     agent_config: agent_1
     reward_config: reward_1
-    n_steps: 100_000
+    n_steps: 200_000
 
   - name: exp3_fixed_2
     env_config: exp3_fixed_2
