@@ -39,7 +39,7 @@ train_experiments:
     env_config: exp7_fixed_random_1
     agent_config: agent_1
     reward_config: reward_1
-    n_steps: 150_000
+    n_steps: 300_000
 
   - name: exp8_empty_3
     env_config: exp8_empty_3
