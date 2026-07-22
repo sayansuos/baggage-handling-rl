@@ -41,47 +41,35 @@ train_experiments:
     reward_config: reward_1
     n_steps: 300_000
 
-  - name: exp8_empty_3
-    env_config: exp8_empty_3
+  - name: exp8_random_1
+    env_config: exp8_random_1
     agent_config: agent_1
     reward_config: reward_1
-    n_steps: 150_000
+    n_steps: 300_000
 
-  - name: exp9_random_1
-    env_config: exp9_random_1
+  - name: exp9_crossing_2
+    env_config: exp9_crossing_2
     agent_config: agent_1
     reward_config: reward_1
-    n_steps: 200
+    n_steps: 300_000
 
   - name: exp10_random_2
     env_config: exp10_random_2
     agent_config: agent_1
     reward_config: reward_1
-    n_steps: 200
+    n_steps: 300_000
 
   - name: exp11_warehouse_1
     env_config: exp11_warehouse_1
     agent_config: agent_1
     reward_config: reward_1
-    n_steps: 200
+    n_steps: 300_000
 
-  - name: exp12_warehouse_2
-    env_config: exp12_warehouse_2
+  - name: exp12_crossing_3
+    env_config: exp12_crossing_3
     agent_config: agent_1
     reward_config: reward_1
-    n_steps: 200
-
-  - name: exp13_crossing_1
-    env_config: exp13_crossing_1
-    agent_config: agent_1
-    reward_config: reward_1
-    n_steps: 200
-
-  - name: exp14_crossing_2
-    env_config: exp14_crossing_2
-    agent_config: agent_1
-    reward_config: reward_1
-    n_steps: 200
+    n_steps: 300_000
 
 eval_experiments:
   - name: eval1_random_1

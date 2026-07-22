@@ -103,35 +103,34 @@ train_environments:
     max_attempts: 100
     max_steps: 100
 
-  - name: exp8_empty_3
-    width: 64
-    height: 32
-
-    agent_mode: fixed_3
-    env_mode: random
-
-    nb_agents: 2
-    nb_static_obstacles: 0
-    nb_moving_obstacles: 3
-    nb_targets: 1
-
-    max_attempts: 100
-    max_steps: 100
-
-  - name: exp9_random_1
+  - name: exp8_random_1
     width: 64
     height: 32
 
     agent_mode: random
     env_mode: random
 
-    nb_agents: 2
-    nb_static_obstacles: 3
-    nb_moving_obstacles: 1
+    nb_agents: 1
+    nb_static_obstacles: 5
+    nb_moving_obstacles: 3
     nb_targets: 2
 
     max_attempts: 100
     max_steps: 200
+
+  - name: exp9_crossing_2
+    width: 32
+    height: 32
+
+    agent_mode: crossing
+    env_mode: crossing
+
+    nb_agents: 2
+    nb_static_obstacles: 0
+    nb_moving_obstacles: 1
+
+    max_attempts: 100
+    max_steps: 100
 
   - name: exp10_random_2
     width: 64
@@ -141,8 +140,8 @@ train_environments:
     env_mode: random
 
     nb_agents: 2
-    nb_static_obstacles: 3
-    nb_moving_obstacles: 2
+    nb_static_obstacles: 5
+    nb_moving_obstacles: 3
     nb_targets: 2
 
     max_attempts: 100
@@ -155,51 +154,22 @@ train_environments:
     agent_mode: random
     env_mode: warehouse
 
-    nb_agents: 1
-    nb_moving_obstacles: 1
+    nb_agents: 2
+    nb_moving_obstacles: 3
     nb_targets: 2
 
     margin: 2
     max_attempts: 100
     max_steps: 200
 
-  - name: exp12_warehouse_2
-    width: 64
-    height: 32
-
-    agent_mode: random
-    env_mode: warehouse
-
-    nb_agents: 2
-    nb_moving_obstacles: 2
-    nb_targets: 2
-
-    margin: 2
-    max_attempts: 100
-    max_steps: 200
-
-  - name: exp13_crossing_1
-    width: 64
+  - name: exp12_crossing_3
+    width: 32
     height: 32
 
     agent_mode: crossing
     env_mode: crossing
 
-    nb_agents: 2
-    nb_static_obstacles: 0
-    nb_moving_obstacles: 0
-
-    max_attempts: 100
-    max_steps: 100
-
-  - name: exp14_crossing_2
-    width: 64
-    height: 32
-
-    agent_mode: crossing
-    env_mode: crossing
-
-    nb_agents: 4
+    nb_agents: 5
     nb_static_obstacles: 0
     nb_moving_obstacles: 0
 
