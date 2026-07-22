@@ -45,7 +45,7 @@ def parse_args():
 
     # Validation arguments
     validation_parser = subparsers.add_parser(
-        "validation",
+        "validate",
         help="Validate a trained policy.",
     )
     validation_parser.add_argument(
@@ -80,7 +80,7 @@ def parse_args():
     # Evaluation
     # ------------------------------------------------------------------
     evaluation_parser = subparsers.add_parser(
-        "evaluation",
+        "evaluate",
         help="Evaluate a trained policy.",
     )
     evaluation_parser.add_argument(
@@ -141,7 +141,7 @@ def parse_args():
     # Animation
     # ------------------------------------------------------------------
     animation_parser = subparsers.add_parser(
-        "animation",
+        "animate",
         help="Generate renders and animations.",
     )
     animation_parser.add_argument(
