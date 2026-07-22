@@ -37,11 +37,11 @@ if __name__ == "__main__":
         )
 
     elif MODE == "train":
-        run_train(experiments=train_experiments[1:2], previous_exp=train_experiments[0])
-        run_validation(experiments=train_experiments[1:2], n_episodes=100, n_render=5)
+        run_train(experiments=train_experiments[1:6], previous_exp=None)
+        run_validation(experiments=train_experiments[1:6], n_episodes=100, n_render=5)
 
     elif MODE == "validation":
-        run_validation(experiments=train_experiments[:1], n_episodes=100, n_render=5)
+        run_validation(experiments=train_experiments[:5], n_episodes=100, n_render=5)
 
     elif MODE == "evaluation":
         run_evaluation(

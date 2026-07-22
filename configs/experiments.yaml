@@ -9,19 +9,19 @@ train_experiments:
     env_config: exp2_fixed_1
     agent_config: agent_1
     reward_config: reward_1
-    n_steps: 200_000
+    n_steps: 300_000
 
   - name: exp3_fixed_2
     env_config: exp3_fixed_2
     agent_config: agent_1
     reward_config: reward_1
-    n_steps: 150_000
+    n_steps: 300_000
 
   - name: exp4_fixed_3
     env_config: exp4_fixed_3
     agent_config: agent_1
     reward_config: reward_1
-    n_steps: 150_000
+    n_steps: 300_000
 
   - name: exp5_crossing_1
     env_config: exp5_crossing_1
@@ -33,7 +33,7 @@ train_experiments:
     env_config: exp6_empty_2
     agent_config: agent_1
     reward_config: reward_1
-    n_steps: 150_000
+    n_steps: 300_000
 
   - name: exp7_fixed_random_1
     env_config: exp7_fixed_random_1
