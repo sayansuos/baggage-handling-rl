@@ -49,22 +49,28 @@ class Agent(MovingEntity):
         Update the agent state according to the applied action.
         """
 
-        # Store the previous position
-        self.old_position = self.current_position
+        # If the agent state is truncated or terminated, it stops.
+        if self.state in ["terminated", "truncated"]:
+            self.v = 0
+            self.omega = 0
+            motion_count = 0
 
-        # Update the agent motion
-        v, omega = action[self.id]
-        self.v = v
-        self.omega = omega
-        self.theta += omega * dt
+        # Else, apply the action
+        else:
+            # Store the previous position
+            self.old_position = self.current_position
 
-        # Update the agent position and path
-        self.current_position = self._get_next_pos(v=v, dt=dt)
-        self.path.append(self.current_position)
+            # Update the agent motion
+            v, omega = action[self.id]
+            self.v = v
+            self.omega = omega
+            self.theta += omega * dt
 
-        # Update the agent state and travel time
-        motion_count = 0
-        if self.state == "active":
+            # Update the agent position and path
+            self.current_position = self._get_next_pos(v=v, dt=dt)
+            self.path.append(self.current_position)
+
+            # Update the agent state and travel time
             self.travel_time += 1
             motion_count = 1
 
@@ -72,7 +78,7 @@ class Agent(MovingEntity):
             if self._goal_relative_distance < self.reach_threshold:
                 self.state = "reached"
 
-        return (v, abs(self.omega), motion_count)
+        return (self.v, abs(self.omega), motion_count)
 
     def render(
         self,
