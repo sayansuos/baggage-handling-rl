@@ -3,6 +3,7 @@ import time
 
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.animation import FuncAnimation
 
 from configs.config import Experiment
 from rl.sac.sac import evaluate_sac, load_agent, run_sac
@@ -15,84 +16,100 @@ def run_demo(
     experiments: list[Experiment],
     policy: Experiment,
     trained_agent_id: str = "agent_1",
-):
+) -> None:
     """
-    Run a trained policy on one episode for each experiment, with real-time rendering.
+    Run trained policies and interactively navigate through the rendered frames.
     """
 
-    print(f"\n[ TEST ] {len(experiments)} experiment(s)\n")
+    # Generate all the scenarios frames
+    frames = run_animation(
+        experiments=experiments,
+        policy=policy,
+        trained_agent_id=trained_agent_id,
+    )
 
-    # Enable interactive rendering and create the figure
-    plt.ion()
+    # Create the figure
     fig, ax = plt.subplots(figsize=(10, 8))
+    plt.subplots_adjust(bottom=0.15)
 
-    # Run one episode for each experiment
-    for exp in experiments:
-        print(f"[ START ] {exp.name}")
+    # Initialize frame
+    current_frame = 0
+    paused = True
 
-        # Create the environment from the experiment configuration
-        env = Environment(
-            env_config=exp.env_config,
-            agent_config=exp.agent_config,
-            reward_config=exp.reward_config,
-            name=exp.name,
-        )
+    # Display the current frame
+    def render():
+        ax.clear()
+        ax.imshow(frames[current_frame])
+        ax.axis("off")
 
-        # Create the SAC agent using the selected trained policy
-        agent = load_agent(env=env, exp=policy, trained_agent_id=trained_agent_id)
-        agent.load_checkpoints()
+        # Refresh the figure without blocking the interface
+        fig.canvas.draw_idle()
 
-        # Reset the environment
-        state, _ = env.reset(seed=1234)
+    # Advance automatically to the next frame
+    def update(_):
+        nonlocal current_frame, paused
 
-        # Render the initial environment state
-        env.render(ax=ax)
-        plt.pause(0.001)
+        if not paused:
+            if current_frame < len(frames) - 1:
+                current_frame += 1
+                render()
+            else:
+                paused = True
+                animation.event_source.stop()
 
-        # Run the episode until the trained agent is done
-        while not env.dones[trained_agent_id]:
-            action = {}
+    # Handle keyboard navigation between frames
+    def on_key(event):
+        nonlocal current_frame, paused
 
-            # Select deterministic action for all agents
-            for ag in env.agents:
-                action[ag.id] = agent.choose_action(
-                    state=state[ag.id],
-                    deterministic=True,
-                )
+        if event.key == "left" and current_frame > 0:
+            current_frame -= 1
+            render()
 
-            # Apply all actions and advance the environment by one step
-            next_state, _, _, _, _ = env.step(action=action)
+        elif event.key == "right" and current_frame < len(frames) - 1:
+            current_frame += 1
+            render()
 
-            # Replace the current observation with the next observation
-            state = next_state
+        elif event.key == " ":
+            paused = not paused
 
-            # Render the updated environment state
-            env.render(ax=ax)
-            plt.pause(0.001)
+            if paused:
+                animation.event_source.stop()
+            else:
+                animation.event_source.start()
 
-        print(f"[ DONE ] {exp.name}")
+    # Associate keyboard events with the navigation callback
+    fig.canvas.mpl_connect("key_press_event", on_key)
 
-    # Disable interactive rendering and close the figure
-    plt.ioff()
-    plt.close(fig)
+    # Create the animation
+    animation = FuncAnimation(
+        fig,
+        update,
+        interval=100,
+        cache_frame_data=False,
+    )
 
-    print("\n[ TEST ] completed\n")
+    # Start paused
+    animation.event_source.stop()
+
+    # Display the first frame and start the interactive viewer
+    render()
+    plt.show()
 
 
 def run_animation(
     experiments: list[Experiment],
     policy: Experiment,
-    path: str,
-    file_name: str,
+    path: str | None = None,
+    file_name: str | None = None,
     fps: int = 20,
     trained_agent_id: str = "agent_1",
-):
+) -> list[np.asarray]:
     """
-    Run one episode for each experiment and save the rendered trajectory as an
-    animation.
+    Run one episode for each experiment and return the rendered frames.
+    If path and file_name are provided, also save the frames as an animation.
     """
 
-    print(f"\n[ SAVE ] {len(experiments)} experiment(s)\n")
+    print(f"\n[ ANIMATION ] {len(experiments)} experiment(s)\n")
 
     # Initialize the frames
     frames = []
@@ -152,10 +169,13 @@ def run_animation(
     # Close the figure
     plt.close(fig)
 
-    # Save the animation
-    plot_animation(frames=frames, path=path, file_name=file_name, fps=fps)
+    # Save the animation if required
+    if path is not None and file_name is not None:
+        plot_animation(frames=frames, path=path, file_name=file_name, fps=fps)
 
-    print("\n[ SAVE ] completed\n")
+        print("\n[ SAVE ] completed\n")
+
+    return frames
 
 
 def run_train_all(
