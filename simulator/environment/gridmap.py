@@ -1,7 +1,6 @@
 import warnings
 
 import numpy as np
-
 from configs.config import AgentConfig, EnvConfig
 from simulator.entities.agent import Agent
 from simulator.entities.moving_entity import MovingEntity
@@ -119,25 +118,30 @@ class GridMap:
 
         return grid
 
-    def get_local_grid(
-        self, agent: Agent, current_grid: np.ndarray, size: int
-    ) -> np.ndarray:
+    def get_local_grid(self, agent: Agent, current_grid: np.ndarray) -> np.ndarray:
         """
         Return the local occupancy grid perceived by the agent.
         """
 
-        # Initialize a full grid
-        local = np.ones((size, size), dtype=np.float32)
+        size = agent.agent_config.length_view
+        local_size = agent.length_view
 
-        # Ensure that the local grid has an odd size.
+        # Ensure that the grid sizes are odd
         if not size % 2 == 1:
             warnings.warn(
                 f"Local grid size must be odd. Using {size - 1} instead.",
                 UserWarning,
             )
             size -= 1
+        if local_size % 2 == 0:
+            warnings.warn(
+                f"Local view size must be odd. Using {local_size - 1} instead.",
+                UserWarning,
+            )
+            local_size -= 1
 
-        half = size // 2
+        # Initialize a full grid
+        local = np.ones((size, size), dtype=np.float32)
 
         # Return the grid if no current position
         if agent.current_position is None:
@@ -147,11 +151,17 @@ class GridMap:
         cx, cy = agent.current_position
         center_r, center_c = self.world_to_grid(pos=(cx, cy))
 
-        #  Extract the cells centered around the agent
-        for local_r in range(size):
-            for local_c in range(size):
-                grid_r = center_r + local_r - half
-                grid_c = center_c + local_c - half
+        half_size = size // 2
+        half_local = local_size // 2
+
+        # Copy only the cells inside the agent's visible area
+        for dr in range(-half_local, half_local + 1):
+            for dc in range(-half_local, half_local + 1):
+                grid_r = center_r + dr
+                grid_c = center_c + dc
+
+                local_r = half_size + dr
+                local_c = half_size + dc
 
                 # Copy only cells located inside the global grid
                 if 0 <= grid_r < self._rows and 0 <= grid_c < self._columns:

@@ -10,6 +10,23 @@ agents:
 
     radius: 0.5
     length_view: 15
+    length_view_decrease: null
+
+    collision_threshold: 0.5
+    reach_threshold: 0.5
+
+  - name: agent_2
+
+    n_maps: 3
+
+    v_min: 0.0
+    v_max: 5.0
+    omega_min: -1.05
+    omega_max: 1.05
+
+    radius: 0.5
+    length_view: 15
+    length_view_decrease: 6
 
     collision_threshold: 0.5
     reach_threshold: 0.5

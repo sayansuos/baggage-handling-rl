@@ -50,7 +50,8 @@ class AgentConfig:
     omega_max: float = np.pi / 3
 
     radius: float = 0.5
-    length_view: int = 11
+    length_view: int = 15
+    length_view_decrease: int | None = None
 
     collision_threshold: float = 0.5
     reach_threshold: float = 0.5
@@ -59,19 +60,19 @@ class AgentConfig:
 @dataclass
 class RewardConfig:
     beta1: float = 5.0
-    beta2: float = 0.1
-    beta3: float = 0.5
+    beta2: float = 5.1
+    beta3: float = 1.0
 
     linear_bonus_factor: float = 2.0
     progress_reduction_factor: float = 0.2
     angular_malus_factor: float = -2.0
-    safety_malus_factor: float = -1.0
+    safety_malus_factor: float = -1.5
 
     goal_bonus: float = 400.0
-    step_malus: float = -1
-    collision_malus: float = -100.0
+    step_malus: float = -2.0
+    collision_malus: float = -200.0
 
-    safety_threshold: float = 2.0
+    safety_threshold: float = 3.0
 
 
 @dataclass

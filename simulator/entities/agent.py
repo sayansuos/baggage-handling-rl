@@ -19,6 +19,7 @@ class Agent(MovingEntity):
         super().__init__(num=num)
 
         self.num: int = num
+        self.agent_config = agent_config
 
         self.state: str = "active"
 
@@ -31,7 +32,6 @@ class Agent(MovingEntity):
         self.v: float = 0
         self.omega: float = 0
         self.radius: float = agent_config.radius
-        self.length_view: int = agent_config.length_view
         self.local_maps: list[np.ndarray] = []
 
         self.path: list[tuple[int, int] | tuple[float, float]] = []
@@ -214,6 +214,32 @@ class Agent(MovingEntity):
         """
 
         return f"agent_{self.num}"
+
+    @property
+    def length_view(self) -> int:
+        """
+        Return the current local view size.
+        """
+
+        # Get parameters from config
+        max_length = self.agent_config.length_view
+        length_view_decrease = self.agent_config.length_view_decrease
+
+        # If no decrease required, return max_length
+        if length_view_decrease is None:
+            return max_length
+
+        # Normalize velocity between 0 and 1
+        speed_ratio = self.v / self.agent_config.v_max
+
+        # Adapt view size to velocity
+        length = int(round(max_length - length_view_decrease * speed_ratio))
+
+        # Keep an odd size
+        if length % 2 == 0:
+            length -= 1
+
+        return length
 
     @property
     def _goal_relative_position(self):

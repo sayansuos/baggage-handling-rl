@@ -104,9 +104,7 @@ class Environment(gym.Env):
         for agent in self.agents:
             # Update the history of local occupancy maps.
             local_map = self.grid_map.get_local_grid(
-                agent=agent,
-                current_grid=current_grid,
-                size=self.agent_config.length_view,
+                agent=agent, current_grid=current_grid
             )[np.newaxis, :, :]
             if agent.local_maps == []:
                 local_maps = [local_map for _ in range(self.agent_config.n_maps)]

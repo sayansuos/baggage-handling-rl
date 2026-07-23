@@ -15,3 +15,20 @@ rewards:
     collision_malus: -200.0
 
     safety_threshold: 3.0
+
+  - name: reward_2
+
+    beta1: 5.0
+    beta2: 0.5
+    beta3: 1.0
+
+    linear_bonus_factor: 2.0
+    progress_reduction_factor: 0.2
+    angular_malus_factor: -2.0
+    safety_malus_factor: -1.5
+
+    goal_bonus: 400.0
+    step_malus: -2.0
+    collision_malus: -200.0
+
+    safety_threshold: 3.0
