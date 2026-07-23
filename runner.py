@@ -1,20 +1,382 @@
-import random
 import time
+from dataclasses import replace
 
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.animation import FuncAnimation
 
-from configs.config import Experiment
-from rl.sac.sac import evaluate_sac, load_agent, run_sac
+from configs.config import Curriculum, Task
+from rl.sac.agent import SACAgent
+from rl.sac.sac import evaluate_sac, load_agent, run_sac, set_checkpoint_paths
 from simulator.environment.environment import Environment
 from utils.logging import log_debug, log_rewards, log_train
 from utils.plotting import plot_animation, plot_figures
 
 
+def run_train(
+    tasks: list[Task],
+    previous_task: Task | None = None,
+    trained_agent_id: str = "agent_1",
+    fixed_curriculum: bool = True,
+):
+    """
+    Train a SAC policy using either a fixed sequential curriculum
+    or a probabilistic curriculum.
+    """
+
+    # Fix the seed
+    np.random.seed(1234)
+
+    # Record the training start time
+    start = time.perf_counter()
+
+    print(f"\n[ TRAIN ] {len(tasks)} task(s)\n")
+
+    if fixed_curriculum:
+        # --------------------------------------------------------------
+        # Fixed sequential curriculum
+        # --------------------------------------------------------------
+
+        # Keep the same SAC agent across all curriculum stages
+        agent = None
+
+        for task in tasks:
+            # Train the current curriculum stage
+            _, _, agent = run_train_task(
+                task=task,
+                previous_task=previous_task,
+                n_steps=task.n_steps,
+                trained_agent_id=trained_agent_id,
+                agent=agent,
+                policy_name=task.name,
+                save_results=True,
+                save_best=True,
+            )
+
+            previous_task = task
+
+    else:
+        # --------------------------------------------------------------
+        # Probabilistic curriculum
+        # --------------------------------------------------------------
+
+        # Get curriculum parameters from config
+        chunk_steps = Curriculum.chunk_steps
+        n_chunks = Curriculum.n_chunks
+        threshold = Curriculum.threshold
+        n_eval_episodes = Curriculum.n_eval_episodes
+
+        run_curriculum(
+            tasks=tasks,
+            previous_task=previous_task,
+            trained_agent_id=trained_agent_id,
+            chunk_steps=chunk_steps,
+            n_chunks=n_chunks,
+            threshold=threshold,
+            n_eval_episodes=n_eval_episodes,
+        )
+
+    # Compute the total training duration
+    duration = time.perf_counter() - start
+
+    print(f"\n[ SUMMARY ] {len(tasks)} task(s) completed in {duration:.1f}s\n")
+
+
+def run_curriculum(
+    tasks: list[Task],
+    previous_task: Task | None,
+    trained_agent_id: str,
+    chunk_steps: int,
+    n_chunks: int,
+    threshold: float,
+    n_eval_episodes: int,
+) -> None:
+    """
+    Train a SAC policy using a probabilistic curriculum based on
+    a Dirichlet distribution.
+    """
+
+    # Number of curriculum tasks
+    n_tasks = len(tasks)
+
+    # Start with the easiest task
+    focus_idx = 0
+
+    # Name of the curriculum policy
+    policy_name = "curriculum"
+
+    # Name used to store the globally best curriculum policy
+    best_policy_name = "curriculum_best"
+
+    # Latest evaluation success rate for every task
+    scores = np.zeros(n_tasks)
+
+    # Best average success rate observed across all tasks
+    best_global_success = -np.inf
+
+    # Keep one SAC agent during the entire curriculum
+    agent = None
+
+    # Used only when resuming training from a saved policy
+    current_task = previous_task
+
+    # Same total budget as the fixed curriculum
+    max_steps = sum(task.n_steps for task in tasks)
+
+    total_steps = 0
+    block = 0
+
+    # Store all curriculum metrics
+    all_history = []
+    all_debug = []
+
+    # ---------------------------------------------------------
+    # Curriculum loop
+    # ---------------------------------------------------------
+
+    while total_steps < max_steps:
+        # Give the current focus task the largest Dirichlet parameter
+        alpha = np.ones(n_tasks)
+        alpha[focus_idx] = n_tasks
+
+        print(
+            f"\n[ CURRICULUM ] Focus: {tasks[focus_idx].name} | alpha={list(alpha)}\n"
+        )
+
+        # ---------------------------------------------------------
+        # Train several chunks before evaluation
+        # ---------------------------------------------------------
+        for _ in range(n_chunks):
+            if total_steps >= max_steps:
+                break
+
+            # Sample a probability vector over curriculum tasks
+            weights = np.random.dirichlet(alpha)
+
+            # Sample one task according to those probabilities
+            task_idx = np.random.choice(
+                n_tasks,
+                p=weights,
+            )
+            task = tasks[task_idx]
+
+            # Prevent exceeding the total training budget
+            steps = min(
+                chunk_steps,
+                max_steps - total_steps,
+            )
+            train_task = replace(
+                task,
+                n_steps=steps,
+            )
+
+            print(
+                f"[ CURRICULUM ] "
+                f"Block {block} "
+                f"| task={task.name} "
+                f"| steps={steps} "
+                f"| p={weights[task_idx]:.3f}"
+            )
+
+            # Train the SAC agent on the sampled task
+            history, debug, agent = run_train_task(
+                task=train_task,
+                previous_task=current_task,
+                n_steps=steps,
+                trained_agent_id=trained_agent_id,
+                agent=agent,
+                policy_name=policy_name,
+                save_results=False,
+                save_best=False,
+            )
+
+            # ----------------------------------------------------------
+            # Add curriculum metrics
+            # ----------------------------------------------------------
+            for row in history:
+                row["task"] = task.name
+                row["block"] = block
+            for row in debug:
+                row["task"] = task.name
+                row["block"] = block
+
+                # Convert the local chunk step into a global curriculum step
+                row["step"] += total_steps
+
+            # Accumulate metrics across all chunks
+            all_history.extend(history)
+            all_debug.extend(debug)
+
+            # Update curriculum counters
+            total_steps += steps
+            block += 1
+
+        # --------------------------------------------------------------
+        # Evaluate the current policy on all tasks
+        # --------------------------------------------------------------
+        print("\n[ CURRICULUM ] Evaluating current policy...\n")
+
+        for i, task in enumerate(tasks):
+            # Load the curriculum policy checkpoints
+            eval_task = replace(
+                task,
+                name=policy_name,
+            )
+
+            # Evaluate the SAC policy
+            history, _ = evaluate_sac(
+                task=eval_task,
+                n_episodes=n_eval_episodes,
+                n_render=0,
+                trained_agent_id=trained_agent_id,
+            )
+
+            # Compute the success rate on this task
+            scores[i] = np.mean([episode["success_rate"] for episode in history])
+            print(f"{task.name}: {scores[i]:.1%}")
+
+        focus_success = scores[focus_idx]  # Performance on the currently focused task
+        global_success = np.mean(scores)  # Global performance
+
+        print(
+            f"\n[ CURRICULUM ] "
+            f"Focus success = {focus_success:.1%} "
+            f"| Global success = {global_success:.1%} "
+            f"| Threshold = {threshold:.1%}\n"
+        )
+
+        # --------------------------------------------------------------
+        # Save the globally best curriculum policy
+        # --------------------------------------------------------------
+
+        if global_success > best_global_success:
+            best_global_success = global_success
+
+            # Redirect checkpoint paths toward "curriculum_best"
+            set_checkpoint_paths(
+                agent=agent,
+                policy_name=best_policy_name,
+            )
+            agent.save_checkpoints()
+
+            # Restore the paths used by the current curriculum policy
+            set_checkpoint_paths(
+                agent=agent,
+                policy_name=policy_name,
+            )
+
+        print(f"[ CURRICULUM ] New best global success: {best_global_success:.1%}")
+
+        # --------------------------------------------------------------
+        # Update curriculum difficulty
+        # --------------------------------------------------------------
+
+        if focus_success >= threshold:
+            # Move toward the next task
+            if focus_idx < n_tasks - 1:
+                focus_idx += 1
+
+            else:
+                # All tasks are mastered
+                if np.min(scores) >= threshold:
+                    print(
+                        "\n[ CURRICULUM ] "
+                        f"Curriculum completed "
+                        f"| min success={np.min(scores):.1%}\n"
+                    )
+                    break
+
+                # Return to the task below the threshold
+                focus_idx = int(np.where(scores < threshold)[0][0])
+
+        # --------------------------------------------------------------
+        # Save cumulative curriculum logs
+        # --------------------------------------------------------------
+
+        # Save training metrics
+        df_train = log_train(
+            metrics=all_history,
+            path="logs/train",
+            file_name="curriculum",
+        )
+        log_debug(
+            metrics=all_debug,
+            path="logs/train",
+            file_name="curriculum",
+        )
+        df_rewards = log_rewards(
+            metrics=all_history,
+            path="logs/train",
+            file_name="curriculum",
+        )
+
+        # Generate training figures
+        plot_figures(
+            df_perf=df_train,
+            df_rewards=df_rewards,
+            path="figures/train",
+            file_name="curriculum",
+        )
+
+
+def run_train_task(
+    task: Task,
+    previous_task: Task | None,
+    n_steps: int,
+    trained_agent_id: str,
+    agent: SACAgent | None = None,
+    policy_name: str | None = None,
+    save_results: bool = True,
+    save_best: bool = True,
+) -> tuple[list[dict], list[dict], SACAgent]:
+    """
+    Train the policy on a single task.
+    """
+
+    # Train the SAC policy
+    history, debug, agent = run_sac(
+        task=task,
+        previous_task=previous_task,
+        trained_agent_id=trained_agent_id,
+        n_steps=n_steps,
+        agent=agent,
+        policy_name=policy_name,
+        save_best=save_best,
+    )
+
+    # Save results when requested
+    if save_results:
+        # Save training metrics
+        df_train = log_train(
+            metrics=history,
+            path="logs/train",
+            file_name=task.name,
+        )
+        log_debug(
+            metrics=debug,
+            path="logs/train",
+            file_name=task.name,
+        )
+        df_rewards = log_rewards(
+            metrics=history,
+            path="logs/train",
+            file_name=task.name,
+        )
+
+        # Generate training figures
+        plot_figures(
+            df_perf=df_train,
+            df_rewards=df_rewards,
+            path="figures/train",
+            file_name=task.name,
+        )
+
+    return history, debug, agent
+
+
 def run_demo(
-    experiments: list[Experiment],
-    policy: Experiment,
+    tasks: list[Task],
+    policy: Task,
     trained_agent_id: str = "agent_1",
 ) -> None:
     """
@@ -23,7 +385,7 @@ def run_demo(
 
     # Generate all the scenarios frames
     frames = run_animation(
-        experiments=experiments,
+        tasks=tasks,
         policy=policy,
         trained_agent_id=trained_agent_id,
     )
@@ -97,19 +459,19 @@ def run_demo(
 
 
 def run_animation(
-    experiments: list[Experiment],
-    policy: Experiment,
+    tasks: list[Task],
+    policy: Task,
     path: str | None = None,
     file_name: str | None = None,
     fps: int = 20,
     trained_agent_id: str = "agent_1",
 ) -> list[np.asarray]:
     """
-    Run one episode for each experiment and return the rendered frames.
+    Run one episode for each task and return the rendered frames.
     If path and file_name are provided, also save the frames as an animation.
     """
 
-    print(f"\n[ ANIMATION ] {len(experiments)} experiment(s)\n")
+    print(f"\n[ ANIMATION ] {len(tasks)} task(s)\n")
 
     # Initialize the frames
     frames = []
@@ -117,20 +479,20 @@ def run_animation(
     # Create the figure
     fig, ax = plt.subplots(figsize=(10, 8))
 
-    # Run one episode for each experiment
-    for exp in experiments:
-        print(f"[ START ] {exp.name}")
+    # Run one episode for each task
+    for task in tasks:
+        print(f"[ START ] {task.name}")
 
-        # Create the environment from the experiment configuration
+        # Create the environment from the task configuration
         env = Environment(
-            env_config=exp.env_config,
-            agent_config=exp.agent_config,
-            reward_config=exp.reward_config,
-            name=exp.name,
+            env_config=task.env_config,
+            agent_config=task.agent_config,
+            reward_config=task.reward_config,
+            name=task.name,
         )
 
         # Create the SAC agent using the selected trained policy
-        agent = load_agent(env=env, exp=policy, trained_agent_id=trained_agent_id)
+        agent = load_agent(env=env, task=policy, trained_agent_id=trained_agent_id)
         agent.load_checkpoints()
 
         # Reset the environment
@@ -164,7 +526,7 @@ def run_animation(
             frame = np.asarray(fig.canvas.renderer.buffer_rgba()).copy()
             frames.append(frame)
 
-        print(f"[ DONE ] {exp.name}")
+        print(f"[ DONE ] {task.name}")
 
     # Close the figure
     plt.close(fig)
@@ -178,156 +540,8 @@ def run_animation(
     return frames
 
 
-def run_train_all(
-    experiments: list[Experiment],
-    previous_exp: Experiment | None,
-    trained_agent_id: str,
-    exp_name: str,
-    n_steps: int = 200_000,
-    chunk_steps: int = 2_000,
-):
-    """
-    Train a single policy by alternating between multiple scenarios and log the training results.
-    """
-
-    # Fix the seed
-    np.random.seed(1234)
-
-    # Initialize the metrics and counter
-    histories = []
-    debugs = []
-    total_steps = 0
-
-    # Continue training until the requested total number of steps is reached
-    while total_steps < n_steps:
-        # Randomly select one scenario for the next training chunk
-        env = random.choice(experiments)
-
-        print(
-            f"[ TRAIN MIXED ] "
-            f"Step {total_steps:06d}/{n_steps:06d} | "
-            f"Scenario = {env.name}"
-        )
-
-        # Limit the final chunk so the total step count does not exceed n_steps
-        steps = min(chunk_steps, n_steps - total_steps)
-
-        # Create the environment from the experiment configuration
-        exp = Experiment(
-            name=exp_name,
-            env_config=env.env_config,
-            agent_config=env.agent_config,
-            reward_config=env.reward_config,
-            n_steps=steps,
-        )
-
-        # Trained the policy
-        history, debug, _ = run_sac(
-            exp=exp,
-            previous_exp=previous_exp,
-            trained_agent_id=trained_agent_id,
-            warmup_steps=0,
-            reset_frequency=1,
-        )
-
-        # Record episode-level and debug metrics
-        for row in history:
-            row["scenario"] = env.name
-        for row in debug:
-            row["scenario"] = env.name
-
-        # Accumulate metrics
-        histories.extend(history)
-        debugs.extend(debug)
-
-        # Use the current experiment as initialization for the next chunk
-        previous_exp = exp
-
-        # Update the total steps count
-        total_steps += steps
-
-    # Reindex the episode numbre
-    for i, history in enumerate(histories):
-        history["episode"] = i
-    for i, d in enumerate(debug):
-        d["episode"] = i
-
-    # Save training metrics
-    df_train = log_train(metrics=histories, path="logs/train", file_name=exp_name)
-    log_debug(metrics=debugs, path="logs/train", file_name=exp_name)
-    df_rewards = log_rewards(metrics=histories, path="logs/train", file_name=exp_name)
-
-    # Generate training figures
-    plot_figures(
-        df_perf=df_train,
-        df_rewards=df_rewards,
-        path="figures/train",
-        file_name=exp_name,
-    )
-
-
-def run_train(
-    experiments: list[Experiment],
-    previous_exp: Experiment | None = None,
-    trained_agent_id: str = "agent_1",
-):
-    """
-    Train a policy for each experiment and save the corresponding logs and figures.
-    """
-
-    # Fix the seed
-    np.random.seed(1234)
-
-    # Record the training start time
-    start = time.perf_counter()
-
-    print(f"\n[ TRAIN ] {len(experiments)} experiment(s)\n")
-
-    # Train all experiments
-    for exp in experiments:
-        # Train standard curriculum stages individually
-        if "mixed_curriculum" not in exp.name:
-            history, debug, _ = run_sac(
-                exp=exp, previous_exp=previous_exp, trained_agent_id=trained_agent_id
-            )
-
-            # Save training metrics
-            df_train = log_train(metrics=history, path="logs/train", file_name=exp.name)
-            log_debug(metrics=debug, path="logs/train", file_name=exp.name)
-            df_rewards = log_rewards(
-                metrics=history, path="logs/train", file_name=exp.name
-            )
-
-            # Generate training figures
-            plot_figures(
-                df_perf=df_train,
-                df_rewards=df_rewards,
-                path="figures/train",
-                file_name=exp.name,
-            )
-
-            # Use the current experiment as initialization for the next stage
-            previous_exp = exp
-
-        # Train mixed curriculum by alternating between experiments
-        else:
-            run_train_all(
-                experiments=experiments,
-                previous_exp=previous_exp,
-                trained_agent_id=trained_agent_id,
-                exp_name=exp.name,
-            )
-
-    # Compute the total training duration
-    duration = time.perf_counter() - start
-
-    print(
-        f"\n[ SUMMARY ] {len(experiments)} experiment(s) completed in {duration:.1f}s\n"
-    )
-
-
 def run_validation(
-    experiments: list[Experiment],
+    tasks: list[Task],
     n_episodes: int,
     n_render: int,
     trained_agent_id="agent_1",
@@ -343,13 +557,13 @@ def run_validation(
     # Record the training start time
     start = time.perf_counter()
 
-    print(f"\n[ VALIDATION ] {len(experiments)} experiment(s)\n")
+    print(f"\n[ VALIDATION ] {len(tasks)} task(s)\n")
 
-    # Evaluate all experiments
-    for exp in experiments:
+    # Evaluate all tasks
+    for task in tasks:
         # Run the trained policy over multiple episodes
         history, frames = evaluate_sac(
-            exp=exp,
+            task=task,
             n_episodes=n_episodes,
             n_render=n_render,
             trained_agent_id=trained_agent_id,
@@ -357,10 +571,10 @@ def run_validation(
 
         # Run the trained policy over multiple episodes
         df_train = log_train(
-            metrics=history, path="logs/validation", file_name=exp.name
+            metrics=history, path="logs/validation", file_name=task.name
         )
         df_rewards = log_rewards(
-            metrics=history, path="logs/validation", file_name=exp.name
+            metrics=history, path="logs/validation", file_name=task.name
         )
 
         # Generate training figures
@@ -368,27 +582,25 @@ def run_validation(
             df_perf=df_train,
             df_rewards=df_rewards,
             path="figures/validation",
-            file_name=exp.name,
+            file_name=task.name,
             window=100,
         )
 
         # Save an animation when rendering is enabled
         if n_render > 0:
             plot_animation(
-                frames=frames, path="figures/validation", file_name=exp.name, fps=10
+                frames=frames, path="figures/validation", file_name=task.name, fps=10
             )
 
     # Compute the total training duration
     duration = time.perf_counter() - start
 
-    print(
-        f"\n[ SUMMARY ] {len(experiments)} experiment(s) completed in {duration:.1f}s\n"
-    )
+    print(f"\n[ SUMMARY ] {len(tasks)} task(s) completed in {duration:.1f}s\n")
 
 
 def run_evaluation(
-    experiments: list[Experiment],
-    policy: Experiment,
+    tasks: list[Task],
+    policy: Task,
     n_episodes: int = 100,
     n_render: int = 5,
     trained_agent_id: str = "agent_1",
@@ -403,12 +615,12 @@ def run_evaluation(
     # Record the training start time
     start = time.perf_counter()
 
-    print(f"\n[ EVALUATION ] {len(experiments)} experiment(s)\n")
+    print(f"\n[ EVALUATION ] {len(tasks)} task(s)\n")
 
-    # Evaluate all experiments with a chosen policy
-    for scenario in experiments:
-        # Create the environment from the experiment configuration
-        exp = Experiment(
+    # Evaluate all tasks with a chosen policy
+    for scenario in tasks:
+        # Create the environment from the task configuration
+        task = Task(
             name=policy.name,
             env_config=scenario.env_config,
             agent_config=scenario.agent_config,
@@ -418,7 +630,7 @@ def run_evaluation(
 
         # Run the trained policy over multiple episodes
         history, frames = evaluate_sac(
-            exp=exp,
+            task=task,
             n_episodes=n_episodes,
             n_render=n_render,
             trained_agent_id=trained_agent_id,
@@ -437,7 +649,7 @@ def run_evaluation(
             df_perf=df_train,
             df_rewards=df_rewards,
             path="figures/evaluation",
-            file_name=exp.name,
+            file_name=scenario.name,
             window=100,
         )
 
@@ -453,6 +665,4 @@ def run_evaluation(
     # Compute the total training duration
     duration = time.perf_counter() - start
 
-    print(
-        f"\n[ SUMMARY ] {len(experiments)} experiment(s) completed in {duration:.1f}s\n"
-    )
+    print(f"\n[ SUMMARY ] {len(tasks)} task(s) completed in {duration:.1f}s\n")

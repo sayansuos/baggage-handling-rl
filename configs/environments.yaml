@@ -1,5 +1,5 @@
 train_environments:
-  - name: exp1_empty_1
+  - name: task1_empty_1
     width: 64
     height: 32
 
@@ -14,7 +14,7 @@ train_environments:
     max_attempts: 100
     max_steps: 100
 
-  - name: exp2_fixed_1
+  - name: task2_fixed_1
     width: 64
     height: 32
 
@@ -29,7 +29,7 @@ train_environments:
     max_attempts: 100
     max_steps: 100
 
-  - name: exp3_fixed_2
+  - name: task3_fixed_2
     width: 64
     height: 32
 
@@ -44,7 +44,7 @@ train_environments:
     max_attempts: 100
     max_steps: 100
 
-  - name: exp4_fixed_3
+  - name: task4_fixed_3
     width: 64
     height: 32
 
@@ -59,7 +59,7 @@ train_environments:
     max_attempts: 100
     max_steps: 100
 
-  - name: exp5_crossing_1
+  - name: task5_crossing_1
     width: 32
     height: 32
 
@@ -73,7 +73,7 @@ train_environments:
     max_attempts: 100
     max_steps: 100
 
-  - name: exp6_empty_2
+  - name: task6_empty_2
     width: 64
     height: 32
 
@@ -88,7 +88,7 @@ train_environments:
     max_attempts: 100
     max_steps: 100
 
-  - name: exp7_fixed_random_1
+  - name: task7_fixed_random_1
     width: 64
     height: 32
 
@@ -103,7 +103,7 @@ train_environments:
     max_attempts: 100
     max_steps: 100
 
-  - name: exp8_random_1
+  - name: task8_random_1
     width: 64
     height: 32
 
@@ -118,7 +118,7 @@ train_environments:
     max_attempts: 100
     max_steps: 200
 
-  - name: exp9_crossing_2
+  - name: task9_crossing_2
     width: 32
     height: 32
 
@@ -132,7 +132,7 @@ train_environments:
     max_attempts: 100
     max_steps: 100
 
-  - name: exp10_random_2
+  - name: task10_random_2
     width: 64
     height: 32
 
@@ -147,7 +147,7 @@ train_environments:
     max_attempts: 100
     max_steps: 200
 
-  - name: exp11_warehouse_1
+  - name: task11_warehouse_1
     width: 64
     height: 32
 
@@ -162,7 +162,7 @@ train_environments:
     max_attempts: 100
     max_steps: 200
 
-  - name: exp12_crossing_3
+  - name: task12_crossing_3
     width: 32
     height: 32
 

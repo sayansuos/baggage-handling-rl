@@ -1,12 +1,12 @@
 import argparse
 
 from runner import run_animation, run_demo, run_evaluation, run_train, run_validation
-from utils.config_loader import load_experiments
+from utils.config_loader import load_tasks
 from utils.plotting import plot_renders
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Run RL experiments.")
+    parser = argparse.ArgumentParser(description="Run RL tasks.")
 
     subparsers = parser.add_subparsers(
         dest="mode",
@@ -19,28 +19,32 @@ def parse_args():
         help="Train the agent.",
     )
     train_parser.add_argument(
-        "--start-exp",
+        "--start-task",
         type=int,
         default=0,
-        help="Index of the first training experiment.",
+        help="Index of the first training task.",
     )
     train_parser.add_argument(
-        "--end-exp",
+        "--end-task",
         type=int,
         default=None,
-        help="Index after the last training experiment.",
+        help="Index after the last training task.",
     )
     train_parser.add_argument(
-        "--previous-exp",
+        "--previous-task",
         type=int,
         default=None,
-        help="Index of the experiment used to initialize the training.",
+        help="Index of the task used to initialize the training.",
     )
     train_parser.add_argument(
         "--trained-agent-id",
         type=str,
         default="agent_1",
         help="Identifiant of the agent that has to be trained.",
+    )
+    train_parser.add_argument(
+        "--probabilistic-curriculum",
+        action="store_true",
     )
 
     # Validation arguments
@@ -49,16 +53,16 @@ def parse_args():
         help="Validate a trained policy.",
     )
     validation_parser.add_argument(
-        "--start-exp",
+        "--start-task",
         type=int,
         default=0,
-        help="Index of the first validation experiment.",
+        help="Index of the first validation task.",
     )
     validation_parser.add_argument(
-        "--end-exp",
+        "--end-task",
         type=int,
         default=None,
-        help="Index of the last validation experiment.",
+        help="Index of the last validation task.",
     )
     validation_parser.add_argument(
         "--n-episodes", type=int, default=100, help="Number of episodes to validate"
@@ -67,7 +71,7 @@ def parse_args():
         "--n-render",
         type=int,
         default=5,
-        help="Number of episodes to render per experiment.",
+        help="Number of episodes to render per task.",
     )
     validation_parser.add_argument(
         "--trained-agent-id",
@@ -84,22 +88,22 @@ def parse_args():
         help="Evaluate a trained policy.",
     )
     evaluation_parser.add_argument(
-        "--start-exp",
+        "--start-task",
         type=int,
         default=0,
-        help="Index of the first evaluation experiment.",
+        help="Index of the first evaluation task.",
     )
     evaluation_parser.add_argument(
-        "--end-exp",
+        "--end-task",
         type=int,
         default=None,
-        help="Index of the last evaluation experiment.",
+        help="Index of the last evaluation task.",
     )
     evaluation_parser.add_argument(
         "--policy",
         type=int,
         default=-1,
-        help="Index of the training experiment used as policy.",
+        help="Index of the training task used as policy.",
     )
     evaluation_parser.add_argument(
         "--n-episodes", type=int, default=500, help="Number of episodes to evaluate"
@@ -108,7 +112,7 @@ def parse_args():
         "--n-render",
         type=int,
         default=5,
-        help="Number of episodes to render per experiment.",
+        help="Number of episodes to render per task.",
     )
     evaluation_parser.add_argument(
         "--trained-agent-id",
@@ -128,7 +132,7 @@ def parse_args():
         "--policy",
         type=int,
         default=-1,
-        help="Index of the training experiment used as policy.",
+        help="Index of the training task used as policy.",
     )
     demo_parser.add_argument(
         "--trained-agent-id",
@@ -148,7 +152,7 @@ def parse_args():
         "--policy",
         type=int,
         default=-1,
-        help="Index of the training experiment used as policy.",
+        help="Index of the training task used as policy.",
     )
     animation_parser.add_argument(
         "--fps",
@@ -168,46 +172,46 @@ def parse_args():
 
 def main():
     args = parse_args()
-    train_experiments = load_experiments()
+    train_tasks = load_tasks()
 
     if args.mode == "train":
-        experiments = train_experiments[args.start_exp : args.end_exp]
-        previous_exp = (
-            train_experiments[args.previous_exp]
-            if args.previous_exp is not None
-            else None
+        tasks = train_tasks[args.start_task : args.end_task]
+        previous_task = (
+            train_tasks[args.previous_task] if args.previous_task is not None else None
         )
         trained_agent_id = args.trained_agent_id
+        fixed_curriculum = not args.probabilistic_curriculum
 
         run_train(
-            experiments=experiments,
-            previous_exp=previous_exp,
+            tasks=tasks,
+            previous_task=previous_task,
             trained_agent_id=trained_agent_id,
+            fixed_curriculum=fixed_curriculum,
         )
 
     elif args.mode == "validate":
-        experiments = train_experiments[args.start_exp : args.end_exp]
+        tasks = train_tasks[args.start_task : args.end_task]
         n_episodes = args.n_episodes
         n_render = args.n_render
         trained_agent_id = args.trained_agent_id
 
         run_validation(
-            experiments=experiments,
+            tasks=tasks,
             n_episodes=n_episodes,
             n_render=n_render,
             trained_agent_id=trained_agent_id,
         )
 
     elif args.mode == "evaluate":
-        eval_experiments = load_experiments(obj="eval")
-        experiments = eval_experiments[args.start_exp : args.end_exp]
-        policy = train_experiments[args.policy]
+        eval_tasks = load_tasks(obj="eval")
+        tasks = eval_tasks[args.start_task : args.end_task]
+        policy = train_tasks[args.policy]
         n_episodes = args.n_episodes
         n_render = args.n_render
         trained_agent_id = args.trained_agent_id
 
         run_evaluation(
-            experiments=experiments,
+            tasks=tasks,
             policy=policy,
             n_episodes=n_episodes,
             n_render=n_render,
@@ -215,42 +219,42 @@ def main():
         )
 
     elif args.mode == "demo":
-        eval_experiments = load_experiments(obj="eval")
-        policy = train_experiments[args.policy]
+        eval_tasks = load_tasks(obj="eval")
+        policy = train_tasks[args.policy]
         trained_agent_id = args.trained_agent_id
 
         run_demo(
-            experiments=train_experiments + eval_experiments,
+            tasks=train_tasks + eval_tasks,
             policy=policy,
             trained_agent_id=trained_agent_id,
         )
 
     elif args.mode == "animate":
-        eval_experiments = load_experiments(obj="eval")
-        policy = train_experiments[args.policy]
+        eval_tasks = load_tasks(obj="eval")
+        policy = train_tasks[args.policy]
         fps = args.fps
         path = args.path
 
         plot_renders(
-            experiments=train_experiments,
+            tasks=train_tasks,
             path=path,
             file_name="train",
         )
         plot_renders(
-            experiments=eval_experiments,
+            tasks=eval_tasks,
             path=path,
             file_name="eval",
         )
 
         run_animation(
-            experiments=train_experiments,
+            tasks=train_tasks,
             policy=policy,
             path=path,
             file_name="train",
             fps=fps,
         )
         run_animation(
-            experiments=eval_experiments,
+            tasks=eval_tasks,
             policy=policy,
             path=path,
             file_name="eval",

@@ -2,7 +2,7 @@ import numpy as np
 import torch
 from gymnasium import spaces
 
-from configs.config import Experiment, SACConfig
+from configs.config import SACConfig, Task
 from rl.sac import memory, networks
 
 
@@ -11,22 +11,22 @@ class SACAgent(torch.nn.Module):
     Soft Actor-Critic agent responsible for action selection and network training.
     """
 
-    def __init__(self, exp: Experiment, action_space: spaces.Box):
+    def __init__(self, task: Task, action_space: spaces.Box):
         """
         Constructor
         """
 
         super(SACAgent, self).__init__()
 
-        # Load the SAC configuration and store the experiment name
+        # Load the SAC configuration and store the task name
         self.sac_config = SACConfig()
-        self.env_name = exp.name
+        self.env_name = task.name
 
         # Shape of the local occupancy map observation
         self.map_shape = (
-            exp.agent_config.n_maps,
-            exp.agent_config.length_view,
-            exp.agent_config.length_view,
+            task.agent_config.n_maps,
+            task.agent_config.length_view,
+            task.agent_config.length_view,
         )
 
         # Size of the non-spatial observation features
@@ -39,7 +39,9 @@ class SACAgent(torch.nn.Module):
 
         # SAC hyperparameters
         self.tau = self.sac_config.tau  # Soft update coefficient
-        self.alpha = self.sac_config.alpha  # Entropy weight (exploitation/exploration)
+        self.alpha = (
+            self.sac_config.alpha
+        )  # Entropy weight (taskloitation/taskloration)
         self.critic_lr = self.sac_config.critic_lr  # Critic learning rate
         self.actor_lr = self.sac_config.actor_lr  # Actor learning rate
         self.gamma = self.sac_config.gamma  # Discount factor
@@ -335,7 +337,7 @@ class SACAgent(torch.nn.Module):
         # Keep the minimum Q-value
         q_new = torch.min(q1_new, q2_new)
 
-        # Compute the SAC actor objective: minimize entropy term - expected Q-value
+        # Compute the SAC actor objective: minimize entropy term - taskected Q-value
         actor_loss = (self.alpha * log_probs - q_new).mean()
 
         # Reset gradients accumulated by the actor network

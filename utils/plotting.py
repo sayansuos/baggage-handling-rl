@@ -6,19 +6,18 @@ import imageio.v2 as imageio
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-
-from configs.config import Experiment
+from configs.config import Task
 from simulator.environment.environment import Environment
 
 
 def plot_renders(
-    experiments: list[Experiment],
+    tasks: list[Task],
     path: str,
     file_name: str = "",
     max_ncols: int = 2,
 ) -> None:
     """
-    Render the initial environment of each experiment and save them in a single
+    Render the initial environment of each task and save them in a single
     comparison figure.
     """
 
@@ -26,7 +25,7 @@ def plot_renders(
     os.makedirs(path, exist_ok=True)
 
     # Compute the number of rows and columns
-    n = len(experiments)
+    n = len(tasks)
     ncols = min(max_ncols, n)
     nrows = math.ceil(n / ncols)
 
@@ -38,24 +37,24 @@ def plot_renders(
     )
     axes = np.atleast_1d(axes).ravel()
 
-    # Render the initial state of each experiment
-    for ax, exp in zip(axes, experiments):
-        # Initialize the environment from the experiment configuration
+    # Render the initial state of each task
+    for ax, task in zip(axes, tasks):
+        # Initialize the environment from the task configuration
         env = Environment(
-            env_config=exp.env_config,
-            agent_config=exp.agent_config,
-            reward_config=exp.reward_config,
-            name=exp.name,
+            env_config=task.env_config,
+            agent_config=task.agent_config,
+            reward_config=task.reward_config,
+            name=task.name,
         )
         env.reset(1234)
 
         # Render the environment
         env.render(ax=ax)
-        ax.set_title(exp.name)
+        ax.set_title(task.name)
         ax.tick_params(axis="both", labelsize=6)
 
     # Hide unused subplots
-    for ax in axes[len(experiments) :]:
+    for ax in axes[len(tasks) :]:
         ax.axis("off")
 
     # Save the figure
@@ -144,7 +143,7 @@ def plot_figures(
     render: bool = False,
 ) -> None:
     """
-    Generate and save the reward, performance, and velocity plots for an experiment.
+    Generate and save the reward, performance, and velocity plots for an task.
     """
 
     # Generate the reward decomposition figure

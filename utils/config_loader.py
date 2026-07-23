@@ -1,40 +1,38 @@
 import yaml
 
-from configs.config import AgentConfig, EnvConfig, Experiment, RewardConfig
+from configs.config import AgentConfig, EnvConfig, RewardConfig, Task
 
 
-def load_experiments(
-    exp_path="configs/experiments.yaml", obj: str = "train"
-) -> list[Experiment]:
+def load_tasks(task_path="configs/tasks.yaml", obj: str = "train") -> list[Task]:
     """
-    Load a list of experiment configurations from a YAML file.
+    Load a list of task configurations from a YAML file.
     """
 
-    experiments = []
+    tasks = []
 
     # Open the configuration file
-    with open(exp_path, "r") as f:
+    with open(task_path, "r") as f:
         data = yaml.safe_load(f)
 
-    # Select the experiment section according to the requested mode
-    for exp in data[f"{obj}_experiments"]:
-        # Load the configurations according to the experiment
-        env_config = load_env_config(name=exp["env_config"], obj=obj)
-        agent_config = load_agent_config(name=exp["agent_config"])
-        reward_config = load_reward_config(name=exp["reward_config"])
+    # Select the task section according to the requested mode
+    for task in data[f"{obj}_tasks"]:
+        # Load the configurations according to the task
+        env_config = load_env_config(name=task["env_config"], obj=obj)
+        agent_config = load_agent_config(name=task["agent_config"])
+        reward_config = load_reward_config(name=task["reward_config"])
 
-        # Build the experiment object
-        experiments.append(
-            Experiment(
-                name=exp["name"],
+        # Build the task object
+        tasks.append(
+            Task(
+                name=task["name"],
                 env_config=env_config,
                 agent_config=agent_config,
                 reward_config=reward_config,
-                n_steps=exp["n_steps"],
+                n_steps=task["n_steps"],
             )
         )
 
-    return experiments
+    return tasks
 
 
 def load_env_config(name: str | None = None, obj: str = "train") -> EnvConfig:

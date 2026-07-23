@@ -4,21 +4,6 @@ import numpy as np
 
 
 @dataclass
-class SACConfig:
-    obs_size: int = 7
-    tau: float = 0.005
-    alpha: float = 0.15
-    batch_size: int = 64
-    critic_lr: float = 3e-4
-    actor_lr: float = 3e-5
-    gamma: float = 0.99
-    reparam_noise: float = 1e-6
-    feature_size: int = 64
-    hidden_size: int = 128
-    mem_size: int = 100_000
-
-
-@dataclass
 class EnvConfig:
     width: int = 96
     height: int = 48
@@ -76,9 +61,32 @@ class RewardConfig:
 
 
 @dataclass
-class Experiment:
+class Task:
     name: str
     env_config: EnvConfig
     agent_config: AgentConfig
     reward_config: RewardConfig
     n_steps: int
+
+
+@dataclass
+class SACConfig:
+    obs_size: int = 7
+    tau: float = 0.005
+    alpha: float = 0.15
+    batch_size: int = 64
+    critic_lr: float = 3e-4
+    actor_lr: float = 3e-5
+    gamma: float = 0.99
+    reparam_noise: float = 1e-6
+    feature_size: int = 64
+    hidden_size: int = 128
+    mem_size: int = 100_000
+
+
+@dataclass
+class Curriculum:
+    chunk_steps: int = 10_000
+    n_chunks: int = 5
+    threshold: float = 0.9
+    n_eval_episodes: int = 100
