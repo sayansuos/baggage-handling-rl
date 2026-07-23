@@ -185,7 +185,7 @@ def main():
             trained_agent_id=trained_agent_id,
         )
 
-    elif args.mode == "validation":
+    elif args.mode == "validate":
         experiments = train_experiments[args.start_exp : args.end_exp]
         n_episodes = args.n_episodes
         n_render = args.n_render
@@ -198,7 +198,7 @@ def main():
             trained_agent_id=trained_agent_id,
         )
 
-    elif args.mode == "evaluation":
+    elif args.mode == "evaluate":
         eval_experiments = load_experiments(obj="eval")
         experiments = eval_experiments[args.start_exp : args.end_exp]
         policy = train_experiments[args.policy]
@@ -225,7 +225,7 @@ def main():
             trained_agent_id=trained_agent_id,
         )
 
-    elif args.mode == "animation":
+    elif args.mode == "animate":
         eval_experiments = load_experiments(obj="eval")
         policy = train_experiments[args.policy]
         fps = args.fps
