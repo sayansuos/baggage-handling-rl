@@ -185,7 +185,7 @@ eval_environments:
     env_mode: random
 
     nb_agents: 1
-    nb_static_obstacles: 8
+    nb_static_obstacles: 6
     nb_moving_obstacles: 0
     nb_targets: 2
 
@@ -260,7 +260,7 @@ eval_environments:
     env_mode: warehouse
 
     nb_agents: 1
-    nb_moving_obstacles: 2
+    nb_moving_obstacles: 3
     nb_targets: 2
 
     margin: 2
@@ -275,7 +275,7 @@ eval_environments:
     env_mode: warehouse
 
     nb_agents: 2
-    nb_moving_obstacles: 4
+    nb_moving_obstacles: 3
     nb_targets: 2
 
     margin: 2
@@ -289,8 +289,8 @@ eval_environments:
     agent_mode: random
     env_mode: warehouse
 
-    nb_agents: 3
-    nb_moving_obstacles: 4
+    nb_agents: 5
+    nb_moving_obstacles: 0
     nb_targets: 2
 
     margin: 2
@@ -320,7 +320,7 @@ eval_environments:
 
     nb_agents: 3
     nb_static_obstacles: 0
-    nb_moving_obstacles: 3
+    nb_moving_obstacles: 2
 
     max_attempts: 100
     max_steps: 200
