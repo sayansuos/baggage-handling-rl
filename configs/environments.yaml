@@ -178,8 +178,8 @@ train_environments:
 
 eval_environments:
   - name: eval1_random_1
-    width: 64
-    height: 32
+    width: 128
+    height: 64
 
     agent_mode: random
     env_mode: random
@@ -193,8 +193,8 @@ eval_environments:
     max_steps: 200
 
   - name: eval2_random_2
-    width: 64
-    height: 32
+    width: 128
+    height: 64
 
     agent_mode: random
     env_mode: random
@@ -208,8 +208,8 @@ eval_environments:
     max_steps: 200
 
   - name: eval3_random_3
-    width: 64
-    height: 32
+    width: 128
+    height: 64
 
     agent_mode: random
     env_mode: random
@@ -223,8 +223,8 @@ eval_environments:
     max_steps: 200
 
   - name: eval4_random_4
-    width: 64
-    height: 32
+    width: 128
+    height: 64
 
     agent_mode: random
     env_mode: random
@@ -238,8 +238,8 @@ eval_environments:
     max_steps: 200
 
   - name: eval5_random_5
-    width: 64
-    height: 32
+    width: 128
+    height: 64
 
     agent_mode: random
     env_mode: random
@@ -253,8 +253,8 @@ eval_environments:
     max_steps: 200
 
   - name: eval6_warehouse_1
-    width: 64
-    height: 32
+    width: 128
+    height: 64
 
     agent_mode: random
     env_mode: warehouse
@@ -268,8 +268,8 @@ eval_environments:
     max_steps: 200
 
   - name: eval7_warehouse_2
-    width: 64
-    height: 32
+    width: 128
+    height: 64
 
     agent_mode: random
     env_mode: warehouse
@@ -283,8 +283,8 @@ eval_environments:
     max_steps: 200
 
   - name: eval8_warehouse_3
-    width: 64
-    height: 32
+    width: 128
+    height: 64
 
     agent_mode: random
     env_mode: warehouse
@@ -298,8 +298,8 @@ eval_environments:
     max_steps: 200
 
   - name: eval9_crossing_1
-    width: 32
-    height: 32
+    width: 64
+    height: 64
 
     agent_mode: crossing
     env_mode: crossing
@@ -312,8 +312,8 @@ eval_environments:
     max_steps: 200
 
   - name: eval10_crossing_2
-    width: 32
-    height: 32
+    width: 64
+    height: 64
 
     agent_mode: crossing
     env_mode: crossing

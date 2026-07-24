@@ -231,7 +231,7 @@ def main():
         eval_tasks = load_tasks(obj="eval")
         policy_name = args.policy_name
         fps = args.fps
-        path = f"figures/demo/{policy_name}"
+        path = "figures/demo"
 
         plot_renders(
             tasks=train_tasks,
@@ -247,14 +247,14 @@ def main():
         run_animation(
             tasks=train_tasks,
             policy_name=policy_name,
-            path=path,
+            path=f"{path}/{policy_name}",
             file_name="train",
             fps=fps,
         )
         run_animation(
             tasks=eval_tasks,
             policy_name=policy_name,
-            path=path,
+            path=f"{path}/{policy_name}",
             file_name="eval",
             fps=fps,
         )

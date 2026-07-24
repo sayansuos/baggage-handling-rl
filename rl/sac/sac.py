@@ -357,7 +357,7 @@ def evaluate_sac(
             frames.append(np.asarray(fig.canvas.renderer.buffer_rgba()).copy())
 
         # Record the initial environment state when rendering is enabled
-        while not env.dones[trained_agent_id]:
+        while not env.done():
             action = {}
 
             # Select deterministic action for all agents
