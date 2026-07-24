@@ -100,10 +100,10 @@ def parse_args():
         help="Index of the last evaluation task.",
     )
     evaluation_parser.add_argument(
-        "--policy",
-        type=int,
+        "--policy-name",
+        type=str,
         default=-1,
-        help="Index of the training task used as policy.",
+        help="Name of the policy that has to be evaluated.",
     )
     evaluation_parser.add_argument(
         "--n-episodes", type=int, default=500, help="Number of episodes to evaluate"
@@ -205,14 +205,14 @@ def main():
     elif args.mode == "evaluate":
         eval_tasks = load_tasks(obj="eval")
         tasks = eval_tasks[args.start_task : args.end_task]
-        policy = train_tasks[args.policy]
+        policy_name = args.policy_name
         n_episodes = args.n_episodes
         n_render = args.n_render
         trained_agent_id = args.trained_agent_id
 
         run_evaluation(
             tasks=tasks,
-            policy=policy,
+            policy_name=policy_name,
             n_episodes=n_episodes,
             n_render=n_render,
             trained_agent_id=trained_agent_id,

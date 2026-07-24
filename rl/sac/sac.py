@@ -1,7 +1,10 @@
+import time
 import warnings
+from dataclasses import replace
 
 import matplotlib.pyplot as plt
 import numpy as np
+
 from configs.config import Task
 from rl.sac.agent import SACAgent
 from simulator.environment.environment import Environment
@@ -288,36 +291,51 @@ def run_sac(
 
 def evaluate_sac(
     task: Task,
+    policy_name: str,
     n_episodes: int,
     n_render: int,
     trained_agent_id: str,
-) -> tuple[list[dict], list[np.ndarray] | None]:
+) -> tuple[list[dict], list[np.ndarray] | None, dict]:
     """
-    Evaluate a trained SAC agent over multiple episodes and optionally record rendered frames.
+    Evaluate a trained SAC policy on a task over multiple episodes
+    and optionally record rendered frames.
     """
 
     # Create the evaluation environment from the task configuration
     env = Environment(
-        task.env_config,
-        task.agent_config,
-        task.reward_config,
-        task.name,
+        env_config=task.env_config,
+        agent_config=task.agent_config,
+        reward_config=task.reward_config,
+        name=task.name,
     )
 
-    # Load the trained agent using task.name = policy
-    agent = load_agent(env=env, task=task, trained_agent_id=trained_agent_id)
+    # Create a temporary task used only to load the selected policy
+    policy_task = replace(
+        task,
+        name=policy_name,
+    )
+
+    # Load the trained agent
+    agent = load_agent(
+        env=env,
+        task=policy_task,
+        trained_agent_id=trained_agent_id,
+    )
     agent.load_checkpoints()
 
     # Initialize metrics and frames
     history = []
     render = n_render > 0
     frames = [] if render else None
+    step_times = []
 
     # Create the figure
     fig, ax = plt.subplots(figsize=(10, 8))
 
     # Run the requested number of evaluation episodes
     for i in range(n_episodes):
+        step_start = time.perf_counter()
+
         # Run the requested number of evaluation episodes
         if i == n_render:
             render = False
@@ -325,6 +343,9 @@ def evaluate_sac(
 
         # Generate a new static obstacle configuration for each episode
         env.static_obstacles = env.env_manager.generate_static_obstacles()
+
+        # Record execution time
+        step_times.append(time.perf_counter() - step_start)
 
         # Reset the environment
         state, _ = env.reset(seed=1234 + i)
@@ -359,5 +380,11 @@ def evaluate_sac(
 
         # Store the metrics
         history.append(info)
+        metrics = {
+            "n_steps": len(step_times),
+            "mean_step_time": np.mean(step_times),
+            "std_step_time": np.std(step_times),
+            "steps_per_second": 1.0 / np.mean(step_times),
+        }
 
-    return history, frames
+    return history, frames, metrics

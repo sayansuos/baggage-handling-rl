@@ -66,7 +66,7 @@ class Task:
     env_config: EnvConfig
     agent_config: AgentConfig
     reward_config: RewardConfig
-    n_steps: int
+    n_steps: int | None
 
 
 @dataclass

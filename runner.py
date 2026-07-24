@@ -13,6 +13,154 @@ from utils.logging import log_debug, log_rewards, log_train
 from utils.plotting import plot_animation, plot_figures
 
 
+def run_validation(
+    tasks: list[Task],
+    n_episodes: int,
+    n_render: int,
+    trained_agent_id="agent_1",
+):
+    """
+    Evaluate a trained policy on the validation scenarios and save the resulting metrics
+    and animations.
+    """
+
+    # Fix the seed
+    np.random.seed(1234)
+
+    # Record the training start time
+    start = time.perf_counter()
+
+    print(f"\n[ VALIDATION ] {len(tasks)} task(s)\n")
+
+    # Evaluate all tasks
+    for task in tasks:
+        # Run the trained policy over multiple episodes
+        history, frames, _ = evaluate_sac(
+            task=task,
+            policy_name=task.name,
+            n_episodes=n_episodes,
+            n_render=n_render,
+            trained_agent_id=trained_agent_id,
+        )
+
+        # Run the trained policy over multiple episodes
+        df_train = log_train(
+            metrics=history, path="logs/validation", file_name=task.name
+        )
+        df_rewards = log_rewards(
+            metrics=history, path="logs/validation", file_name=task.name
+        )
+
+        # Generate training figures
+        plot_figures(
+            df_perf=df_train,
+            df_rewards=df_rewards,
+            path="figures/validation",
+            file_name=task.name,
+            window=100,
+        )
+
+        # Save an animation when rendering is enabled
+        if n_render > 0:
+            plot_animation(
+                frames=frames, path="figures/validation", file_name=task.name, fps=10
+            )
+
+    # Compute the total training duration
+    duration = time.perf_counter() - start
+
+    print(f"\n[ SUMMARY ] {len(tasks)} task(s) completed in {duration:.1f}s\n")
+
+
+def run_evaluation(
+    tasks: list[Task],
+    policy_name: str,
+    n_episodes: int = 100,
+    n_render: int = 5,
+    trained_agent_id: str = "agent_1",
+):
+    """
+    Evaluate a trained policy on a set of tasks and save the corresponding
+    performance metrics, figures and animations.
+    """
+
+    # Fix the seed
+    np.random.seed(1234)
+
+    # Record the training start time
+    start = time.perf_counter()
+
+    print(f"\n[ EVALUATION ] {len(tasks)} task(s)\n")
+
+    # Evaluate all tasks with a chosen policy
+    for task in tasks:
+        print(
+            f"[ {task.name} ] Evaluating... ",
+            end="\r",
+        )
+
+        # Run the selected policy over multiple episodes
+        history, frames, metrics = evaluate_sac(
+            task=task,
+            policy_name=policy_name,
+            n_episodes=n_episodes,
+            n_render=n_render,
+            trained_agent_id=trained_agent_id,
+        )
+
+        # Save training metrics
+        print(
+            f"[ {task.name} ] Saving metrics... ",
+            end="\r",
+        )
+        df_train = log_train(
+            metrics=history, path=f"logs/evaluation/{policy_name}", file_name=task.name
+        )
+        df_rewards = log_rewards(
+            metrics=history, path=f"logs/evaluation/{policy_name}", file_name=task.name
+        )
+
+        # Generate training figures
+        print(
+            f"[ {task.name} ] Generating figures... ",
+            end="\r",
+        )
+        plot_figures(
+            df_perf=df_train,
+            df_rewards=df_rewards,
+            path=f"figures/evaluation/{policy_name}",
+            file_name=task.name,
+            window=100,
+        )
+
+        # Save an animation when rendering is enabled
+        if n_render > 0:
+            print(
+                f"[ {task.name} ] Generating animation... ",
+                end="\r",
+            )
+            plot_animation(
+                frames=frames,
+                path=f"figures/evaluation/{policy_name}",
+                file_name=task.name,
+                fps=10,
+            )
+
+        print(
+            f"[ {task.name} ] Evaluation terminated "
+            f"| Step time = {metrics['mean_step_time'] * 1000:.2f} ms "
+            f"| FPS = {metrics['steps_per_second']:.1f} "
+            f"| Steps = {metrics['n_steps']}",
+            end="\r",
+        )
+        print()
+
+    # Compute the total training duration
+    duration = time.perf_counter() - start
+
+    print(f"\n[ SUMMARY ] {len(tasks)} task(s) completed in {duration:.1f}s\n")
+
+
 def run_train(
     tasks: list[Task],
     previous_task: Task | None = None,
@@ -217,15 +365,10 @@ def run_curriculum(
         print("\n[ CURRICULUM ] Evaluating current policy...\n")
 
         for i, task in enumerate(tasks):
-            # Load the curriculum policy checkpoints
-            eval_task = replace(
-                task,
-                name=policy_name,
-            )
-
             # Evaluate the SAC policy
-            history, _ = evaluate_sac(
-                task=eval_task,
+            history, _, _ = evaluate_sac(
+                task=task,
+                policy_name="curriculum",
                 n_episodes=n_eval_episodes,
                 n_render=0,
                 trained_agent_id=trained_agent_id,
@@ -292,6 +435,12 @@ def run_curriculum(
         # --------------------------------------------------------------
         # Save cumulative curriculum logs
         # --------------------------------------------------------------
+
+        # Renumber episodes continuously
+        for episode, history in enumerate(all_history, start=1):
+            history["episode"] = episode
+        for episode, debug in enumerate(all_debug, start=1):
+            debug["episode"] = episode
 
         # Save training metrics
         df_train = log_train(
@@ -538,131 +687,3 @@ def run_animation(
         print("\n[ SAVE ] completed\n")
 
     return frames
-
-
-def run_validation(
-    tasks: list[Task],
-    n_episodes: int,
-    n_render: int,
-    trained_agent_id="agent_1",
-):
-    """
-    Evaluate a trained policy on the validation scenarios and save the resulting metrics
-    and animations.
-    """
-
-    # Fix the seed
-    np.random.seed(1234)
-
-    # Record the training start time
-    start = time.perf_counter()
-
-    print(f"\n[ VALIDATION ] {len(tasks)} task(s)\n")
-
-    # Evaluate all tasks
-    for task in tasks:
-        # Run the trained policy over multiple episodes
-        history, frames = evaluate_sac(
-            task=task,
-            n_episodes=n_episodes,
-            n_render=n_render,
-            trained_agent_id=trained_agent_id,
-        )
-
-        # Run the trained policy over multiple episodes
-        df_train = log_train(
-            metrics=history, path="logs/validation", file_name=task.name
-        )
-        df_rewards = log_rewards(
-            metrics=history, path="logs/validation", file_name=task.name
-        )
-
-        # Generate training figures
-        plot_figures(
-            df_perf=df_train,
-            df_rewards=df_rewards,
-            path="figures/validation",
-            file_name=task.name,
-            window=100,
-        )
-
-        # Save an animation when rendering is enabled
-        if n_render > 0:
-            plot_animation(
-                frames=frames, path="figures/validation", file_name=task.name, fps=10
-            )
-
-    # Compute the total training duration
-    duration = time.perf_counter() - start
-
-    print(f"\n[ SUMMARY ] {len(tasks)} task(s) completed in {duration:.1f}s\n")
-
-
-def run_evaluation(
-    tasks: list[Task],
-    policy: Task,
-    n_episodes: int = 100,
-    n_render: int = 5,
-    trained_agent_id: str = "agent_1",
-):
-    """
-    Evaluate a trained policy on a set of scenarios and save the corresponding performance metrics and animations.
-    """
-
-    # Fix the seed
-    np.random.seed(1234)
-
-    # Record the training start time
-    start = time.perf_counter()
-
-    print(f"\n[ EVALUATION ] {len(tasks)} task(s)\n")
-
-    # Evaluate all tasks with a chosen policy
-    for scenario in tasks:
-        # Create the environment from the task configuration
-        task = Task(
-            name=policy.name,
-            env_config=scenario.env_config,
-            agent_config=scenario.agent_config,
-            reward_config=scenario.reward_config,
-            n_steps=scenario.n_steps,
-        )
-
-        # Run the trained policy over multiple episodes
-        history, frames = evaluate_sac(
-            task=task,
-            n_episodes=n_episodes,
-            n_render=n_render,
-            trained_agent_id=trained_agent_id,
-        )
-
-        # Run the trained policy over multiple episodes
-        df_train = log_train(
-            metrics=history, path="logs/evaluation", file_name=scenario.name
-        )
-        df_rewards = log_rewards(
-            metrics=history, path="logs/evaluation", file_name=scenario.name
-        )
-
-        # Generate training figures
-        plot_figures(
-            df_perf=df_train,
-            df_rewards=df_rewards,
-            path="figures/evaluation",
-            file_name=scenario.name,
-            window=100,
-        )
-
-        # Save an animation when rendering is enabled
-        if n_render > 0:
-            plot_animation(
-                frames=frames,
-                path="figures/evaluation",
-                file_name=scenario.name,
-                fps=10,
-            )
-
-    # Compute the total training duration
-    duration = time.perf_counter() - start
-
-    print(f"\n[ SUMMARY ] {len(tasks)} task(s) completed in {duration:.1f}s\n")
