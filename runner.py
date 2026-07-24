@@ -25,15 +25,24 @@ def run_validation(
     """
 
     # Fix the seed
-    np.random.seed(1234)
+    np.random.seed(4321)
 
     # Record the training start time
     start = time.perf_counter()
 
-    print(f"\n[ VALIDATION ] {len(tasks)} task(s)\n")
+    print(
+        f"\n[ VALIDATION ] {len(tasks)} task(s) | "
+        f"Episodes : {n_episodes} | Renders  : {n_render}\n"
+    )
 
     # Evaluate all tasks
     for task in tasks:
+        task_start = time.perf_counter()
+        print(
+            f"[ {task.name} ] Evaluating... ",
+            end="\r",
+        )
+
         # Run the trained policy over multiple episodes
         history, frames, _ = evaluate_sac(
             task=task,
@@ -43,6 +52,9 @@ def run_validation(
             trained_agent_id=trained_agent_id,
         )
 
+        task_duration = time.perf_counter() - task_start
+        print(f"[ {task.name} ] Evaluation terminated in {task_duration:.1f}s")
+
         # Run the trained policy over multiple episodes
         df_train = log_train(
             metrics=history, path="logs/validation", file_name=task.name
@@ -51,7 +63,7 @@ def run_validation(
             metrics=history, path="logs/validation", file_name=task.name
         )
 
-        # Generate training figures
+        # Generate validation figures
         plot_figures(
             df_perf=df_train,
             df_rewards=df_rewards,
@@ -66,7 +78,7 @@ def run_validation(
                 frames=frames, path="figures/validation", file_name=task.name, fps=10
             )
 
-    # Compute the total training duration
+    # Compute the total validation duration
     duration = time.perf_counter() - start
 
     print(f"\n[ SUMMARY ] {len(tasks)} task(s) completed in {duration:.1f}s\n")
@@ -525,7 +537,7 @@ def run_train_task(
 
 def run_demo(
     tasks: list[Task],
-    policy: Task,
+    policy_name: str,
     trained_agent_id: str = "agent_1",
 ) -> None:
     """
@@ -535,7 +547,7 @@ def run_demo(
     # Generate all the scenarios frames
     frames = run_animation(
         tasks=tasks,
-        policy=policy,
+        policy_name=policy_name,
         trained_agent_id=trained_agent_id,
     )
 
@@ -609,18 +621,19 @@ def run_demo(
 
 def run_animation(
     tasks: list[Task],
-    policy: Task,
+    policy_name: str,
     path: str | None = None,
     file_name: str | None = None,
     fps: int = 20,
     trained_agent_id: str = "agent_1",
 ) -> list[np.asarray]:
     """
-    Run one episode for each task and return the rendered frames.
+    Run one episode for each task using a selected trained policy
+    and return the rendered frames.
     If path and file_name are provided, also save the frames as an animation.
     """
 
-    print(f"\n[ ANIMATION ] {len(tasks)} task(s)\n")
+    print(f"\n[ ANIMATION ] {len(tasks)} task(s) | Policy: {policy_name}\n")
 
     # Initialize the frames
     frames = []
@@ -630,7 +643,11 @@ def run_animation(
 
     # Run one episode for each task
     for task in tasks:
-        print(f"[ START ] {task.name}")
+        print(
+            f"[ {task.name} ] Generating frames... ",
+            end="\r",
+        )
+        task_start_frame = len(frames)
 
         # Create the environment from the task configuration
         env = Environment(
@@ -640,8 +657,18 @@ def run_animation(
             name=task.name,
         )
 
-        # Create the SAC agent using the selected trained policy
-        agent = load_agent(env=env, task=policy, trained_agent_id=trained_agent_id)
+        # Create a temporary task used only to load the selected policy
+        policy_task = replace(
+            task,
+            name=policy_name,
+        )
+
+        # Load the selected trained policy
+        agent = load_agent(
+            env=env,
+            task=policy_task,
+            trained_agent_id=trained_agent_id,
+        )
         agent.load_checkpoints()
 
         # Reset the environment
@@ -675,15 +702,22 @@ def run_animation(
             frame = np.asarray(fig.canvas.renderer.buffer_rgba()).copy()
             frames.append(frame)
 
-        print(f"[ DONE ] {task.name}")
+        task_frames = len(frames) - task_start_frame
+        print(f"[ {task.name} ] Frames generated | Frames: {task_frames}")
 
     # Close the figure
     plt.close(fig)
 
     # Save the animation if required
     if path is not None and file_name is not None:
+        print("\n[ ANIMATION ] Saving animation... ", end="\r")
+
         plot_animation(frames=frames, path=path, file_name=file_name, fps=fps)
 
-        print("\n[ SAVE ] completed\n")
+        print(f"[ ANIMATION ] Animation saved | File: {path}/{file_name}")
+
+    print(
+        f"\n[ SUMMARY ] {len(tasks)} task(s) rendered | Total frames: {len(frames)}\n"
+    )
 
     return frames

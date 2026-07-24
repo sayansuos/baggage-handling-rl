@@ -13,7 +13,9 @@ def parse_args():
         required=True,
     )
 
-    # Train arguments
+    # ------------------------------------------------------------------
+    # Train
+    # ------------------------------------------------------------------
     train_parser = subparsers.add_parser(
         "train",
         help="Train the agent.",
@@ -47,7 +49,9 @@ def parse_args():
         action="store_true",
     )
 
-    # Validation arguments
+    # ------------------------------------------------------------------
+    # Validation
+    # ------------------------------------------------------------------
     validation_parser = subparsers.add_parser(
         "validate",
         help="Validate a trained policy.",
@@ -129,10 +133,10 @@ def parse_args():
         help="Run a demonstration.",
     )
     demo_parser.add_argument(
-        "--policy",
-        type=int,
-        default=-1,
-        help="Index of the training task used as policy.",
+        "--policy-name",
+        type=str,
+        default="curriculum",
+        help="Name of the policy that has to be demonstrated.",
     )
     demo_parser.add_argument(
         "--trained-agent-id",
@@ -149,22 +153,16 @@ def parse_args():
         help="Generate renders and animations.",
     )
     animation_parser.add_argument(
-        "--policy",
-        type=int,
-        default=-1,
-        help="Index of the training task used as policy.",
+        "--policy-name",
+        type=str,
+        default="curriculum",
+        help="Name of the policy that has to be animated.",
     )
     animation_parser.add_argument(
         "--fps",
         type=int,
         default=10,
         help="Number of frames per second in the animation",
-    )
-    animation_parser.add_argument(
-        "--path",
-        type=str,
-        default="figures/demo",
-        help="Directory to save the files in",
     )
 
     return parser.parse_args()
@@ -220,20 +218,20 @@ def main():
 
     elif args.mode == "demo":
         eval_tasks = load_tasks(obj="eval")
-        policy = train_tasks[args.policy]
+        policy_name = args.policy_name
         trained_agent_id = args.trained_agent_id
 
         run_demo(
             tasks=train_tasks + eval_tasks,
-            policy=policy,
+            policy_name=policy_name,
             trained_agent_id=trained_agent_id,
         )
 
     elif args.mode == "animate":
         eval_tasks = load_tasks(obj="eval")
-        policy = train_tasks[args.policy]
+        policy_name = args.policy_name
         fps = args.fps
-        path = args.path
+        path = f"figures/demo/{policy_name}"
 
         plot_renders(
             tasks=train_tasks,
@@ -248,14 +246,14 @@ def main():
 
         run_animation(
             tasks=train_tasks,
-            policy=policy,
+            policy_name=policy_name,
             path=path,
             file_name="train",
             fps=fps,
         )
         run_animation(
             tasks=eval_tasks,
-            policy=policy,
+            policy_name=policy_name,
             path=path,
             file_name="eval",
             fps=fps,
