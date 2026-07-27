@@ -127,10 +127,10 @@ train_environments:
     nb_agents: 5
     nb_static_obstacles: 0
     nb_moving_obstacles: 1
-    nb_targets: 5
+    nb_targets: 3
 
     max_attempts: 100
-    max_steps: 500
+    max_steps: 300
 
   - name: task10
     width: 64
@@ -142,10 +142,10 @@ train_environments:
     nb_agents: 10
     nb_static_obstacles: 0
     nb_moving_obstacles: 1
-    nb_targets: 10
+    nb_targets: 3
 
     max_attempts: 100
-    max_steps: 1_000
+    max_steps: 300
 
 eval_environments:
   - name: eval1_random_1
