@@ -1,5 +1,5 @@
 train_environments:
-  - name: task1_empty_1
+  - name: task1
     width: 64
     height: 32
 
@@ -14,7 +14,7 @@ train_environments:
     max_attempts: 100
     max_steps: 100
 
-  - name: task2_fixed_1
+  - name: task2
     width: 64
     height: 32
 
@@ -29,7 +29,7 @@ train_environments:
     max_attempts: 100
     max_steps: 100
 
-  - name: task3_fixed_2
+  - name: task3
     width: 64
     height: 32
 
@@ -44,22 +44,7 @@ train_environments:
     max_attempts: 100
     max_steps: 100
 
-  - name: task4_fixed_3
-    width: 64
-    height: 32
-
-    agent_mode: fixed_3
-    env_mode: fixed_3
-
-    nb_agents: 1
-    nb_static_obstacles: 9
-    nb_moving_obstacles: 0
-    nb_targets: 1
-
-    max_attempts: 100
-    max_steps: 100
-
-  - name: task5_crossing_1
+  - name: task4
     width: 32
     height: 32
 
@@ -73,7 +58,7 @@ train_environments:
     max_attempts: 100
     max_steps: 100
 
-  - name: task6_empty_2
+  - name: task5
     width: 64
     height: 32
 
@@ -82,72 +67,28 @@ train_environments:
 
     nb_agents: 1
     nb_static_obstacles: 0
-    nb_moving_obstacles: 6
-    nb_targets: 1
-
-    max_attempts: 100
-    max_steps: 100
-
-  - name: task7_fixed_random_1
-    width: 64
-    height: 32
-
-    agent_mode: fixed_3
-    env_mode: fixed_random_3
-
-    nb_agents: 1
-    nb_static_obstacles: 9
     nb_moving_obstacles: 3
     nb_targets: 1
 
     max_attempts: 100
     max_steps: 100
 
-  - name: task8_random_1
+  - name: task6
     width: 64
     height: 32
 
-    agent_mode: random
-    env_mode: random
+    agent_mode: fixed_2
+    env_mode: fixed_random_2
 
     nb_agents: 1
-    nb_static_obstacles: 3
-    nb_moving_obstacles: 3
-    nb_targets: 2
-
-    max_attempts: 100
-    max_steps: 200
-
-  - name: task9_crossing_2
-    width: 32
-    height: 32
-
-    agent_mode: crossing
-    env_mode: crossing
-
-    nb_agents: 2
-    nb_static_obstacles: 0
-    nb_moving_obstacles: 1
+    nb_static_obstacles: 6
+    nb_moving_obstacles: 2
+    nb_targets: 1
 
     max_attempts: 100
     max_steps: 100
 
-  - name: task10_random_2
-    width: 64
-    height: 32
-
-    agent_mode: random
-    env_mode: random
-
-    nb_agents: 2
-    nb_static_obstacles: 3
-    nb_moving_obstacles: 3
-    nb_targets: 2
-
-    max_attempts: 100
-    max_steps: 200
-
-  - name: task11_warehouse_1
+  - name: task7
     width: 64
     height: 32
 
@@ -155,26 +96,56 @@ train_environments:
     env_mode: warehouse
 
     nb_agents: 2
-    nb_moving_obstacles: 3
+    nb_moving_obstacles: 2
     nb_targets: 2
 
     margin: 2
     max_attempts: 100
     max_steps: 200
 
-  - name: task12_crossing_3
+  - name: task8
     width: 32
     height: 32
 
     agent_mode: crossing
     env_mode: crossing
 
-    nb_agents: 5
+    nb_agents: 2
     nb_static_obstacles: 0
     nb_moving_obstacles: 0
 
     max_attempts: 100
     max_steps: 100
+
+  - name: task9
+    width: 64
+    height: 32
+
+    agent_mode: random
+    env_mode: random
+
+    nb_agents: 5
+    nb_static_obstacles: 0
+    nb_moving_obstacles: 1
+    nb_targets: 5
+
+    max_attempts: 100
+    max_steps: 500
+
+  - name: task10
+    width: 64
+    height: 32
+
+    agent_mode: random
+    env_mode: random
+
+    nb_agents: 10
+    nb_static_obstacles: 0
+    nb_moving_obstacles: 1
+    nb_targets: 10
+
+    max_attempts: 100
+    max_steps: 1_000
 
 eval_environments:
   - name: eval1_random_1

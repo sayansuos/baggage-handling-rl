@@ -1,72 +1,60 @@
 train_tasks:
-  - name: task1_empty_1
-    env_config: task1_empty_1
+  - name: task1
+    env_config: task1
     agent_config: agent_1
     reward_config: reward_1
     n_steps: 100_000
 
-  - name: task2_fixed_1
-    env_config: task2_fixed_1
+  - name: task2
+    env_config: task2
     agent_config: agent_1
     reward_config: reward_1
     n_steps: 300_000
 
-  - name: task3_fixed_2
-    env_config: task3_fixed_2
+  - name: task3
+    env_config: task3
     agent_config: agent_1
     reward_config: reward_1
     n_steps: 300_000
 
-  - name: task4_fixed_3
-    env_config: task4_fixed_3
+  - name: task4
+    env_config: task4
     agent_config: agent_1
     reward_config: reward_1
     n_steps: 300_000
 
-  - name: task5_crossing_1
-    env_config: task5_crossing_1
+  - name: task5
+    env_config: task5
     agent_config: agent_1
     reward_config: reward_1
     n_steps: 300_000
 
-  - name: task6_empty_2
-    env_config: task6_empty_2
+  - name: task6
+    env_config: task6
     agent_config: agent_1
     reward_config: reward_1
     n_steps: 300_000
 
-  - name: task7_fixed_random_1
-    env_config: task7_fixed_random_1
+  - name: task7
+    env_config: task7
     agent_config: agent_1
     reward_config: reward_1
     n_steps: 300_000
 
-  - name: task8_random_1
-    env_config: task8_random_1
+  - name: task8
+    env_config: task8
     agent_config: agent_1
     reward_config: reward_1
     n_steps: 300_000
 
-  - name: task9_crossing_2
-    env_config: task9_crossing_2
+  - name: task9
+    env_config: task9
     agent_config: agent_1
     reward_config: reward_1
     n_steps: 300_000
 
-  - name: task10_random_2
-    env_config: task10_random_2
-    agent_config: agent_1
-    reward_config: reward_1
-    n_steps: 300_000
-
-  - name: task11_warehouse_1
-    env_config: task11_warehouse_1
-    agent_config: agent_1
-    reward_config: reward_1
-    n_steps: 300_000
-
-  - name: task12_crossing_3
-    env_config: task12_crossing_3
+  - name: task10
+    env_config: task10
     agent_config: agent_1
     reward_config: reward_1
     n_steps: 300_000
