@@ -77,11 +77,11 @@ train_environments:
     width: 64
     height: 32
 
-    agent_mode: fixed_2
-    env_mode: fixed_random_2
+    agent_mode: fixed_3
+    env_mode: fixed_random_3
 
     nb_agents: 1
-    nb_static_obstacles: 6
+    nb_static_obstacles: 9
     nb_moving_obstacles: 2
     nb_targets: 1
 
@@ -95,7 +95,7 @@ train_environments:
     agent_mode: random
     env_mode: warehouse
 
-    nb_agents: 2
+    nb_agents: 1
     nb_moving_obstacles: 2
     nb_targets: 2
 
@@ -139,7 +139,7 @@ train_environments:
     agent_mode: random
     env_mode: random
 
-    nb_agents: 10
+    nb_agents: 8
     nb_static_obstacles: 0
     nb_moving_obstacles: 1
     nb_targets: 3
