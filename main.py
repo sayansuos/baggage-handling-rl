@@ -106,7 +106,7 @@ def parse_args():
     evaluation_parser.add_argument(
         "--policy-name",
         type=str,
-        default=-1,
+        default="curriculum_best",
         help="Name of the policy that has to be evaluated.",
     )
     evaluation_parser.add_argument(
