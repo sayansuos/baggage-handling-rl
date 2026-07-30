@@ -18,6 +18,14 @@ def compute_closest(
     entities = static_obstacles + moving_obstacles + agents
 
     for ag in agents:
+        # Do not recompute collisions for inactive agents
+        if ag.state in ["terminated", "truncated"]:
+            metrics[ag.id] = {
+                "closest_distance": ag._closest_dist,
+                "closest_entity": None,
+            }
+            continue
+
         min_distance = np.inf
         closest_entity = None
 

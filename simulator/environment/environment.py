@@ -380,4 +380,4 @@ class Environment(gym.Env):
         ax.set_title(
             f"{self.name} | Episode {self.episode} | Step {self.step_count} | Return = {self.reward_total} "
         )
-        ax.legend(handles=handles, labels=labels, loc="upper left")
+        # ax.legend(handles=handles, labels=labels, loc="upper left")
