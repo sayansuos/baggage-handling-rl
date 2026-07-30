@@ -16,7 +16,7 @@ class EnvConfig:
     nb_moving_obstacles: int = 0
     nb_targets: int = 2
 
-    margin: int = 5
+    margin: int = 2
     max_attempts: int = 100
     max_steps: int = 300
 
@@ -38,8 +38,8 @@ class AgentConfig:
     length_view: int = 15
     length_view_decrease: int | None = None
 
-    collision_threshold: float = 0.5
-    reach_threshold: float = 0.5
+    collision_threshold: float = 0.1
+    reach_threshold: float = 0.1
 
 
 @dataclass

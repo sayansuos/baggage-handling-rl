@@ -1,4 +1,6 @@
-train_environments:
+train:
+  # 1 —- Navigation mono-agent avec obstacles statiques
+
   - name: task1
     width: 64
     height: 32
@@ -45,15 +47,16 @@ train_environments:
     max_steps: 100
 
   - name: task4
-    width: 32
+    width: 64
     height: 32
 
-    agent_mode: crossing
-    env_mode: crossing
+    agent_mode: fixed_3
+    env_mode: fixed_3
 
     nb_agents: 1
-    nb_static_obstacles: 0
-    nb_moving_obstacles: 1
+    nb_static_obstacles: 9
+    nb_moving_obstacles: 0
+    nb_targets: 1
 
     max_attempts: 100
     max_steps: 100
@@ -62,27 +65,29 @@ train_environments:
     width: 64
     height: 32
 
-    agent_mode: fixed_3
+    agent_mode: random
     env_mode: random
 
     nb_agents: 1
-    nb_static_obstacles: 0
-    nb_moving_obstacles: 3
+    nb_static_obstacles: 9
+    nb_moving_obstacles: 0
     nb_targets: 1
 
     max_attempts: 100
     max_steps: 100
 
+  # 2 -— Introduction des obstacles dynamiques
+
   - name: task6
     width: 64
     height: 32
 
-    agent_mode: fixed_3
-    env_mode: fixed_random_3
+    agent_mode: airport
+    env_mode: airport
 
     nb_agents: 1
-    nb_static_obstacles: 9
-    nb_moving_obstacles: 2
+    nb_static_obstacles: 0
+    nb_moving_obstacles: 3
     nb_targets: 1
 
     max_attempts: 100
@@ -92,206 +97,319 @@ train_environments:
     width: 64
     height: 32
 
-    agent_mode: random
-    env_mode: warehouse
+    agent_mode: airport
+    env_mode: airport
 
     nb_agents: 1
+    nb_static_obstacles: 2
+    nb_moving_obstacles: 3
+    nb_targets: 1
+
+    max_attempts: 100
+    max_steps: 150
+
+  - name: task8
+    width: 64
+    height: 32
+
+    agent_mode: random
+    env_mode: random
+
+    nb_agents: 1
+    nb_static_obstacles: 9
     nb_moving_obstacles: 2
     nb_targets: 2
 
-    margin: 2
     max_attempts: 100
     max_steps: 200
 
-  - name: task8
-    width: 32
-    height: 32
-
-    agent_mode: crossing
-    env_mode: crossing
-
-    nb_agents: 2
-    nb_static_obstacles: 0
-    nb_moving_obstacles: 0
-
-    max_attempts: 100
-    max_steps: 100
+  # 3 — Environnements très denses (warehouse)
 
   - name: task9
     width: 64
     height: 32
 
     agent_mode: random
-    env_mode: random
+    env_mode: warehouse
 
-    nb_agents: 5
-    nb_static_obstacles: 0
-    nb_moving_obstacles: 1
-    nb_targets: 3
+    nb_agents: 1
+    nb_static_obstacles: 10
+    nb_moving_obstacles: 2
+    nb_targets: 1
 
     max_attempts: 100
-    max_steps: 300
+    max_steps: 200
 
   - name: task10
     width: 64
     height: 32
 
     agent_mode: random
+    env_mode: warehouse
+
+    nb_agents: 1
+    nb_static_obstacles: 12
+    nb_moving_obstacles: 2
+    nb_targets: 1
+
+    max_attempts: 100
+    max_steps: 250
+
+  - name: task11
+    width: 64
+    height: 32
+
+    agent_mode: random
+    env_mode: warehouse
+
+    nb_agents: 1
+    nb_static_obstacles: 14
+    nb_moving_obstacles: 2
+    nb_targets: 1
+
+    max_attempts: 100
+    max_steps: 250
+
+  - name: task12
+    width: 64
+    height: 32
+
+    agent_mode: hospital
+    env_mode: hospital
+
+    nb_agents: 1
+    nb_static_obstacles: 8
+    nb_moving_obstacles: 1
+    nb_targets: 2
+
+    max_attempts: 100
+    max_steps: 250
+
+  # 4 -- Introduction du multi-agent
+
+  - name: task13
+    width: 64
+    height: 32
+
+    agent_mode: crossing
+    env_mode: crossing
+
+    nb_agents: 4
+    nb_static_obstacles: 0
+    nb_moving_obstacles: 2
+    nb_targets: 1
+
+    max_attempts: 100
+    max_steps: 150
+
+  - name: task14
+    width: 64
+    height: 32
+
+    agent_mode: random
+    env_mode: warehouse
+
+    nb_agents: 2
+    nb_static_obstacles: 14
+    nb_moving_obstacles: 2
+    nb_targets: 1
+
+    max_attempts: 100
+    max_steps: 150
+
+  - name: task15
+    width: 64
+    height: 32
+
+    agent_mode: airport
+    env_mode: airport
+
+    nb_agents: 5
+    nb_static_obstacles: 1
+    nb_moving_obstacles: 0
+    nb_targets: 1
+
+    max_attempts: 100
+    max_steps: 200
+
+  - name: task16
+    width: 64
+    height: 32
+
+    agent_mode: airport
+    env_mode: airport
+
+    nb_agents: 5
+    nb_static_obstacles: 1
+    nb_moving_obstacles: 1
+    nb_targets: 2
+
+    max_attempts: 100
+    max_steps: 200
+
+eval:
+  # Training scenarios
+
+  - name: eval1
+    width: 64
+    height: 32
+
+    agent_mode: random
     env_mode: random
+
+    nb_agents: 1
+    nb_static_obstacles: 6
+    nb_moving_obstacles: 2
+    nb_targets: 2
+
+    margin: 2
+    max_attempts: 200
+    max_steps: 200
+
+  - name: eval2
+    width: 64
+    height: 32
+
+    agent_mode: random
+    env_mode: random
+
+    nb_agents: 2
+    nb_static_obstacles: 6
+    nb_moving_obstacles: 2
+    nb_targets: 2
+
+    margin: 2
+    max_attempts: 200
+    max_steps: 200
+
+  - name: eval3
+    width: 64
+    height: 32
+
+    agent_mode: random
+    env_mode: warehouse
+
+    nb_agents: 2
+    nb_static_obstacles: 14
+    nb_moving_obstacles: 2
+    nb_targets: 1
+
+    margin: 2
+    max_attempts: 200
+    max_steps: 250
+
+  - name: eval4
+    width: 64
+    height: 32
+
+    agent_mode: crossing
+    env_mode: crossing
+
+    nb_agents: 5
+    nb_static_obstacles: 0
+    nb_moving_obstacles: 1
+    nb_targets: 1
+
+    margin: 2
+    max_attempts: 300
+    max_steps: 200
+
+  # Hospital scenarios
+
+  - name: eval5
+    width: 64
+    height: 32
+
+    agent_mode: hospital
+    env_mode: hospital
+
+    nb_agents: 1
+    nb_static_obstacles: 8
+    nb_moving_obstacles: 1
+    nb_targets: 3
+
+    margin: 1
+    max_attempts: 200
+    max_steps: 350
+
+  - name: eval6
+    width: 64
+    height: 32
+
+    agent_mode: hospital
+    env_mode: hospital
+
+    nb_agents: 1
+    nb_static_obstacles: 12
+    nb_moving_obstacles: 1
+    nb_targets: 3
+
+    margin: 1
+    max_attempts: 200
+    max_steps: 350
+
+  - name: eval7
+    width: 64
+    height: 32
+
+    agent_mode: hospital
+    env_mode: hospital
+
+    nb_agents: 2
+    nb_static_obstacles: 12
+    nb_moving_obstacles: 2
+    nb_targets: 3
+
+    margin: 1
+    max_attempts: 200
+    max_steps: 350
+
+  # Airport scenarios
+
+  - name: eval8
+    width: 64
+    height: 32
+
+    agent_mode: airport
+    env_mode: airport
 
     nb_agents: 8
     nb_static_obstacles: 0
     nb_moving_obstacles: 1
-    nb_targets: 3
+    nb_targets: 1
 
-    max_attempts: 100
+    margin: 2
+    max_attempts: 200
+    max_steps: 200
+
+  - name: eval9
+    width: 128
+    height: 64
+
+    agent_mode: airport
+    env_mode: airport
+
+    nb_agents: 20
+    nb_static_obstacles: 0
+    nb_moving_obstacles: 0
+    nb_targets: 1
+
+    margin: 2
+    max_attempts: 300
     max_steps: 300
 
-eval_environments:
-  - name: eval1_random_1
-    width: 128
-    height: 64
+  - name: eval10
+    width: 256
+    height: 128
 
-    agent_mode: random
-    env_mode: random
+    agent_mode: airport
+    env_mode: airport
 
-    nb_agents: 1
-    nb_static_obstacles: 6
+    nb_agents: 50
+    nb_static_obstacles: 0
     nb_moving_obstacles: 0
-    nb_targets: 2
-
-    max_attempts: 100
-    max_steps: 200
-
-  - name: eval2_random_2
-    width: 128
-    height: 64
-
-    agent_mode: random
-    env_mode: random
-
-    nb_agents: 1
-    nb_static_obstacles: 0
-    nb_moving_obstacles: 4
-    nb_targets: 2
-
-    max_attempts: 100
-    max_steps: 200
-
-  - name: eval3_random_3
-    width: 128
-    height: 64
-
-    agent_mode: random
-    env_mode: random
-
-    nb_agents: 1
-    nb_static_obstacles: 6
-    nb_moving_obstacles: 4
-    nb_targets: 2
-
-    max_attempts: 100
-    max_steps: 200
-
-  - name: eval4_random_4
-    width: 128
-    height: 64
-
-    agent_mode: random
-    env_mode: random
-
-    nb_agents: 2
-    nb_static_obstacles: 6
-    nb_moving_obstacles: 4
-    nb_targets: 2
-
-    max_attempts: 100
-    max_steps: 200
-
-  - name: eval5_random_5
-    width: 128
-    height: 64
-
-    agent_mode: random
-    env_mode: random
-
-    nb_agents: 3
-    nb_static_obstacles: 6
-    nb_moving_obstacles: 5
-    nb_targets: 2
-
-    max_attempts: 100
-    max_steps: 200
-
-  - name: eval6_warehouse_1
-    width: 128
-    height: 64
-
-    agent_mode: random
-    env_mode: warehouse
-
-    nb_agents: 1
-    nb_moving_obstacles: 3
-    nb_targets: 2
+    nb_targets: 1
 
     margin: 2
-    max_attempts: 100
-    max_steps: 200
-
-  - name: eval7_warehouse_2
-    width: 128
-    height: 64
-
-    agent_mode: random
-    env_mode: warehouse
-
-    nb_agents: 2
-    nb_moving_obstacles: 3
-    nb_targets: 2
-
-    margin: 2
-    max_attempts: 100
-    max_steps: 200
-
-  - name: eval8_warehouse_3
-    width: 128
-    height: 64
-
-    agent_mode: random
-    env_mode: warehouse
-
-    nb_agents: 5
-    nb_moving_obstacles: 0
-    nb_targets: 2
-
-    margin: 2
-    max_attempts: 100
-    max_steps: 200
-
-  - name: eval9_crossing_1
-    width: 64
-    height: 64
-
-    agent_mode: crossing
-    env_mode: crossing
-
-    nb_agents: 1
-    nb_static_obstacles: 0
-    nb_moving_obstacles: 4
-
-    max_attempts: 100
-    max_steps: 200
-
-  - name: eval10_crossing_2
-    width: 64
-    height: 64
-
-    agent_mode: crossing
-    env_mode: crossing
-
-    nb_agents: 3
-    nb_static_obstacles: 0
-    nb_moving_obstacles: 2
-
-    max_attempts: 100
-    max_steps: 200
+    max_attempts: 300
+    max_steps: 400

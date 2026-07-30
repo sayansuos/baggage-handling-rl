@@ -1,4 +1,4 @@
-train_tasks:
+train:
   - name: task1
     env_config: task1
     agent_config: agent_1
@@ -59,63 +59,99 @@ train_tasks:
     reward_config: reward_1
     n_steps: 300_000
 
-eval_tasks:
-  - name: eval1_random_1
-    env_config: eval1_random_1
+  - name: task11
+    env_config: task11
+    agent_config: agent_1
+    reward_config: reward_1
+    n_steps: 300_000
+
+  - name: task12
+    env_config: task12
+    agent_config: agent_1
+    reward_config: reward_1
+    n_steps: 300_000
+
+  - name: task13
+    env_config: task13
+    agent_config: agent_1
+    reward_config: reward_1
+    n_steps: 300_000
+
+  - name: task14
+    env_config: task14
+    agent_config: agent_1
+    reward_config: reward_1
+    n_steps: 300_000
+
+  - name: task15
+    env_config: task15
+    agent_config: agent_1
+    reward_config: reward_1
+    n_steps: 300_000
+
+  - name: task16
+    env_config: task16
+    agent_config: agent_1
+    reward_config: reward_1
+    n_steps: 300_000
+
+eval:
+  - name: eval1
+    env_config: eval1
     agent_config: agent_1
     reward_config: reward_1
     n_steps: null
 
-  - name: eval2_random_2
-    env_config: eval2_random_2
+  - name: eval2
+    env_config: eval2
     agent_config: agent_1
     reward_config: reward_1
     n_steps: null
 
-  - name: eval3_random_3
-    env_config: eval3_random_3
+  - name: eval3
+    env_config: eval3
     agent_config: agent_1
     reward_config: reward_1
     n_steps: null
 
-  - name: eval4_random_4
-    env_config: eval4_random_4
+  - name: eval4
+    env_config: eval4
     agent_config: agent_1
     reward_config: reward_1
     n_steps: null
 
-  - name: eval5_random_5
-    env_config: eval5_random_5
+  - name: eval5
+    env_config: eval5
     agent_config: agent_1
     reward_config: reward_1
     n_steps: null
 
-  - name: eval6_warehouse_1
-    env_config: eval6_warehouse_1
+  - name: eval6
+    env_config: eval6
     agent_config: agent_1
     reward_config: reward_1
     n_steps: null
 
-  - name: eval7_warehouse_2
-    env_config: eval7_warehouse_2
+  - name: eval7
+    env_config: eval7
     agent_config: agent_1
     reward_config: reward_1
     n_steps: null
 
-  - name: eval8_warehouse_3
-    env_config: eval8_warehouse_3
+  - name: eval8
+    env_config: eval8
     agent_config: agent_1
     reward_config: reward_1
     n_steps: null
 
-  - name: eval9_crossing_1
-    env_config: eval9_crossing_1
+  - name: eval9
+    env_config: eval9
     agent_config: agent_1
     reward_config: reward_1
     n_steps: null
 
-  - name: eval10_crossing_2
-    env_config: eval10_crossing_2
+  - name: eval10
+    env_config: eval10
     agent_config: agent_1
     reward_config: reward_1
     n_steps: null
