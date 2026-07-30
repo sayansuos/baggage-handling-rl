@@ -74,7 +74,7 @@ class Manager:
         mode = self.env_config.env_mode
 
         # Add the environment border walls
-        self._add_walls(pad)
+        self._add_walls(pad=pad)
 
         # Generate the obstacles according to the selected mode
         if "fixed" in mode:
@@ -89,6 +89,12 @@ class Manager:
             self._warehouse_static_obstacles()
         if mode == "crossing":
             self._crossing_static_obstacles()
+        if mode == "hospital":
+            self._hospital_static_obstacles(pad=pad)
+        if mode == "airport":
+            self._airport_static_obstacles(
+                pad=pad, min_dist=min_dist, max_attempts=max_attempts
+            )
 
         return self.static_obstacles
 
@@ -124,6 +130,21 @@ class Manager:
             self._crossing_moving_obstacles(
                 min_dist=min_dist, max_attempts=max_attempts
             )
+        if mode == "hospital":
+            self._hospital_moving_obstacles(
+                radius_min=radius_min,
+                radius_max=radius_max,
+                min_dist=min_dist,
+                max_attempts=max_attempts,
+            )
+        if mode == "airport":
+            self._airport_moving_obstacles(
+                nb_targets=nb_targets,
+                radius_min=radius_min,
+                radius_max=radius_max,
+                min_dist=min_dist,
+                max_attempts=max_attempts,
+            )
 
         return self.moving_obstacles
 
@@ -153,6 +174,14 @@ class Manager:
             )
         if mode == "crossing":
             self._crossing_agents(min_dist=min_dist, max_attempts=max_attempts)
+        if mode == "hospital":
+            self._hospital_agents(
+                nb_targets=nb_targets, min_dist=min_dist, max_attempts=max_attempts
+            )
+        if mode == "airport":
+            self._airport_agents(
+                nb_targets=nb_targets, min_dist=min_dist, max_attempts=max_attempts
+            )
 
         return self.agents
 
@@ -280,7 +309,12 @@ class Manager:
 
                 self.static_obstacles.append(obstacle)
 
-    def _random_static_obstacles(self, min_dist: float, max_attempts: int):
+    def _random_static_obstacles(
+        self,
+        min_dist: float,
+        max_attempts: int,
+        sizes: dict | None = None,
+    ):
         """
         Generate random static obstacles with sizes adapted to the environment.
         """
@@ -292,15 +326,24 @@ class Manager:
         # Compute the minimul distance from the environment borders
         pad = int(self.env_config.thickness + min_dist)
 
-        # Estimate the available surface per obstacle and get a reference dimension
-        area = (self.width * self.height) / n
-        base = int(np.sqrt(area))
-
-        # Compute the width and height ranges
-        w_min = max(1, base // 6)
-        w_max = max(w_min + 1, base // 4)
-        h_min = max(1, base // 6)
-        h_max = max(h_min + 1, base // 4)
+        if sizes is not None:
+            # Estimate the available surface per obstacle and get a reference dimension
+            area = (self.width * self.height) / n
+            base = int(np.sqrt(area))
+            # Compute the width and height ranges
+            w_min = max(1, base // 6)
+            w_max = max(w_min + 1, base // 4)
+            h_min = max(1, base // 6)
+            h_max = max(h_min + 1, base // 4)
+        else:
+            # Get parameters from attributes
+            area = sizes["area"]
+            base = int(np.sqrt(area))
+            # Compute the width and height ranges
+            w_min = max(1, base // 6)
+            w_max = max(w_min + 1, base // 4)
+            h_min = max(1, base // 6)
+            h_max = max(h_min + 1, base // 4)
 
         # Attempt to generate the obstacles
         for _ in range(n):
@@ -339,32 +382,53 @@ class Manager:
 
     def _warehouse_static_obstacles(self):
         """
-        Generate a predefined static obstacle configuration.
+        Generate warehouse shelves regularly distributed in the environment.
         """
 
         n = self.env_config.nb_static_obstacles
         if n < 1:
             return
 
-        n_cols = self.width // 10  # Number of columns adapted to the env width
-        h = self.height // 2 - 10  # Obstacle height adapted to the env height
-        w = 2  # Fixed obstacle width
+        # Obstacles are arranged in two rows
+        n_cols = int(np.ceil(n / 2))
+
+        # Obstacle dimensions
+        w = max(1, self.width // 32)
+        h = max(2, self.height // 5)
 
         # Compute evenly centered x positions with 2 vertical obstacles
-        x = [self.width * i for i in np.linspace(1 / n_cols, 1 - 1 / n_cols, n_cols)]
-        y = [self.height * i for i in [0.3, 0.7]]
+        x_positions = np.linspace(
+            self.width / (n_cols + 1),
+            self.width * n_cols / (n_cols + 1),
+            n_cols,
+        )
+
+        # Compute upper and lower y positions
+        y_positions = [
+            self.height * 0.3,
+            self.height * 0.7,
+        ]
+
+        count = 0
 
         # Create 2 vertical obstacles over all x positions
-        for i in x:
-            for j in y:
+        for x in x_positions:
+            for y in y_positions:
+                # Stop if all obstacles has been created
+                if count >= n:
+                    return
+
+                # Create obstacle
                 obstacle = static_entity.StaticEntity(
                     width=w,
                     height=h,
                     num=len(self.static_obstacles) + 1,
                 )
-                obstacle.current_position = (i, j)
-
+                obstacle.current_position = (x, y)
                 self.static_obstacles.append(obstacle)
+
+                # Increment obstacle
+                count += 1
 
     def _crossing_static_obstacles(self):
         """
@@ -401,6 +465,179 @@ class Manager:
             obstacle.current_position = pos
 
             self.static_obstacles.append(obstacle)
+
+    def _hospital_static_obstacles(self, pad: float):
+        """
+        Generate a random hospital-like environment with a main corridor,
+        an elevator area and rooms on both sides.
+        """
+
+        n = self.env_config.nb_static_obstacles
+        if n < 1:
+            return
+
+        wall = pad / 2
+
+        # Elevator area parameters
+        elevator_w, elevator_h = 6, 6
+
+        # Main corridor parameters
+        corridor_h = 8
+
+        # Create elevator horizontal walls
+        elevator_bot_y = (self.height - elevator_h) / 2
+        elevator_top_y = (self.height + elevator_h) / 2
+        for y in [elevator_bot_y, elevator_top_y]:
+            obstacle = static_entity.StaticEntity(
+                width=elevator_w,
+                height=wall,
+                num=len(self.static_obstacles) + 1,
+            )
+            obstacle.current_position = (elevator_w / 2, y)
+            self.static_obstacles.append(obstacle)
+
+        # Create elevator vertical walls
+        wall_bot_y = (self.height - corridor_h) / 4
+        wall_top_y = self.height - (self.height - corridor_h) / 4
+        wall_h = (self.height - min(elevator_h, corridor_h)) / 2 + 1
+        for y in [wall_bot_y, wall_top_y]:
+            obstacle = static_entity.StaticEntity(
+                width=wall,
+                height=wall_h,
+                num=len(self.static_obstacles) + 1,
+            )
+            obstacle.current_position = (elevator_w, y)
+            self.static_obstacles.append(obstacle)
+
+        # Create room walls
+        room_walls_bot = []
+        room_walls_top = []
+        min_gap = self.width // 8
+        wall_h = (self.height - max(elevator_h, corridor_h)) / 2
+        wall_x_uniform = np.linspace(elevator_w + min_gap, self.width - min_gap, n - 2)
+        for i, x in enumerate(wall_x_uniform):
+            wall_x = x + np.random.uniform(-min_gap / 2, min_gap / 2)
+            if i % 2 == 1:
+                wall_y = wall_bot_y
+                room_walls_bot.append(wall_x)
+            else:
+                wall_y = wall_top_y
+                room_walls_top.append(wall_x)
+
+            obstacle = static_entity.StaticEntity(
+                width=wall,
+                height=wall_h,
+                num=len(self.static_obstacles) + 1,
+            )
+            obstacle.current_position = (wall_x, wall_y)
+            self.static_obstacles.append(obstacle)
+
+        # Create corridor walls
+        door_w = 6 * self.agent_config.radius
+        corridor_bot_y = (self.height - corridor_h) / 2
+        corridor_top_y = (self.height + corridor_h) / 2
+        self._hospital_corridor_wall(
+            y=corridor_bot_y,
+            room_walls=room_walls_bot,
+            elevator_w=elevator_w,
+            door_w=door_w,
+            pad=wall,
+        )
+        self._hospital_corridor_wall(
+            y=corridor_top_y,
+            room_walls=room_walls_top,
+            elevator_w=elevator_w,
+            door_w=door_w,
+            pad=wall,
+        )
+
+    def _hospital_corridor_wall(
+        self,
+        y: float,
+        room_walls: list[float],
+        elevator_w: float,
+        door_w: float,
+        pad: float,
+    ):
+        """
+        Create one side of the main corridor with one door for each room.
+        """
+
+        # Add environment limits to define all rooms
+        limits = [elevator_w] + sorted(room_walls) + [self.width]
+
+        # Iterate over rooms
+        for x_min, x_max in zip(limits[:-1], limits[1:]):
+            # Center the door inside the room
+            door_x = (x_min + x_max) / 2
+            door_x_min = door_x - door_w / 2
+            door_x_max = door_x + door_w / 2
+
+            # Get walls parameters
+            left_w = door_x_min - x_min
+            right_w = x_max - door_x_max
+
+            # Create the wall before the door
+            if left_w > 0:
+                obstacle = static_entity.StaticEntity(
+                    width=left_w,
+                    height=pad,
+                    num=len(self.static_obstacles) + 1,
+                )
+                obstacle.current_position = (
+                    x_min + left_w / 2,
+                    y,
+                )
+                self.static_obstacles.append(obstacle)
+
+            # Create the wall after the door
+            if right_w > 0:
+                obstacle = static_entity.StaticEntity(
+                    width=right_w,
+                    height=pad,
+                    num=len(self.static_obstacles) + 1,
+                )
+                obstacle.current_position = (
+                    door_x_max + right_w / 2,
+                    y,
+                )
+                self.static_obstacles.append(obstacle)
+
+    def _airport_static_obstacles(self, pad: float, min_dist: float, max_attempts: int):
+        """
+        Generate the pickup and delivery areas of the airport scenario,
+        then add random static obstacles if required.
+        """
+
+        wall = pad / 2
+
+        # Pickup and Delivery zone parameters
+        w = self.width // 6
+        h = self.height // 2
+        pickup_x, delivery_x = w, self.width - w
+        y = self.height / 2
+
+        # Create pickup zone
+        obstacle = static_entity.StaticEntity(
+            width=wall, height=h, num=len(self.static_obstacles) + 1
+        )
+        obstacle.current_position = (pickup_x, y)
+        self.static_obstacles.append(obstacle)
+
+        # Create delivery zone
+        obstacle = static_entity.StaticEntity(
+            width=wall, height=h, num=len(self.static_obstacles) + 1
+        )
+        obstacle.current_position = (delivery_x, y)
+        self.static_obstacles.append(obstacle)
+
+        # Create fixed obstacles if required
+        n = self.env_config.nb_static_obstacles
+        if n > 1:
+            for _ in range(n):
+                return self._random_static_obstacles(
+                    min_dist=min_dist, max_attempts=max_attempts
+                )
 
     # ---------------------------------------------------------------
     # GENERATE MOVING OBSTACLES
@@ -548,6 +785,139 @@ class Manager:
 
             self.moving_obstacles.append(moving_obstacle)
 
+    def _hospital_moving_obstacles(
+        self,
+        radius_min: float,
+        radius_max: float,
+        min_dist: float,
+        max_attempts: int,
+    ):
+        """
+        Generate moving obstacles traveling along the hospital corridor.
+        """
+
+        n = self.env_config.nb_moving_obstacles
+        if n < 1:
+            return
+
+        # Elevator area parameters
+        elevator_w, elevator_h = 6, 6
+
+        # Corridor parameters
+        corridor_h = 8
+        corridor_w_min, corridor_w_max = elevator_w, self.width
+        corridor_h_min = (self.height - corridor_h) / 2
+        corridor_h_max = (self.height + corridor_h) / 2
+
+        # Generate all obstacles
+        for i in range(n):
+            # Create the obstacle
+            entity = moving_entity.MovingEntity(num=i + 1)
+
+            # Randomly select one end of the corridor
+            side = np.random.choice(["left", "right"])
+            if side == "left":
+                w_min = corridor_w_min
+                w_max = corridor_w_min + self.width // 5
+                target_w_min = 4 * self.width // 5
+                target_w_max = corridor_w_max
+            else:
+                w_min = 4 * self.width // 5
+                w_max = corridor_w_max
+                target_w_min = corridor_w_min
+                target_w_max = corridor_w_min + self.width // 5
+
+            # Generate a valid position
+            pos = self._set_random_position(
+                entity=entity,
+                w_min=w_min,
+                w_max=w_max,
+                h_min=corridor_h_min,
+                h_max=corridor_h_max,
+                min_dist=min_dist,
+                max_attempts=max_attempts,
+                for_target=False,
+            )
+            entity.start_position = pos
+            entity.current_position = pos
+
+            # Randomly select the obstacle radius
+            entity.radius = np.random.uniform(radius_min, radius_max)
+
+            # Generate a valid target position
+            target = self._set_random_position(
+                entity=entity,
+                w_min=target_w_min,
+                w_max=target_w_max,
+                h_min=corridor_h_min,
+                h_max=corridor_h_max,
+                min_dist=min_dist,
+                max_attempts=max_attempts,
+                for_target=False,
+            )
+            entity.target_positions.append(target)
+
+            self.moving_obstacles.append(entity)
+
+    def _airport_moving_obstacles(
+        self,
+        nb_targets: int,
+        radius_min: float,
+        radius_max: float,
+        min_dist: float,
+        max_attempts: int,
+    ):
+        """
+        Generate moving obstacles between the pickup and delivery areas.
+        """
+
+        n = self.env_config.nb_moving_obstacles
+        if n < 1:
+            return
+
+        # Pickup and Delivery zone parameters
+        w = self.width // 6
+        pickup_w_max, delivery_w_min = w, self.width - w
+        h_min, h_max = 0, self.height
+
+        # Generate all agents
+        for i in range(n):
+            # Create the obstacle
+            entity = moving_entity.MovingEntity(num=i + 1)
+
+            # Generate a valid position between the pickup and delivery areas
+            pos = self._set_random_position(
+                entity=entity,
+                w_min=pickup_w_max,
+                w_max=delivery_w_min,
+                h_min=h_min,
+                h_max=h_max,
+                min_dist=min_dist,
+                max_attempts=max_attempts,
+                for_target=False,
+            )
+            entity.start_position = pos
+            entity.current_position = pos
+
+            # Randomly select the obstacle radius
+            entity.radius = np.random.uniform(radius_min, radius_max)
+
+            # Generate valid target positions between the pickup and delivery areas
+            for _ in range(nb_targets):
+                target = self._set_random_position(
+                    entity=entity,
+                    w_min=pickup_w_max,
+                    w_max=delivery_w_min,
+                    h_min=h_min,
+                    h_max=h_max,
+                    min_dist=min_dist,
+                    max_attempts=max_attempts,
+                    for_target=False,
+                )
+                entity.target_positions.append(target)
+
+            self.moving_obstacles.append(entity)
+
     # ---------------------------------------------------------------
     # GENERATE AGENTS
     # ---------------------------------------------------------------
@@ -677,6 +1047,139 @@ class Manager:
             entity.old_position = pos
             entity.path = [pos]
             entity.target_positions.append(target)
+
+            self.agents.append(entity)
+
+    def _hospital_agents(
+        self,
+        nb_targets: int,
+        min_dist: float,
+        max_attempts: int,
+    ):
+        """
+        Generate agents starting from the elevator area, performing a mission
+        on the hospital floor and returning to their starting position.
+        """
+
+        n = self.env_config.nb_agents
+        if n < 1:
+            return
+
+        # Elevator area parameters
+        elevator_w, elevator_h = 6, 6
+        elevator_w_min, elevator_w_max = 0, elevator_w
+        elevator_h_min = (self.height - elevator_h) / 2
+        elevator_h_max = (self.height + elevator_h) / 2
+
+        # Corridor parameters
+        corridor_h = 8
+        corridor_w_min, corridor_w_max = elevator_w_max, self.height
+        corridor_h_min = (self.height - corridor_h) / 2
+        corridor_h_max = (self.height + corridor_h) / 2
+
+        # Generate all agents
+        for i in range(n):
+            entity = agent.Agent(
+                self.agent_config,
+                i + 1,
+            )
+
+            # Generate a valid position in the elevator area
+            pos = self._set_random_position(
+                entity=entity,
+                w_min=elevator_w_min,
+                w_max=elevator_w_max,
+                h_min=elevator_h_min,
+                h_max=elevator_h_max,
+                min_dist=min_dist,
+                max_attempts=max_attempts,
+                for_target=False,
+            )
+            entity.start_position = pos
+            entity.current_position = pos
+            entity.old_position = pos
+            entity.path = [pos]
+
+            # Generate valid target positions inside a room
+            for _ in range(nb_targets - 1):
+                side = np.random.choice(["top", "bot"])
+                if side == "top":
+                    h_min = corridor_h_max
+                    h_max = self.height
+                else:
+                    h_min = 0
+                    h_max = corridor_h_min
+
+                target = self._set_random_position(
+                    entity=entity,
+                    w_min=corridor_w_min,
+                    w_max=corridor_w_max,
+                    h_min=h_min,
+                    h_max=h_max,
+                    min_dist=min_dist,
+                    max_attempts=max_attempts,
+                    for_target=True,
+                )
+                entity.target_positions.append(target)
+
+            # Return to the elevator
+            entity.target_positions.append(pos)
+
+            self.agents.append(entity)
+
+    def _airport_agents(self, nb_targets: int, min_dist: float, max_attempts: int):
+        """
+        Generate agents starting in the pickup area and alternating between
+        delivery targets and returns to their initial position.
+        """
+
+        n = self.env_config.nb_agents
+        if n < 1:
+            return
+
+        # Pickup and Delivery zone parameters
+        w = self.width // 6
+        h = self.height // 2
+        pickup_w_min, pickup_w_max = 0, w
+        delivery_w_min, delivery_w_max = self.width - w, self.width
+        h_min, h_max = (self.height - h) // 2, (self.height + h) // 2
+
+        # Generate all agents
+        for i in range(n):
+            entity = agent.Agent(self.agent_config, i + 1)
+
+            # Generate a valid position in the pickup area
+            pos = self._set_random_position(
+                entity=entity,
+                w_min=pickup_w_min,
+                w_max=pickup_w_max,
+                h_min=h_min,
+                h_max=h_max,
+                min_dist=min_dist,
+                max_attempts=max_attempts,
+                for_target=False,
+            )
+            entity.start_position = pos
+            entity.current_position = pos
+            entity.old_position = pos
+            entity.path = [pos]
+
+            # Generate a valid target positions in the delivery area
+            for j in range(nb_targets):
+                target = self._set_random_position(
+                    entity=entity,
+                    w_min=delivery_w_min,
+                    w_max=delivery_w_max,
+                    h_min=h_min,
+                    h_max=h_max,
+                    min_dist=min_dist,
+                    max_attempts=max_attempts,
+                    for_target=True,
+                )
+                entity.target_positions.append(target)
+
+                if j < nb_targets - 1:
+                    entity.target_positions.append(pos)
 
             self.agents.append(entity)
 
