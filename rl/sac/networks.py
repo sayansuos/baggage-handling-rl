@@ -107,7 +107,7 @@ class ActorNetwork(torch.nn.Module):
         Constructor
         """
 
-        super(ActorNetwork, self).__init__()
+        super().__init__()
 
         # Store the checkpoint file path
         self.checkpoint_path = chkpt_path
@@ -159,7 +159,9 @@ class ActorNetwork(torch.nn.Module):
         self.device = torch.device(
             "cuda"
             if torch.cuda.is_available()
-            else "mps" if torch.backends.mps.is_available() else "cpu"
+            else "mps"
+            if torch.backends.mps.is_available()
+            else "cpu"
         )
         self.to(self.device)
 
@@ -292,7 +294,7 @@ class CriticNetwork(torch.nn.Module):
         Constructor
         """
 
-        super(CriticNetwork, self).__init__()
+        super().__init__()
 
         # Store the checkpoint file path
         self.checkpoint_path = chkpt_path
@@ -323,7 +325,9 @@ class CriticNetwork(torch.nn.Module):
         self.device = torch.device(
             "cuda"
             if torch.cuda.is_available()
-            else "mps" if torch.backends.mps.is_available() else "cpu"
+            else "mps"
+            if torch.backends.mps.is_available()
+            else "cpu"
         )
         self.to(self.device)
 
