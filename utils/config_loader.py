@@ -15,7 +15,7 @@ def load_tasks(task_path="configs/tasks.yaml", obj: str = "train") -> list[Task]
         data = yaml.safe_load(f)
 
     # Select the task section according to the requested mode
-    for task in data[f"{obj}_tasks"]:
+    for task in data[obj]:
         # Load the configurations according to the task
         env_config = load_env_config(name=task["env_config"], obj=obj)
         agent_config = load_agent_config(name=task["agent_config"])
@@ -49,7 +49,7 @@ def load_env_config(name: str | None = None, obj: str = "train") -> EnvConfig:
         data = yaml.safe_load(f)
 
     # Select the environment section according to the requested mode
-    configs = data[f"{obj}_environments"]
+    configs = data[obj]
 
     # Find the configuration whose name matches the requested name and copy
     conf = next(conf for conf in configs if conf["name"] == name)
