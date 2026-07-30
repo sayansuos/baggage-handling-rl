@@ -225,7 +225,7 @@ train:
     env_mode: airport
 
     nb_agents: 5
-    nb_static_obstacles: 1
+    nb_static_obstacles: 0
     nb_moving_obstacles: 0
     nb_targets: 1
 

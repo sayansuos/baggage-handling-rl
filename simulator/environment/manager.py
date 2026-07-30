@@ -313,7 +313,6 @@ class Manager:
         self,
         min_dist: float,
         max_attempts: int,
-        sizes: dict | None = None,
     ):
         """
         Generate random static obstacles with sizes adapted to the environment.
@@ -326,24 +325,14 @@ class Manager:
         # Compute the minimul distance from the environment borders
         pad = int(self.env_config.thickness + min_dist)
 
-        if sizes is not None:
-            # Estimate the available surface per obstacle and get a reference dimension
-            area = (self.width * self.height) / n
-            base = int(np.sqrt(area))
-            # Compute the width and height ranges
-            w_min = max(1, base // 6)
-            w_max = max(w_min + 1, base // 4)
-            h_min = max(1, base // 6)
-            h_max = max(h_min + 1, base // 4)
-        else:
-            # Get parameters from attributes
-            area = sizes["area"]
-            base = int(np.sqrt(area))
-            # Compute the width and height ranges
-            w_min = max(1, base // 6)
-            w_max = max(w_min + 1, base // 4)
-            h_min = max(1, base // 6)
-            h_max = max(h_min + 1, base // 4)
+        # Estimate the available surface per obstacle and get a reference dimension
+        area = (self.width * self.height) / n
+        base = int(np.sqrt(area))
+        # Compute the width and height ranges
+        w_min = max(1, base // 6)
+        w_max = max(w_min + 1, base // 4)
+        h_min = max(1, base // 6)
+        h_max = max(h_min + 1, base // 4)
 
         # Attempt to generate the obstacles
         for _ in range(n):
@@ -633,7 +622,7 @@ class Manager:
 
         # Create fixed obstacles if required
         n = self.env_config.nb_static_obstacles
-        if n > 1:
+        if n > 0:
             for _ in range(n):
                 return self._random_static_obstacles(
                     min_dist=min_dist, max_attempts=max_attempts
