@@ -177,6 +177,7 @@ def run_train(
     tasks: list[Task],
     previous_task: Task | None = None,
     trained_agent_id: str = "agent_1",
+    name: str = None,
     fixed_curriculum: bool = True,
 ):
     """
@@ -226,10 +227,13 @@ def run_train(
         threshold = Curriculum.threshold
         n_eval_episodes = Curriculum.n_eval_episodes
 
+        name = name if name is not None else "curriculum"
+
         run_curriculum(
             tasks=tasks,
             previous_task=previous_task,
             trained_agent_id=trained_agent_id,
+            name=name,
             chunk_steps=chunk_steps,
             n_chunks=n_chunks,
             threshold=threshold,
@@ -246,6 +250,7 @@ def run_curriculum(
     tasks: list[Task],
     previous_task: Task | None,
     trained_agent_id: str,
+    name: str,
     chunk_steps: int,
     n_chunks: int,
     threshold: float,
@@ -263,10 +268,10 @@ def run_curriculum(
     focus_idx = 0
 
     # Name of the curriculum policy
-    policy_name = "curriculum"
+    policy_name = name
 
     # Name used to store the globally best curriculum policy
-    best_policy_name = "curriculum_best"
+    best_policy_name = f"{name}_best"
 
     # Latest evaluation success rate for every task
     scores = np.zeros(n_tasks)
@@ -380,7 +385,7 @@ def run_curriculum(
             # Evaluate the SAC policy
             history, _, _ = evaluate_sac(
                 task=task,
-                policy_name="curriculum",
+                policy_name=policy_name,
                 n_episodes=n_eval_episodes,
                 n_render=0,
                 trained_agent_id=trained_agent_id,
@@ -420,7 +425,7 @@ def run_curriculum(
                 policy_name=policy_name,
             )
 
-        print(f"[ CURRICULUM ] New best global success: {best_global_success:.1%}")
+            print(f"[ CURRICULUM ] New best global success: {best_global_success:.1%}")
 
         # --------------------------------------------------------------
         # Update curriculum difficulty
@@ -458,17 +463,17 @@ def run_curriculum(
         df_train = log_train(
             metrics=all_history,
             path="logs/train",
-            file_name="curriculum",
+            file_name=policy_name,
         )
         log_debug(
             metrics=all_debug,
             path="logs/train",
-            file_name="curriculum",
+            file_name=policy_name,
         )
         df_rewards = log_rewards(
             metrics=all_history,
             path="logs/train",
-            file_name="curriculum",
+            file_name=policy_name,
         )
 
         # Generate training figures
@@ -476,7 +481,7 @@ def run_curriculum(
             df_perf=df_train,
             df_rewards=df_rewards,
             path="figures/train",
-            file_name="curriculum",
+            file_name=policy_name,
         )
 
 
