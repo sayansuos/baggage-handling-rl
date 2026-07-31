@@ -1167,8 +1167,7 @@ class Manager:
                 )
                 entity.target_positions.append(target)
 
-                if j < nb_targets - 1:
-                    entity.target_positions.append(pos)
+                entity.target_positions.append(pos)
 
             self.agents.append(entity)
 
