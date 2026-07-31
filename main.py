@@ -48,6 +48,12 @@ def parse_args():
         "--probabilistic-curriculum",
         action="store_true",
     )
+    train_parser.add_argument(
+        "--name",
+        type=str,
+        default=None,
+        help="Name of the policy that will be trained.",
+    )
 
     # ------------------------------------------------------------------
     # Validation
@@ -82,6 +88,12 @@ def parse_args():
         type=str,
         default="agent_1",
         help="Identifiant of the agent that has been trained.",
+    )
+    validation_parser.add_argument(
+        "--policy-name",
+        type=str,
+        default=None,
+        help="Name of the policy that has to be validated.",
     )
 
     # ------------------------------------------------------------------
@@ -178,12 +190,14 @@ def main():
             train_tasks[args.previous_task] if args.previous_task is not None else None
         )
         trained_agent_id = args.trained_agent_id
+        name = args.name
         fixed_curriculum = not args.probabilistic_curriculum
 
         run_train(
             tasks=tasks,
             previous_task=previous_task,
             trained_agent_id=trained_agent_id,
+            name=name,
             fixed_curriculum=fixed_curriculum,
         )
 
@@ -192,11 +206,13 @@ def main():
         n_episodes = args.n_episodes
         n_render = args.n_render
         trained_agent_id = args.trained_agent_id
+        policy_name = args.policy_name
 
         run_validation(
             tasks=tasks,
             n_episodes=n_episodes,
             n_render=n_render,
+            policy_name=policy_name,
             trained_agent_id=trained_agent_id,
         )
 
@@ -233,16 +249,8 @@ def main():
         fps = args.fps
         path = "figures/demo"
 
-        plot_renders(
-            tasks=train_tasks,
-            path=path,
-            file_name="train",
-        )
-        plot_renders(
-            tasks=eval_tasks,
-            path=path,
-            file_name="eval",
-        )
+        plot_renders(tasks=train_tasks, path=path, file_name="train", max_ncols=4)
+        plot_renders(tasks=eval_tasks, path=path, file_name="eval", max_ncols=4)
 
         run_animation(
             tasks=train_tasks,
