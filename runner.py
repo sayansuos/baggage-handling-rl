@@ -17,6 +17,7 @@ def run_validation(
     tasks: list[Task],
     n_episodes: int,
     n_render: int,
+    policy_name: str | None,
     trained_agent_id="agent_1",
 ):
     """
@@ -46,7 +47,7 @@ def run_validation(
         # Run the trained policy over multiple episodes
         history, frames, _ = evaluate_sac(
             task=task,
-            policy_name=task.name,
+            policy_name=policy_name if policy_name is not None else task.name,
             n_episodes=n_episodes,
             n_render=n_render,
             trained_agent_id=trained_agent_id,
@@ -56,27 +57,31 @@ def run_validation(
         print(f"[ {task.name} ] Evaluation terminated in {task_duration:.1f}s")
 
         # Run the trained policy over multiple episodes
-        df_train = log_train(
-            metrics=history, path="logs/validation", file_name=task.name
+        path = (
+            f"logs/validation/{policy_name}"
+            if policy_name is not None
+            else "logs/validation"
         )
-        df_rewards = log_rewards(
-            metrics=history, path="logs/validation", file_name=task.name
-        )
+        df_train = log_train(metrics=history, path=path, file_name=task.name)
+        df_rewards = log_rewards(metrics=history, path=path, file_name=task.name)
 
         # Generate validation figures
+        path = (
+            f"figures/validation/{policy_name}"
+            if policy_name is not None
+            else "figures/validation"
+        )
         plot_figures(
             df_perf=df_train,
             df_rewards=df_rewards,
-            path="figures/validation",
+            path=path,
             file_name=task.name,
             window=100,
         )
 
         # Save an animation when rendering is enabled
         if n_render > 0:
-            plot_animation(
-                frames=frames, path="figures/validation", file_name=task.name, fps=10
-            )
+            plot_animation(frames=frames, path=path, file_name=task.name, fps=10)
 
     # Compute the total validation duration
     duration = time.perf_counter() - start
