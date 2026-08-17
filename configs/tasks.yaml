@@ -143,15 +143,3 @@ eval:
     agent_config: agent_1
     reward_config: reward_1
     n_steps: null
-
-  - name: eval9
-    env_config: eval9
-    agent_config: agent_1
-    reward_config: reward_1
-    n_steps: null
-
-  - name: eval10
-    env_config: eval10
-    agent_config: agent_1
-    reward_config: reward_1
-    n_steps: null

@@ -241,9 +241,10 @@ train:
 
     nb_agents: 5
     nb_static_obstacles: 1
-    nb_moving_obstacles: 1
+    nb_moving_obstacles: 0
     nb_targets: 2
 
+    margin: 5
     max_attempts: 100
     max_steps: 200
 
@@ -324,22 +325,6 @@ eval:
     env_mode: hospital
 
     nb_agents: 1
-    nb_static_obstacles: 8
-    nb_moving_obstacles: 1
-    nb_targets: 3
-
-    margin: 1
-    max_attempts: 200
-    max_steps: 350
-
-  - name: eval6
-    width: 64
-    height: 32
-
-    agent_mode: hospital
-    env_mode: hospital
-
-    nb_agents: 1
     nb_static_obstacles: 12
     nb_moving_obstacles: 1
     nb_targets: 3
@@ -348,7 +333,7 @@ eval:
     max_attempts: 200
     max_steps: 350
 
-  - name: eval7
+  - name: eval6
     width: 64
     height: 32
 
@@ -366,23 +351,7 @@ eval:
 
   # Airport scenarios
 
-  - name: eval8
-    width: 64
-    height: 32
-
-    agent_mode: airport
-    env_mode: airport
-
-    nb_agents: 8
-    nb_static_obstacles: 0
-    nb_moving_obstacles: 1
-    nb_targets: 1
-
-    margin: 2
-    max_attempts: 200
-    max_steps: 200
-
-  - name: eval9
+  - name: eval7
     width: 128
     height: 64
 
@@ -394,11 +363,11 @@ eval:
     nb_moving_obstacles: 0
     nb_targets: 1
 
-    margin: 2
+    margin: 5
     max_attempts: 300
     max_steps: 300
 
-  - name: eval10
+  - name: eval8
     width: 256
     height: 128
 
@@ -406,10 +375,10 @@ eval:
     env_mode: airport
 
     nb_agents: 50
-    nb_static_obstacles: 0
+    nb_static_obstacles: 1
     nb_moving_obstacles: 0
     nb_targets: 1
 
-    margin: 2
+    margin: 5
     max_attempts: 300
     max_steps: 400

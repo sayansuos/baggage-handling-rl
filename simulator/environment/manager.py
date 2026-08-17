@@ -295,9 +295,8 @@ class Manager:
 
             # Create the obstacles
             for y in y_positions:
-                # Select a random width
+                # Randomly choose a size
                 w = np.random.randint(1, self.width // 16)
-                # Select a random height
                 h = np.random.randint(1, self.height // 16)
 
                 obstacle = static_entity.StaticEntity(
@@ -310,9 +309,7 @@ class Manager:
                 self.static_obstacles.append(obstacle)
 
     def _random_static_obstacles(
-        self,
-        min_dist: float,
-        max_attempts: int,
+        self, min_dist: float, max_attempts: int, size: tuple | None = None
     ):
         """
         Generate random static obstacles with sizes adapted to the environment.
@@ -341,9 +338,14 @@ class Manager:
 
             # Continue until a valid position is found or attempts are exhausted.
             while not placed and attempts < max_attempts:
-                # Compute random width and height
-                w = np.random.randint(w_min, w_max + 1)
-                h = np.random.randint(h_min, h_max + 1)
+                if size is None:
+                    # Compute random width and height
+                    w = np.random.randint(w_min, w_max + 1)
+                    h = np.random.randint(h_min, h_max + 1)
+
+                else:
+                    # Or use given size
+                    w, h = size
 
                 # Create obstacle
                 obstacle = static_entity.StaticEntity(
@@ -465,10 +467,8 @@ class Manager:
         if n < 1:
             return
 
-        wall = pad / 2
-
         # Elevator area parameters
-        elevator_w, elevator_h = 6, 6
+        elevator_w, elevator_h = 8, 8
 
         # Main corridor parameters
         corridor_h = 8
@@ -479,7 +479,7 @@ class Manager:
         for y in [elevator_bot_y, elevator_top_y]:
             obstacle = static_entity.StaticEntity(
                 width=elevator_w,
-                height=wall,
+                height=pad,
                 num=len(self.static_obstacles) + 1,
             )
             obstacle.current_position = (elevator_w / 2, y)
@@ -491,7 +491,7 @@ class Manager:
         wall_h = (self.height - min(elevator_h, corridor_h)) / 2 + 1
         for y in [wall_bot_y, wall_top_y]:
             obstacle = static_entity.StaticEntity(
-                width=wall,
+                width=pad,
                 height=wall_h,
                 num=len(self.static_obstacles) + 1,
             )
@@ -514,7 +514,7 @@ class Manager:
                 room_walls_top.append(wall_x)
 
             obstacle = static_entity.StaticEntity(
-                width=wall,
+                width=pad,
                 height=wall_h,
                 num=len(self.static_obstacles) + 1,
             )
@@ -522,7 +522,7 @@ class Manager:
             self.static_obstacles.append(obstacle)
 
         # Create corridor walls
-        door_w = 6 * self.agent_config.radius
+        door_w = 10 * self.agent_config.radius
         corridor_bot_y = (self.height - corridor_h) / 2
         corridor_top_y = (self.height + corridor_h) / 2
         self._hospital_corridor_wall(
@@ -530,14 +530,14 @@ class Manager:
             room_walls=room_walls_bot,
             elevator_w=elevator_w,
             door_w=door_w,
-            pad=wall,
+            pad=pad,
         )
         self._hospital_corridor_wall(
             y=corridor_top_y,
             room_walls=room_walls_top,
             elevator_w=elevator_w,
             door_w=door_w,
-            pad=wall,
+            pad=pad,
         )
 
     def _hospital_corridor_wall(
@@ -598,34 +598,32 @@ class Manager:
         then add random static obstacles if required.
         """
 
-        wall = pad / 2
+        # # Pickup and Delivery zone parameters
+        # w = self.width // 6
+        # h = self.height // 2
+        # pickup_x, delivery_x = w, self.width - w
+        # y = self.height / 2
 
-        # Pickup and Delivery zone parameters
-        w = self.width // 6
-        h = self.height // 2
-        pickup_x, delivery_x = w, self.width - w
-        y = self.height / 2
+        # # Create pickup zone
+        # obstacle = static_entity.StaticEntity(
+        #     width=2 * pad, height=h, num=len(self.static_obstacles) + 1
+        # )
+        # obstacle.current_position = (pickup_x, y)
+        # self.static_obstacles.append(obstacle)
 
-        # Create pickup zone
-        obstacle = static_entity.StaticEntity(
-            width=wall, height=h, num=len(self.static_obstacles) + 1
-        )
-        obstacle.current_position = (pickup_x, y)
-        self.static_obstacles.append(obstacle)
-
-        # Create delivery zone
-        obstacle = static_entity.StaticEntity(
-            width=wall, height=h, num=len(self.static_obstacles) + 1
-        )
-        obstacle.current_position = (delivery_x, y)
-        self.static_obstacles.append(obstacle)
+        # # Create delivery zone
+        # obstacle = static_entity.StaticEntity(
+        #     width=2 * pad, height=h, num=len(self.static_obstacles) + 1
+        # )
+        # obstacle.current_position = (delivery_x, y)
+        # self.static_obstacles.append(obstacle)
 
         # Create fixed obstacles if required
         n = self.env_config.nb_static_obstacles
         if n > 0:
             for _ in range(n):
                 return self._random_static_obstacles(
-                    min_dist=min_dist, max_attempts=max_attempts
+                    min_dist=min_dist, max_attempts=max_attempts, size=(5, 5)
                 )
 
     # ---------------------------------------------------------------
@@ -1126,24 +1124,32 @@ class Manager:
         if n < 1:
             return
 
-        # Pickup and Delivery zone parameters
+        # Pickup and Delivery positions
         w = self.width // 6
         h = self.height // 2
         pickup_w_min, pickup_w_max = 0, w
         delivery_w_min, delivery_w_max = self.width - w, self.width
         h_min, h_max = (self.height - h) // 2, (self.height + h) // 2
 
+        pickup_w = (pickup_w_min + pickup_w_max) / 2
+        pickup_pos = [(pickup_w, pickup_y) for pickup_y in np.linspace(h_min, h_max, 3)]
+
+        delivery_w = (delivery_w_min + delivery_w_max) / 2
+        delivery_pos = [
+            (delivery_w, delivery_y) for delivery_y in np.linspace(h_min, h_max, 3)
+        ]
+
         # Generate all agents
         for i in range(n):
             entity = agent.Agent(self.agent_config, i + 1)
 
-            # Generate a valid position in the pickup area
+            # Generate a valid position anywhere on the map
             pos = self._set_random_position(
                 entity=entity,
-                w_min=pickup_w_min,
-                w_max=pickup_w_max,
-                h_min=h_min,
-                h_max=h_max,
+                w_min=0,
+                w_max=self.width,
+                h_min=0,
+                h_max=self.height,
                 min_dist=min_dist,
                 max_attempts=max_attempts,
                 for_target=False,
@@ -1153,21 +1159,24 @@ class Manager:
             entity.old_position = pos
             entity.path = [pos]
 
-            # Generate a valid target positions in the delivery area
-            for j in range(nb_targets):
-                target = self._set_random_position(
-                    entity=entity,
-                    w_min=delivery_w_min,
-                    w_max=delivery_w_max,
-                    h_min=h_min,
-                    h_max=h_max,
-                    min_dist=min_dist,
-                    max_attempts=max_attempts,
-                    for_target=True,
-                )
-                entity.target_positions.append(target)
+            # Assign a fixed pickup/delivery point to the agent
+            target_idx = (entity.num - 1) % len(pickup_pos)
 
-                entity.target_positions.append(pos)
+            # Assign pickup or delivery target side
+            side = "pickup" if (entity.num - 1) % 2 == 0 else "delivery"
+
+            for _ in range(nb_targets):
+                if side == "pickup":
+                    target = pickup_pos[target_idx]
+                    entity.target_positions.append(target)
+                    side = "delivery"
+
+                else:
+                    target = delivery_pos[target_idx]
+                    entity.target_positions.append(target)
+                    side = "pickup"
+
+            entity.target_positions.append(pos)
 
             self.agents.append(entity)
 

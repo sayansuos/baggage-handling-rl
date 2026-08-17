@@ -38,8 +38,8 @@ class AgentConfig:
     length_view: int = 15
     length_view_decrease: int | None = None
 
-    collision_threshold: float = 0.1
-    reach_threshold: float = 0.1
+    collision_threshold: float = 0.5
+    reach_threshold: float = 0.5
 
 
 @dataclass
