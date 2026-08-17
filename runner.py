@@ -1,3 +1,4 @@
+import os
 import time
 from dataclasses import replace
 
@@ -28,11 +29,14 @@ def run_validation(
     # Fix the seed
     np.random.seed(4321)
 
+    # Use the maximum number of workers
+    n_workers = os.cpu_count() or 1
+
     # Record the training start time
     start = time.perf_counter()
 
     print(
-        f"\n[ VALIDATION ] {len(tasks)} task(s) | "
+        f"\n[ VALIDATION ] {len(tasks)} task(s) | Number of workers: {n_workers} | "
         f"Episodes : {n_episodes} | Renders  : {n_render}\n"
     )
 
@@ -51,6 +55,7 @@ def run_validation(
             n_episodes=n_episodes,
             n_render=n_render,
             trained_agent_id=trained_agent_id,
+            n_workers=n_workers,
         )
 
         task_duration = time.perf_counter() - task_start
@@ -107,7 +112,10 @@ def run_evaluation(
     # Record the training start time
     start = time.perf_counter()
 
-    print(f"\n[ EVALUATION ] {len(tasks)} task(s)\n")
+    # Use the maximum number of workers
+    n_workers = os.cpu_count() or 1
+
+    print(f"\n[ EVALUATION ] {len(tasks)} task(s) | Number of workers: {n_workers}\n")
 
     # Evaluate all tasks with a chosen policy
     for task in tasks:
@@ -123,6 +131,7 @@ def run_evaluation(
             n_episodes=n_episodes,
             n_render=n_render,
             trained_agent_id=trained_agent_id,
+            n_workers=n_workers,
         )
 
         # Save training metrics
@@ -165,9 +174,9 @@ def run_evaluation(
 
         print(
             f"[ {task.name} ] Evaluation terminated "
-            f"| Step time = {metrics['mean_step_time'] * 1000:.2f} ms "
-            f"| FPS = {metrics['steps_per_second']:.1f} "
-            f"| Steps = {metrics['n_steps']}",
+            f"| Action time = {metrics['mean_action_time'] * 1000:.2f} ms "
+            f"| Actions/s = {metrics['actions_per_second']:.1f} "
+            f"| Actions = {metrics['n_actions']}",
             end="\r",
         )
         print()
@@ -184,6 +193,7 @@ def run_train(
     trained_agent_id: str = "agent_1",
     name: str = None,
     fixed_curriculum: bool = True,
+    max_steps: int | None = None,
 ):
     """
     Train a SAC policy using either a fixed sequential curriculum
@@ -243,6 +253,7 @@ def run_train(
             n_chunks=n_chunks,
             threshold=threshold,
             n_eval_episodes=n_eval_episodes,
+            max_steps=max_steps,
         )
 
     # Compute the total training duration
@@ -260,6 +271,7 @@ def run_curriculum(
     n_chunks: int,
     threshold: float,
     n_eval_episodes: int,
+    max_steps: int | None | str,
 ) -> None:
     """
     Train a SAC policy using a probabilistic curriculum based on
@@ -290,8 +302,9 @@ def run_curriculum(
     # Used only when resuming training from a saved policy
     current_task = previous_task
 
-    # Same total budget as the fixed curriculum
-    max_steps = sum(task.n_steps for task in tasks)
+    # Set total budget : max_steps or same as fixed curriculum
+    if max_steps is None:
+        max_steps = sum(task.n_steps for task in tasks)
 
     total_steps = 0
     block = 0
@@ -384,7 +397,12 @@ def run_curriculum(
         # --------------------------------------------------------------
         # Evaluate the current policy on all tasks
         # --------------------------------------------------------------
-        print("\n[ CURRICULUM ] Evaluating current policy...\n")
+        n_workers = os.cpu_count() or 1
+
+        print(
+            "\n[ CURRICULUM ] Evaluating current policy... | "
+            "Number of workers: {n_workers}\n"
+        )
 
         for i, task in enumerate(tasks):
             # Evaluate the SAC policy
@@ -394,6 +412,7 @@ def run_curriculum(
                 n_episodes=n_eval_episodes,
                 n_render=0,
                 trained_agent_id=trained_agent_id,
+                n_workers=n_workers,
             )
 
             # Compute the success rate on this task
@@ -466,19 +485,11 @@ def run_curriculum(
 
         # Save training metrics
         df_train = log_train(
-            metrics=all_history,
-            path="logs/train",
-            file_name=policy_name,
+            metrics=all_history, path="logs/train", file_name=policy_name
         )
-        log_debug(
-            metrics=all_debug,
-            path="logs/train",
-            file_name=policy_name,
-        )
+        log_debug(metrics=all_debug, path="logs/train", file_name=policy_name)
         df_rewards = log_rewards(
-            metrics=all_history,
-            path="logs/train",
-            file_name=policy_name,
+            metrics=all_history, path="logs/train", file_name=policy_name
         )
 
         # Generate training figures
@@ -518,20 +529,10 @@ def run_train_task(
     # Save results when requested
     if save_results:
         # Save training metrics
-        df_train = log_train(
-            metrics=history,
-            path="logs/train",
-            file_name=task.name,
-        )
-        log_debug(
-            metrics=debug,
-            path="logs/train",
-            file_name=task.name,
-        )
+        df_train = log_train(metrics=history, path="logs/train", file_name=task.name)
+        log_debug(metrics=debug, path="logs/train", file_name=task.name)
         df_rewards = log_rewards(
-            metrics=history,
-            path="logs/train",
-            file_name=task.name,
+            metrics=history, path="logs/train", file_name=task.name
         )
 
         # Generate training figures

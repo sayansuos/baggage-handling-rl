@@ -1,6 +1,8 @@
 import argparse
 
-from runner import run_animation, run_demo, run_evaluation, run_train, run_validation
+import numpy as np
+
+from runner import run_demo, run_evaluation, run_train, run_validation
 from utils.config_loader import load_tasks
 from utils.plotting import plot_renders
 
@@ -53,6 +55,18 @@ def parse_args():
         type=str,
         default=None,
         help="Name of the policy that will be trained.",
+    )
+    train_group = train_parser.add_mutually_exclusive_group()
+    train_group.add_argument(
+        "--max-steps",
+        type=int,
+        default=None,
+        help="Maximum number of training steps. By default, use the sum of the task budgets.",
+    )
+    train_group.add_argument(
+        "--no-max-steps",
+        action="store_true",
+        help="Train without a maximum number of steps.",
     )
 
     # ------------------------------------------------------------------
@@ -192,6 +206,12 @@ def main():
         trained_agent_id = args.trained_agent_id
         name = args.name
         fixed_curriculum = not args.probabilistic_curriculum
+        if args.no_max_steps:
+            max_steps = np.inf
+        elif args.max_steps is None:
+            max_steps = sum(task.n_steps for task in tasks)
+        else:
+            max_steps = args.max_steps
 
         run_train(
             tasks=tasks,
@@ -199,6 +219,7 @@ def main():
             trained_agent_id=trained_agent_id,
             name=name,
             fixed_curriculum=fixed_curriculum,
+            max_steps=max_steps,
         )
 
     elif args.mode == "validate":
@@ -252,20 +273,20 @@ def main():
         plot_renders(tasks=train_tasks, path=path, file_name="train", max_ncols=4)
         plot_renders(tasks=eval_tasks, path=path, file_name="eval", max_ncols=4)
 
-        run_animation(
-            tasks=train_tasks,
-            policy_name=policy_name,
-            path=f"{path}/{policy_name}",
-            file_name="train",
-            fps=fps,
-        )
-        run_animation(
-            tasks=eval_tasks,
-            policy_name=policy_name,
-            path=f"{path}/{policy_name}",
-            file_name="eval",
-            fps=fps,
-        )
+        # run_animation(
+        #     tasks=train_tasks,
+        #     policy_name=policy_name,
+        #     path=f"{path}/{policy_name}",
+        #     file_name="train",
+        #     fps=fps,
+        # )
+        # run_animation(
+        #     tasks=eval_tasks,
+        #     policy_name=policy_name,
+        #     path=f"{path}/{policy_name}",
+        #     file_name="eval",
+        #     fps=fps,
+        # )
 
 
 if __name__ == "__main__":
