@@ -401,7 +401,7 @@ def run_curriculum(
 
         print(
             "\n[ CURRICULUM ] Evaluating current policy... | "
-            "Number of workers: {n_workers}\n"
+            f"Number of workers: {n_workers}\n"
         )
 
         for i, task in enumerate(tasks):
@@ -554,6 +554,9 @@ def run_demo(
     """
     Run trained policies and interactively navigate through the rendered frames.
     """
+
+    if policy_name is None:
+        return
 
     # Generate all the scenarios frames
     frames = run_animation(

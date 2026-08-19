@@ -2,7 +2,7 @@ import argparse
 
 import numpy as np
 
-from runner import run_demo, run_evaluation, run_train, run_validation
+from runner import run_animation, run_demo, run_evaluation, run_train, run_validation
 from utils.config_loader import load_tasks
 from utils.plotting import plot_renders
 
@@ -161,7 +161,6 @@ def parse_args():
     demo_parser.add_argument(
         "--policy-name",
         type=str,
-        default="curriculum",
         help="Name of the policy that has to be demonstrated.",
     )
     demo_parser.add_argument(
@@ -181,7 +180,6 @@ def parse_args():
     animation_parser.add_argument(
         "--policy-name",
         type=str,
-        default="curriculum",
         help="Name of the policy that has to be animated.",
     )
     animation_parser.add_argument(
@@ -273,20 +271,20 @@ def main():
         plot_renders(tasks=train_tasks, path=path, file_name="train", max_ncols=4)
         plot_renders(tasks=eval_tasks, path=path, file_name="eval", max_ncols=4)
 
-        # run_animation(
-        #     tasks=train_tasks,
-        #     policy_name=policy_name,
-        #     path=f"{path}/{policy_name}",
-        #     file_name="train",
-        #     fps=fps,
-        # )
-        # run_animation(
-        #     tasks=eval_tasks,
-        #     policy_name=policy_name,
-        #     path=f"{path}/{policy_name}",
-        #     file_name="eval",
-        #     fps=fps,
-        # )
+        run_animation(
+            tasks=train_tasks,
+            policy_name=policy_name,
+            path=f"{path}/{policy_name}",
+            file_name="train",
+            fps=fps,
+        )
+        run_animation(
+            tasks=eval_tasks,
+            policy_name=policy_name,
+            path=f"{path}/{policy_name}",
+            file_name="eval",
+            fps=fps,
+        )
 
 
 if __name__ == "__main__":
