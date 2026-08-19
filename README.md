@@ -1,3 +1,5 @@
+**Not updated yet.**
+
 # Baggage Handling Optimization with Reinforcement Learning
 
 This project is developed as part of an internship focused on optimizing baggage handling systems in airport environments. The objective is to improve the time efficiency and coordination of multiple Automated Guided Vehicles (AGVs) using reinforcement learning (RL) techniques.
