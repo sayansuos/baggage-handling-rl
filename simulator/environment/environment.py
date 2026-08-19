@@ -14,7 +14,7 @@ from simulator.geometry import (
     get_normalized_motion,
     get_normalized_relative_distance,
 )
-from simulator.spaces import get_multi_spaces
+from simulator.spaces import get_action_space, get_observation_space
 
 
 class Environment(gym.Env):
@@ -49,10 +49,8 @@ class Environment(gym.Env):
         self.reward_config: RewardConfig = reward_config
 
         # Create the observation and action spaces
-        self.observation_space, self.action_space = get_multi_spaces(
-            nb_agents=self.env_config.nb_agents,
-            agent_config=self.agent_config,
-        )
+        self.observation_space = get_observation_space(agent_config=self.agent_config)
+        self.action_space = get_action_space(agent_config=self.agent_config)
 
         # Generate the static obstacles
         self.env_manager: Manager = Manager(

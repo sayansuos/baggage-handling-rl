@@ -14,19 +14,6 @@ from simulator.environment.environment import Environment
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 
-def load_agent(env: Environment, task: Task, trained_agent_id: str) -> SACAgent:
-    """
-    Create a SAC agent with the observation and action dimensions of the environment.
-    """
-
-    agent = SACAgent(
-        task=task,
-        action_space=env.action_space[trained_agent_id],
-    )
-
-    return agent
-
-
 def set_checkpoint_paths(agent: SACAgent, policy_name: str) -> None:
     """
     Configure all SAC checkpoint paths for a given policy name.
@@ -85,20 +72,12 @@ def run_sac(
 
     elif previous_task is not None:
         # Resume from a previously trained policy with a new replay buffer
-        agent = load_agent(
-            env=env,
-            task=previous_task,
-            trained_agent_id=trained_agent_id,
-        )
+        agent = SACAgent(task=previous_task, action_space=env.action_space)
         agent.load_checkpoints()
 
     else:
         # Start a new policy from scratch
-        agent = load_agent(
-            env=env,
-            task=task,
-            trained_agent_id=trained_agent_id,
-        )
+        agent = SACAgent(task=task, action_space=env.action_space)
 
     # Configure the checkpoint paths for the current policy
     if policy_name is None:
@@ -151,7 +130,8 @@ def run_sac(
                 if ag.id == trained_agent_id:
                     # If the policy starts from scratch, use random actions during warmup
                     if previous_task is None and total_steps < warmup_steps:
-                        action[ag.id] = env.action_space[trained_agent_id].sample()
+                        # action[ag.id] = env.action_space[trained_agent_id].sample()
+                        action[ag.id] = env.action_space.sample()
 
                     # Otherxise, use stochastics actions from the policy
                     else:
@@ -543,11 +523,7 @@ def _load_evaluation_policy(
     )
 
     # Load the trained agent
-    agent = load_agent(
-        env=env,
-        task=policy_task,
-        trained_agent_id=trained_agent_id,
-    )
+    agent = SACAgent(task=policy_task, action_space=env.action_space)
     agent.load_checkpoints()
 
     return env, agent

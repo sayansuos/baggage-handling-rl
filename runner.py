@@ -8,7 +8,7 @@ from matplotlib.animation import FuncAnimation
 
 from configs.config import Curriculum, Task
 from rl.sac.agent import SACAgent
-from rl.sac.sac import evaluate_sac, load_agent, run_sac, set_checkpoint_paths
+from rl.sac.sac import evaluate_sac, run_sac, set_checkpoint_paths
 from simulator.environment.environment import Environment
 from utils.logging import log_debug, log_rewards, log_train
 from utils.plotting import plot_animation, plot_figures
@@ -678,11 +678,7 @@ def run_animation(
         )
 
         # Load the selected trained policy
-        agent = load_agent(
-            env=env,
-            task=policy_task,
-            trained_agent_id=trained_agent_id,
-        )
+        agent = SACAgent(task=policy_task, action_space=env.action_space)
         agent.load_checkpoints()
 
         # Reset the environment
