@@ -199,7 +199,9 @@ docs/user_guide
 docs/training_report
 docs/annotated_bibliography
 docs/literature_review
-logs/train/
+logs/train/*.csv
+analysis/
+pyproject.toml
 
 # PyCharm
 #  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
