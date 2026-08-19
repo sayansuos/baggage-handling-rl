@@ -1,4 +1,4 @@
-train:
+train_v1:
   # 1 —- Navigation mono-agent avec obstacles statiques
 
   - name: task1
@@ -248,9 +248,249 @@ train:
     max_attempts: 100
     max_steps: 250
 
-eval:
-  # Training scenarios
+train_v2:
+  - name: task1
+    width: 64
+    height: 32
 
+    agent_mode: random
+    env_mode: random
+
+    nb_agents: 2
+    nb_static_obstacles: 0
+    nb_moving_obstacles: 0
+    nb_targets: 1
+
+    max_attempts: 100
+    max_steps: 150
+
+  - name: task2
+    width: 64
+    height: 32
+
+    agent_mode: fixed_1
+    env_mode: fixed_1
+
+    nb_agents: 2
+    nb_static_obstacles: 3
+    nb_moving_obstacles: 0
+    nb_targets: 1
+
+    max_attempts: 100
+    max_steps: 150
+
+  - name: task3
+    width: 64
+    height: 32
+
+    agent_mode: fixed_2
+    env_mode: fixed_2
+
+    nb_agents: 2
+    nb_static_obstacles: 6
+    nb_moving_obstacles: 0
+    nb_targets: 1
+
+    max_attempts: 100
+    max_steps: 150
+
+  - name: task4
+    width: 64
+    height: 32
+
+    agent_mode: fixed_3
+    env_mode: fixed_3
+
+    nb_agents: 2
+    nb_static_obstacles: 9
+    nb_moving_obstacles: 0
+    nb_targets: 1
+
+    max_attempts: 100
+    max_steps: 150
+
+  - name: task5
+    width: 64
+    height: 32
+
+    agent_mode: random
+    env_mode: random
+
+    nb_agents: 2
+    nb_static_obstacles: 9
+    nb_moving_obstacles: 0
+    nb_targets: 1
+
+    max_attempts: 100
+    max_steps: 150
+
+  - name: task6
+    width: 64
+    height: 32
+
+    agent_mode: airport
+    env_mode: airport
+
+    nb_agents: 2
+    nb_static_obstacles: 0
+    nb_moving_obstacles: 3
+    nb_targets: 1
+
+    max_attempts: 100
+    max_steps: 150
+
+  - name: task7
+    width: 64
+    height: 32
+
+    agent_mode: airport
+    env_mode: airport
+
+    nb_agents: 2
+    nb_static_obstacles: 2
+    nb_moving_obstacles: 3
+    nb_targets: 1
+
+    max_attempts: 100
+    max_steps: 200
+
+  - name: task8
+    width: 64
+    height: 32
+
+    agent_mode: random
+    env_mode: random
+
+    nb_agents: 2
+    nb_static_obstacles: 9
+    nb_moving_obstacles: 2
+    nb_targets: 2
+
+    max_attempts: 100
+    max_steps: 250
+
+  - name: task9
+    width: 64
+    height: 32
+
+    agent_mode: random
+    env_mode: warehouse
+
+    nb_agents: 2
+    nb_static_obstacles: 10
+    nb_moving_obstacles: 2
+    nb_targets: 1
+
+    max_attempts: 100
+    max_steps: 250
+
+  - name: task10
+    width: 64
+    height: 32
+
+    agent_mode: random
+    env_mode: warehouse
+
+    nb_agents: 2
+    nb_static_obstacles: 12
+    nb_moving_obstacles: 2
+    nb_targets: 1
+
+    max_attempts: 100
+    max_steps: 300
+
+  - name: task11
+    width: 64
+    height: 32
+
+    agent_mode: random
+    env_mode: warehouse
+
+    nb_agents: 2
+    nb_static_obstacles: 14
+    nb_moving_obstacles: 2
+    nb_targets: 1
+
+    max_attempts: 100
+    max_steps: 300
+
+  - name: task12
+    width: 64
+    height: 32
+
+    agent_mode: hospital
+    env_mode: hospital
+
+    nb_agents: 2
+    nb_static_obstacles: 8
+    nb_moving_obstacles: 1
+    nb_targets: 2
+
+    max_attempts: 100
+    max_steps: 300
+
+  - name: task13
+    width: 64
+    height: 32
+
+    agent_mode: crossing
+    env_mode: crossing
+
+    nb_agents: 4
+    nb_static_obstacles: 0
+    nb_moving_obstacles: 2
+    nb_targets: 1
+
+    max_attempts: 100
+    max_steps: 300
+
+  - name: task14
+    width: 64
+    height: 32
+
+    agent_mode: random
+    env_mode: warehouse
+
+    nb_agents: 2
+    nb_static_obstacles: 14
+    nb_moving_obstacles: 2
+    nb_targets: 1
+
+    max_attempts: 100
+    max_steps: 200
+
+  - name: task15
+    width: 64
+    height: 32
+
+    agent_mode: airport
+    env_mode: airport
+
+    nb_agents: 5
+    nb_static_obstacles: 0
+    nb_moving_obstacles: 0
+    nb_targets: 1
+
+    max_attempts: 100
+    max_steps: 250
+
+  - name: task16
+    width: 64
+    height: 32
+
+    agent_mode: airport
+    env_mode: airport
+
+    nb_agents: 5
+    nb_static_obstacles: 1
+    nb_moving_obstacles: 0
+    nb_targets: 2
+
+    margin: 5
+    max_attempts: 100
+    max_steps: 250
+
+eval:
   - name: eval1
     width: 64
     height: 32
@@ -315,8 +555,6 @@ eval:
     max_attempts: 300
     max_steps: 300
 
-  # Hospital scenarios
-
   - name: eval5
     width: 64
     height: 32
@@ -348,8 +586,6 @@ eval:
     margin: 1
     max_attempts: 200
     max_steps: 400
-
-  # Airport scenarios
 
   - name: eval7
     width: 128

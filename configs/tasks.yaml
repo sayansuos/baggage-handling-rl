@@ -1,4 +1,101 @@
-train:
+train_v1:
+  - name: task1
+    env_config: task1
+    agent_config: agent_1
+    reward_config: reward_1
+    n_steps: 100_000
+
+  - name: task2
+    env_config: task2
+    agent_config: agent_1
+    reward_config: reward_1
+    n_steps: 300_000
+
+  - name: task3
+    env_config: task3
+    agent_config: agent_1
+    reward_config: reward_1
+    n_steps: 300_000
+
+  - name: task4
+    env_config: task4
+    agent_config: agent_1
+    reward_config: reward_1
+    n_steps: 300_000
+
+  - name: task5
+    env_config: task5
+    agent_config: agent_1
+    reward_config: reward_1
+    n_steps: 300_000
+
+  - name: task6
+    env_config: task6
+    agent_config: agent_1
+    reward_config: reward_1
+    n_steps: 300_000
+
+  - name: task7
+    env_config: task7
+    agent_config: agent_1
+    reward_config: reward_1
+    n_steps: 300_000
+
+  - name: task8
+    env_config: task8
+    agent_config: agent_1
+    reward_config: reward_1
+    n_steps: 300_000
+
+  - name: task9
+    env_config: task9
+    agent_config: agent_1
+    reward_config: reward_1
+    n_steps: 300_000
+
+  - name: task10
+    env_config: task10
+    agent_config: agent_1
+    reward_config: reward_1
+    n_steps: 300_000
+
+  - name: task11
+    env_config: task11
+    agent_config: agent_1
+    reward_config: reward_1
+    n_steps: 300_000
+
+  - name: task12
+    env_config: task12
+    agent_config: agent_1
+    reward_config: reward_1
+    n_steps: 300_000
+
+  - name: task13
+    env_config: task13
+    agent_config: agent_1
+    reward_config: reward_1
+    n_steps: 300_000
+
+  - name: task14
+    env_config: task14
+    agent_config: agent_1
+    reward_config: reward_1
+    n_steps: 300_000
+
+  - name: task15
+    env_config: task15
+    agent_config: agent_1
+    reward_config: reward_1
+    n_steps: 300_000
+
+  - name: task16
+    env_config: task16
+    agent_config: agent_1
+    reward_config: reward_1
+    n_steps: 300_000
+
+train_v2:
   - name: task1
     env_config: task1
     agent_config: agent_1
