@@ -23,6 +23,11 @@ def parse_args():
         help="Train the agent.",
     )
     train_parser.add_argument(
+        "--train-section",
+        type=str,
+        help="Name of the training task section in tasks.yaml.",
+    )
+    train_parser.add_argument(
         "--start-task",
         type=int,
         default=0,
@@ -77,6 +82,11 @@ def parse_args():
         help="Validate a trained policy.",
     )
     validation_parser.add_argument(
+        "--train-section",
+        type=str,
+        help="Name of the training task section in tasks.yaml.",
+    )
+    validation_parser.add_argument(
         "--start-task",
         type=int,
         default=0,
@@ -116,6 +126,11 @@ def parse_args():
     evaluation_parser = subparsers.add_parser(
         "evaluate",
         help="Evaluate a trained policy.",
+    )
+    evaluation_parser.add_argument(
+        "--eval-section",
+        type=str,
+        help="Name of the evaluation task section in tasks.yaml.",
     )
     evaluation_parser.add_argument(
         "--start-task",
@@ -159,6 +174,16 @@ def parse_args():
         help="Run a demonstration.",
     )
     demo_parser.add_argument(
+        "--train-section",
+        type=str,
+        help="Name of the training task section in tasks.yaml.",
+    )
+    demo_parser.add_argument(
+        "--eval-section",
+        type=str,
+        help="Name of the evaluation task section in tasks.yaml.",
+    )
+    demo_parser.add_argument(
         "--policy-name",
         type=str,
         help="Name of the policy that has to be demonstrated.",
@@ -178,6 +203,16 @@ def parse_args():
         help="Generate renders and animations.",
     )
     animation_parser.add_argument(
+        "--train-section",
+        type=str,
+        help="Name of the training task section in tasks.yaml.",
+    )
+    animation_parser.add_argument(
+        "--eval-section",
+        type=str,
+        help="Name of the evaluation task section in tasks.yaml.",
+    )
+    animation_parser.add_argument(
         "--policy-name",
         type=str,
         help="Name of the policy that has to be animated.",
@@ -194,96 +229,77 @@ def parse_args():
 
 def main():
     args = parse_args()
-    train_tasks = load_tasks()
 
     if args.mode == "train":
-        tasks = train_tasks[args.start_task : args.end_task]
-        previous_task = (
-            train_tasks[args.previous_task] if args.previous_task is not None else None
-        )
-        trained_agent_id = args.trained_agent_id
-        name = args.name
-        fixed_curriculum = not args.probabilistic_curriculum
-        if args.no_max_steps:
-            max_steps = np.inf
-        elif args.max_steps is None:
-            max_steps = sum(task.n_steps for task in tasks)
-        else:
-            max_steps = args.max_steps
+        train_tasks = load_tasks(section=args.train_section)
 
         run_train(
-            tasks=tasks,
-            previous_task=previous_task,
-            trained_agent_id=trained_agent_id,
-            name=name,
-            fixed_curriculum=fixed_curriculum,
-            max_steps=max_steps,
+            tasks=train_tasks[args.start_task : args.end_task],
+            previous_task=train_tasks[args.previous_task]
+            if args.previous_task is not None
+            else None,
+            trained_agent_id=args.trained_agent_id,
+            name=args.name,
+            fixed_curriculum=not args.probabilistic_curriculum,
+            max_steps=np.inf
+            if args.no_max_steps
+            else sum(task.n_steps for task in train_tasks)
+            if args.max_steps is None
+            else args.max_steps,
         )
 
     elif args.mode == "validate":
-        tasks = train_tasks[args.start_task : args.end_task]
-        n_episodes = args.n_episodes
-        n_render = args.n_render
-        trained_agent_id = args.trained_agent_id
-        policy_name = args.policy_name
+        train_tasks = load_tasks(section=args.train_section)
 
         run_validation(
-            tasks=tasks,
-            n_episodes=n_episodes,
-            n_render=n_render,
-            policy_name=policy_name,
-            trained_agent_id=trained_agent_id,
+            tasks=train_tasks[args.start_task : args.end_task],
+            n_episodes=args.n_episodes,
+            n_render=args.n_render,
+            policy_name=args.policy_name,
+            trained_agent_id=args.trained_agent_id,
         )
 
     elif args.mode == "evaluate":
-        eval_tasks = load_tasks(obj="eval")
-        tasks = eval_tasks[args.start_task : args.end_task]
-        policy_name = args.policy_name
-        n_episodes = args.n_episodes
-        n_render = args.n_render
-        trained_agent_id = args.trained_agent_id
+        eval_tasks = load_tasks(section=args.eval_section)
 
         run_evaluation(
-            tasks=tasks,
-            policy_name=policy_name,
-            n_episodes=n_episodes,
-            n_render=n_render,
-            trained_agent_id=trained_agent_id,
+            tasks=eval_tasks[args.start_task : args.end_task],
+            policy_name=args.policy_name,
+            n_episodes=args.n_episodes,
+            n_render=args.n_render,
+            trained_agent_id=args.trained_agent_id,
         )
 
     elif args.mode == "demo":
-        eval_tasks = load_tasks(obj="eval")
-        policy_name = args.policy_name
-        trained_agent_id = args.trained_agent_id
+        train_tasks = load_tasks(section=args.train_section)
+        eval_tasks = load_tasks(section=args.eval_section)
 
         run_demo(
             tasks=train_tasks + eval_tasks,
-            policy_name=policy_name,
-            trained_agent_id=trained_agent_id,
+            policy_name=args.policy_name,
+            trained_agent_id=args.trained_agent_id,
         )
 
     elif args.mode == "animate":
-        eval_tasks = load_tasks(obj="eval")
-        policy_name = args.policy_name
-        fps = args.fps
-        path = "figures/demo"
+        train_tasks = load_tasks(section=args.train_section)
+        eval_tasks = load_tasks(section=args.eval_section)
 
         plot_renders(tasks=train_tasks, path=path, file_name="train", max_ncols=4)
         plot_renders(tasks=eval_tasks, path=path, file_name="eval", max_ncols=4)
 
         run_animation(
             tasks=train_tasks,
-            policy_name=policy_name,
-            path=f"{path}/{policy_name}",
+            policy_name=args.policy_name,
+            path=f"figures/demo/{args.policy_name}",
             file_name="train",
-            fps=fps,
+            fps=args.fps,
         )
         run_animation(
             tasks=eval_tasks,
-            policy_name=policy_name,
-            path=f"{path}/{policy_name}",
+            policy_name=args.policy_name,
+            path=f"figures/demo/{args.policy_name}",
             file_name="eval",
-            fps=fps,
+            fps=args.fps,
         )
 
 
