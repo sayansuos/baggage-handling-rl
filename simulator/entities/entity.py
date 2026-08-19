@@ -25,8 +25,6 @@ class Entity(ABC):
         Return the bounding box of the entity.
         """
 
-        pass
-
     @abstractmethod
     def collides_with(
         self,
@@ -39,12 +37,8 @@ class Entity(ABC):
         Check whether the entity collides with another entity.
         """
 
-        pass
-
     @abstractmethod
     def render(self, ax) -> None:
         """
         Render the entity.
         """
-
-        pass

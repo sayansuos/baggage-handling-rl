@@ -1,6 +1,7 @@
 import warnings
 
 import numpy as np
+
 from configs.config import AgentConfig, EnvConfig
 from simulator.entities.agent import Agent
 from simulator.entities.moving_entity import MovingEntity
