@@ -16,7 +16,7 @@ class SACAgent(torch.nn.Module):
         Constructor
         """
 
-        super(SACAgent, self).__init__()
+        super().__init__()
 
         # Load the SAC configuration and store the task name
         self.sac_config = SACConfig()
