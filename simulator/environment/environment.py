@@ -19,7 +19,8 @@ from simulator.spaces import get_action_space, get_observation_space
 
 class Environment(gym.Env):
     """
-    Multi-agent navigation environment following the Gymnasium API.
+    Multi-agent navigation environment following the Gymnasium API,
+    concepted for parameter sharing.
     """
 
     def __init__(
@@ -58,6 +59,23 @@ class Environment(gym.Env):
         )
         self.static_obstacles = self.env_manager.generate_static_obstacles()
 
+        # Define focus agents for metrics and rewards
+        self.n_focus_agents = self.env_config.nb_agents
+        self.focus_agents = []
+
+    def set_focus_agents(self, n_focus_agents: int) -> None:
+        """
+        Set the number of agents considered for rewards, metrics,
+        and episode termination.
+        """
+        if not 1 <= n_focus_agents <= self.env_config.nb_agents:
+            raise ValueError(
+                "`n_focus_agents` must be between 1 and "
+                f"{self.env_config.nb_agents}, got {n_focus_agents}."
+            )
+
+        self.n_focus_agents = n_focus_agents
+
     # ---------------------------------------------------------------
     # PROPERTIES
     # ---------------------------------------------------------------
@@ -76,14 +94,11 @@ class Environment(gym.Env):
         """
         return bool(self.step_count >= self.env_config.max_steps)
 
-    def done(self, agent_id: str | None = None) -> bool:
+    def done(self) -> bool:
         """
-        Return whether one or all agents are done.
+        Return whether all focus agents are done.
         """
-        if not agent_id:
-            return all(done for done in self.dones.values())
-        else:
-            return self.dones[agent_id]
+        return all(self.dones.values())
 
     # ---------------------------------------------------------------
     # GYM API
@@ -99,38 +114,38 @@ class Environment(gym.Env):
         # Retrieve the current occupancy grid.
         current_grid = self.grid_map.current_grid
 
-        for agent in self.agents:
+        for ag in self.agents:
             # Update the history of local occupancy maps.
             local_map = self.grid_map.get_local_grid(
-                agent=agent, current_grid=current_grid
+                agent=ag, current_grid=current_grid
             )[np.newaxis, :, :]
-            if agent.local_maps == []:
+            if ag.local_maps == []:
                 local_maps = [local_map for _ in range(self.agent_config.n_maps)]
             else:
-                local_maps = agent.local_maps
+                local_maps = ag.local_maps
                 local_maps.pop(0)
                 local_maps.append(local_map)
-            agent.local_maps = local_maps
+            ag.local_maps = local_maps
 
             # Compute the normalized observation components
             goal_relative_distance = get_normalized_relative_distance(
-                distance=agent._goal_relative_distance,
+                distance=ag._goal_relative_distance,
                 env_width=self.env_config.width,
                 env_height=self.env_config.height,
             )
             heading_error = get_normalized_heading_error(
-                goal_relative_position=agent._goal_relative_position, theta=agent.theta
+                goal_relative_position=ag._goal_relative_position, theta=ag.theta
             )
             motion = get_normalized_motion(
-                motion=agent._motion,
+                motion=ag._motion,
                 v_max=self.agent_config.v_max,
                 omega_max=self.agent_config.omega_max,
             )
-            orientation = np.array(list(agent._orientation), dtype=np.float32)
+            orientation = np.array(list(ag._orientation), dtype=np.float32)
 
             # Store the observation
-            obs[agent.id] = {
-                "local_map": np.concatenate(agent.local_maps, axis=0),
+            obs[ag.id] = {
+                "local_map": np.concatenate(ag.local_maps, axis=0),
                 "goal_relative_distance": goal_relative_distance,
                 "heading_error": heading_error,
                 "motion": motion,
@@ -141,80 +156,76 @@ class Environment(gym.Env):
 
     def _get_info(self, rewards_info: dict | None = None) -> dict:
         """
-        Return auxiliary information for all agents.
+        Return auxiliary information for all selected agents.
         """
+        n = len(self.focus_agents)
 
-        n = len(self.agents)
-
-        # Compute the environment performance metrics
-        mean_time_travel = sum(agent.travel_time for agent in self.agents) / n
-        success_rate = sum(agent.state == "terminated" for agent in self.agents) / n
-        collision_rate = sum(agent.state == "truncated" for agent in self.agents) / n
+        mean_time_travel = sum(agent.travel_time for agent in self.focus_agents) / n
+        success_rate = (
+            sum(agent.state == "terminated" for agent in self.focus_agents) / n
+        )
+        collision_rate = (
+            sum(agent.state == "truncated" for agent in self.focus_agents) / n
+        )
         mean_v = self.sum_v / self.motion_count if self.motion_count > 0 else 0.0
         mean_abs_omega = (
             self.sum_abs_omega / self.motion_count if self.motion_count > 0 else 0.0
         )
 
-        # Build detailed information for each agent
-        if self.debug:
-            info = {}
+        global_info = {
+            "experiment": self.name,
+            "episode": self.episode,
+            "return_total": self.reward_total,
+            "mean_v": mean_v,
+            "mean_abs_omega": mean_abs_omega,
+            "success_rate": success_rate,
+            "collision_rate": collision_rate,
+            "mean_time_travel": mean_time_travel,
+            **self.reward_sums,
+        }
 
-            for agent in self.agents:
-                if agent.current_position is not None:
-                    x, y = agent.current_position
-                else:
-                    x, y = None, None
+        # If not debug, return global environment statistics.
+        if not self.debug:
+            return global_info
 
-                heading_error = get_heading_error(
-                    goal_relative_position=agent._goal_relative_position,
-                    theta=agent.theta,
-                )
+        # Otherwise, also build detailed information for each focus agent.
 
-                if rewards_info is None:
-                    rewards = {
-                        "reward_progress": 0.0,
-                        "reward_collision": 0.0,
-                        "reward_safety": 0.0,
-                        "reward_rotation": 0.0,
-                    }
-                else:
-                    rewards = rewards_info[agent.id]
+        info = {}
 
-                info[agent.id] = {
-                    "pos_x": x,
-                    "pos_y": y,
-                    "distance_to_goal": agent._goal_relative_distance,
-                    "heading_error": heading_error,
-                    "min_obstacle_distance": self._closest[agent.id][
-                        "closest_distance"
-                    ],
-                    "v": agent.v,
-                    "omega": agent.omega,
-                    "state": agent.state,
-                    **rewards,
-                    "experiment": self.name,
-                    "episode": self.episode,
-                    "return_total": self.reward_total,
-                    "mean_v": mean_v,
-                    "mean_abs_omega": mean_abs_omega,
-                    "success_rate": success_rate,
-                    "collision_rate": collision_rate,
-                    "mean_time_travel": mean_time_travel,
-                    **self.reward_sums,
+        for ag in self.focus_agents:
+            if ag.current_position is not None:
+                x, y = ag.current_position
+            else:
+                x, y = None, None
+
+            heading_error = get_heading_error(
+                goal_relative_position=ag._goal_relative_position,
+                theta=ag.theta,
+            )
+
+            closest_distance = self._closest[ag.id]["closest_distance"]
+
+            if rewards_info is not None:
+                rewards = rewards_info[ag.id]
+            else:
+                rewards = {
+                    "reward_progress": 0.0,
+                    "reward_collision": 0.0,
+                    "reward_safety": 0.0,
+                    "reward_rotation": 0.0,
                 }
 
-        # Build global environment statistics
-        else:
-            info = {
-                "experiment": self.name,
-                "episode": self.episode,
-                "return_total": self.reward_total,
-                "mean_v": mean_v,
-                "mean_abs_omega": mean_abs_omega,
-                "success_rate": success_rate,
-                "collision_rate": collision_rate,
-                "mean_time_travel": mean_time_travel,
-                **self.reward_sums,
+            info[ag.id] = {
+                "pos_x": x,
+                "pos_y": y,
+                "distance_to_goal": ag._goal_relative_distance,
+                "heading_error": heading_error,
+                "min_obstacle_distance": closest_distance,
+                "v": ag.v,
+                "omega": ag.omega,
+                "state": ag.state,
+                **rewards,
+                **global_info,
             }
 
         return info
@@ -232,8 +243,11 @@ class Environment(gym.Env):
         self.step_count = 0
         self.episode += 1
 
-        # Reset the moving entities and rebuild the occupancy grid
+        # Reset the moving obstacles, the agents and the focus agents
         self.moving_obstacles, self.agents = self.env_manager.reset()
+        self.focus_agents = self.agents[: self.n_focus_agents]
+
+        # Rebuild the occupancy grid
         self.grid_map = GridMap(
             env_config=self.env_config,
             agent_config=self.agent_config,
@@ -248,16 +262,16 @@ class Environment(gym.Env):
             min_length=self.env_config.max_steps,
         )
 
-        # Compute the interactions between entities
+        # Compute the interactions between entities for focus agents
         self._closest = compute_closest(
             static_obstacles=self.static_obstacles,
             moving_obstacles=self.moving_obstacles,
-            agents=self.agents,
+            agents=self.focus_agents,
         )
 
         # Reset the episode metrics
-        self.dones: dict = {agent.id: False for agent in self.agents}
-        self.rewards: dict = {agent.id: 0 for agent in self.agents}
+        self.dones: dict = {agent.id: False for agent in self.focus_agents}
+        self.rewards: dict = {agent.id: 0 for agent in self.focus_agents}
         self.reward_total = 0
         self.reward_sums = {
             "reward_progress": 0.0,
@@ -288,33 +302,38 @@ class Environment(gym.Env):
             obs.step()
 
         # Update the agents and the environment metrics
-        for agent in self.agents:
-            v, omega, motion_count = agent.step(action=action)
-            self.sum_v += v
-            self.sum_abs_omega += omega
-            self.motion_count += motion_count
+        for ag in self.agents:
+            v, omega, motion_count = ag.step(action=action)
+            if ag in self.focus_agents:
+                self.sum_v += v
+                self.sum_abs_omega += omega
+                self.motion_count += motion_count
 
-        # Compute the interactions between entities
+        # Compute the interactions between entities for focus agents
         self._closest = compute_closest(
             static_obstacles=self.static_obstacles,
             moving_obstacles=self.moving_obstacles,
-            agents=self.agents,
+            agents=self.focus_agents,
         )
 
         # Compute the episode rewards
         rewards, rewards_info = compute_rewards(
-            reward_config=self.reward_config, agents=self.agents
+            reward_config=self.reward_config, agents=self.focus_agents
         )
         self.rewards = rewards
-        self.reward_total += sum(rewards.values())
-        for _, agent_rewards_info in rewards_info.items():
-            for reward_name, reward_value in agent_rewards_info.items():
-                self.reward_sums[reward_name] += reward_value
+        self.reward_total += np.mean(list(rewards.values()))
+        for r in self.reward_sums:
+            self.reward_sums[r] += np.mean(
+                [ag_reward[r] for ag_reward in rewards_info.values()]
+            )
 
         # Compute the termination conditions
-        terminated, truncated, self.dones = compute_dones(
+        terminated, truncated, dones = compute_dones(
             agents=self.agents, timeout=self.timeout
         )
+        terminated = {ag.id: terminated[ag.id] for ag in self.focus_agents}
+        truncated = {ag.id: truncated[ag.id] for ag in self.focus_agents}
+        self.dones = {ag.id: dones[ag.id] for ag in self.focus_agents}
 
         # Compute obs and info
         obs = self._get_obs()
@@ -378,4 +397,3 @@ class Environment(gym.Env):
         ax.set_title(
             f"{self.name} | Episode {self.episode} | Step {self.step_count} | Return = {self.reward_total} "
         )
-        # ax.legend(handles=handles, labels=labels, loc="upper left")

@@ -30,8 +30,8 @@ def set_checkpoint_paths(agent: SACAgent, policy_name: str) -> None:
 
 def run_sac(
     task: Task,
-    previous_task: Task | None,
-    trained_agent_id: str,
+    init_task: Task | None,
+    n_trained_agents: int,
     n_steps: int,
     agent: SACAgent | None = None,
     policy_name: str | None = None,
@@ -54,7 +54,10 @@ def run_sac(
     policy is saved at the end of the training block.
     """
 
-    # Create the training environment from the task configuration
+    # ---------------------------------------------------------------------------------
+    # Create the environment from the task configuration
+    # ---------------------------------------------------------------------------------
+
     env = Environment(
         env_config=task.env_config,
         agent_config=task.agent_config,
@@ -62,78 +65,76 @@ def run_sac(
         name=task.name,
     )
 
-    # ---------------------------------------------------------
-    # Initialize the SAC Agent
-    # ---------------------------------------------------------
+    # Define the number of trained agents
+    env.set_focus_agents(n_focus_agents=n_trained_agents)
 
+    # ---------------------------------------------------------------------------------
+    # Initialize the SAC Agent
+    # ---------------------------------------------------------------------------------
+
+    # Case 1: We keep an agent replay buffer, so no warmup is required.
     if agent is not None:
-        # Continue training with the existing agent and replay buffer
         warmup_steps = 0
 
-    elif previous_task is not None:
-        # Resume from a previously trained policy with a new replay buffer
-        agent = SACAgent(task=previous_task, action_space=env.action_space)
+    # Case 2: We use the policy trained on a previous task to initialize the new one.
+    elif init_task is not None:
+        agent = SACAgent(task=init_task, action_space=env.action_space)
         agent.load_checkpoints()
 
+    # Case 3: We build a new policy from scratch.
     else:
-        # Start a new policy from scratch
         agent = SACAgent(task=task, action_space=env.action_space)
 
-    # Configure the checkpoint paths for the current policy
+    # Configure the checkpoint paths for the current policy.
     if policy_name is None:
         policy_name = task.name
     set_checkpoint_paths(agent=agent, policy_name=policy_name)
 
-    # ---------------------------------------------------------
+    # ---------------------------------------------------------------------------------
     # Initialize the metrics
-    # ---------------------------------------------------------
+    # ---------------------------------------------------------------------------------
 
     history = []
     debug = []
 
-    best_success = -np.inf
-    successes = []
+    best_success_rate = -np.inf
+    success_rates = []
 
     total_steps = 0
     episode = 0
 
-    # ---------------------------------------------------------
+    # ---------------------------------------------------------------------------------
     # Training loop
-    # ---------------------------------------------------------
+    # ---------------------------------------------------------------------------------
 
+    # Run steps until the requested total number of steps is reached.
     while total_steps < n_steps:
         episode += 1
 
-        # Periodically regenerate the static obstacle configuration
+        # Periodically regenerate the static obstacle configuration.
         if episode % reset_frequency == 0:
             env.static_obstacles = env.env_manager.generate_static_obstacles()
 
-        # Reset the environment
+        # Reset the environment.
         state, _ = env.reset(seed=None)
-        score = 0.0
 
-        # Enable detailed logging periodically
-        if env.episode % debug_frequency == 0:
-            env.debug = True
-        else:
-            env.debug = False
+        # Enable detailed logging periodically.
+        env.debug = env.episode % debug_frequency == 0
 
-        # Run the episode until the trained agent is done,
-        # or the requested training budget is reached.
-        while not env.dones[trained_agent_id] and total_steps < n_steps:
+        while not env.done() and total_steps < n_steps:
             action = {}
 
-            # ---------------------------------------------------------
-            # Select actions
-            # ---------------------------------------------------------
+            # -------------------------------------------------------------------------
+            # Select actions for all agents
+            # -------------------------------------------------------------------------
+
             for ag in env.agents:
-                if ag.id == trained_agent_id:
+                if ag in env.focus_agents:
                     # If the policy starts from scratch, use random actions during warmup
-                    if previous_task is None and total_steps < warmup_steps:
-                        # action[ag.id] = env.action_space[trained_agent_id].sample()
+                    if init_task is None and total_steps < warmup_steps:
                         action[ag.id] = env.action_space.sample()
 
-                    # Otherxise, use stochastics actions from the policy
+                    # Otherwise, use stochastics actions from the policy
                     else:
                         action[ag.id] = agent.choose_action(
                             state=state[ag.id],
@@ -146,124 +147,138 @@ def run_sac(
                         state=state[ag.id], deterministic=True
                     )
 
-            # ---------------------------------------------------------
+            # -------------------------------------------------------------------------
             # Environment transition
-            # ---------------------------------------------------------
+            # -------------------------------------------------------------------------
+            active_agents = tuple(ag for ag in env.focus_agents if not env.dones[ag.id])
             next_state, reward, _, _, info = env.step(action=action)
 
-            # Store the trained agent transition in the replay buffer
-            agent.store_transition(
-                state=state[trained_agent_id],
-                action=action[trained_agent_id],
-                reward=reward[trained_agent_id],
-                next_state=next_state[trained_agent_id],
-                done=env.dones[trained_agent_id],
-            )
+            # Store the active trained agent transitions in the replay buffer.
+            for ag in active_agents:
+                agent.store_transition(
+                    state=state[ag.id],
+                    action=action[ag.id],
+                    reward=reward[ag.id],
+                    next_state=next_state[ag.id],
+                    done=env.dones[ag.id],
+                )
 
             # Replace the current observation with the next observation
             state = next_state
 
-            # Update metrics and counters
-            score += reward[trained_agent_id]
+            # Update counter
             total_steps += 1
 
-            # ---------------------------------------------------------
+            # -------------------------------------------------------------------------
             # SAC update
-            # ---------------------------------------------------------
+            # -------------------------------------------------------------------------
+
+            # We only update the model once per step
             if total_steps >= warmup_steps and total_steps % update_frequency == 0:
                 agent.learn()
 
-            # ---------------------------------------------------------
-            # Debug logging
-            # ---------------------------------------------------------
+            # -------------------------------------------------------------------------
+            # Logging (debug and episode-level)
+            # -------------------------------------------------------------------------
+
+            # If debug, we store debug info at every step!
             if env.debug:
-                for agent_id, agent_info in info.items():
+                for ag_id, ag_info in info.items():
                     debug.append(
                         {
                             "task": env.name,
                             "episode": episode,
                             "step": total_steps,
-                            "agent": agent_id,
-                            "pos_x": agent_info["pos_x"],
-                            "pos_y": agent_info["pos_y"],
-                            "distance_to_goal": agent_info["distance_to_goal"],
-                            "heading_error": agent_info["heading_error"],
-                            "min_obstacle_distance": agent_info[
-                                "min_obstacle_distance"
-                            ],
-                            "v": agent_info["v"],
-                            "omega": agent_info["omega"],
-                            "reward": reward[agent_id],
-                            "reward_progress": agent_info["reward_progress"],
-                            "reward_rotation": agent_info["reward_rotation"],
-                            "reward_safety": agent_info["reward_safety"],
-                            "reward_collision": agent_info["reward_collision"],
-                            "state": agent_info["state"],
+                            "agent": ag_id,
+                            "pos_x": ag_info["pos_x"],
+                            "pos_y": ag_info["pos_y"],
+                            "distance_to_goal": ag_info["distance_to_goal"],
+                            "heading_error": ag_info["heading_error"],
+                            "min_obstacle_distance": ag_info["min_obstacle_distance"],
+                            "v": ag_info["v"],
+                            "omega": ag_info["omega"],
+                            "reward": reward[ag_id],
+                            "reward_progress": ag_info["reward_progress"],
+                            "reward_rotation": ag_info["reward_rotation"],
+                            "reward_safety": ag_info["reward_safety"],
+                            "reward_collision": ag_info["reward_collision"],
+                            "state": ag_info["state"],
                         }
                     )
 
-        # ---------------------------------------------------------
+        # -----------------------------------------------------------------------------
         # Episode-level logging
-        # ---------------------------------------------------------
+        # -----------------------------------------------------------------------------
 
-        # Get episode-level metrics
+        # Ignore the final episode if it has been interrupted.
+        if not env.done():
+            break
+
+        # Store episode-level metrics
         if env.debug:
-            # Debug info is stored separately for each agent
-            episode_info = info[trained_agent_id]
-            # Reconstruct the episode success metric for debug episodes
-            episode_info["success_rate"] = (
-                1.0 if "terminated" in episode_info["state"] else 0.0
-            )
-
+            episode_info = next(iter(info.values()))
         else:
-            # Standard info already contains episode-level metrics
             episode_info = info
-            history.append(info)
 
-        # Update the rolling success rate
-        successes.append(episode_info["success_rate"])
-        avg_success = np.mean(successes[-100:])
+        history.append(
+            {
+                "experiment": episode_info["experiment"],
+                "episode": episode_info["episode"],
+                "return_total": episode_info["return_total"],
+                "mean_v": episode_info["mean_v"],
+                "mean_abs_omega": episode_info["mean_abs_omega"],
+                "success_rate": episode_info["success_rate"],
+                "collision_rate": episode_info["collision_rate"],
+                "mean_time_travel": episode_info["mean_time_travel"],
+                "reward_progress": episode_info["reward_progress"],
+                "reward_collision": episode_info["reward_collision"],
+                "reward_safety": episode_info["reward_safety"],
+                "reward_rotation": episode_info["reward_rotation"],
+            }
+        )
 
-        # ---------------------------------------------------------
+        # Average success_rate on the last 100 episodes.
+        success_rate = episode_info["success_rate"]
+        success_rates.append(success_rate)
+        avg_success = np.mean(success_rates[-100:])
+
+        # -----------------------------------------------------------------------------
         # Checkpoint selection
-        # ---------------------------------------------------------
+        # -----------------------------------------------------------------------------
 
         # For standard curriculum stages, retain the best policy according
         # to the rolling success rate once the window is fully populated.
-        if len(successes) > 100 and avg_success > best_success:
-            best_success = avg_success
+        if save_best and len(success_rates) >= 100 and avg_success > best_success_rate:
+            best_success_rate = avg_success
             agent.save_checkpoints()
 
-        # Display the current average until a valid best value exists
-        best_display = avg_success if best_success == -np.inf else best_success
+        # Display the current average until a valid best value exists.
+        best_display = (
+            avg_success if best_success_rate == -np.inf else best_success_rate
+        )
 
-        # ---------------------------------------------------------
+        # -----------------------------------------------------------------------------
         # Progress display
-        # ---------------------------------------------------------
+        # -----------------------------------------------------------------------------
 
         print(
             f"[ {task.name} ] "
             f"Step {total_steps:06d}/{n_steps} | "
             f"Episode {episode:04d} | "
-            f"Return = {score:8.3f} "
-            f"Success = {episode_info['success_rate']:.0%} "
+            f"Return = {env.reward_total:8.3f} "
+            f"Success = {success_rate:.0%} "
             f"Average Success = {avg_success:.1%} "
             f"Best Success = {best_display:.1%} "
             f"Time = {episode_info['mean_time_travel']:5.1f} ",
             end="\r",
         )
 
-    # ------------------------------------------------------------------
+    # ---------------------------------------------------------------------------------
     # Final checkpoint
-    # ------------------------------------------------------------------
+    # ---------------------------------------------------------------------------------
 
-    if save_best:
-        # If fewer than 100 episodes were completed, retain the final policy.
-        if best_success == -np.inf:
-            agent.save_checkpoints()
-
-    else:
-        # Probabilistic curriculum chunks retain their current policy.
+    # Probabilistic curriculum chunks retain their current policy.
+    if not save_best or best_success_rate == -np.inf:
         agent.save_checkpoints()
 
     print()
@@ -275,8 +290,7 @@ def evaluate_sac(
     task: Task,
     policy_name: str,
     n_episodes: int,
-    n_render: int,
-    trained_agent_id: str,
+    n_renders: int,
     n_workers: int,
 ) -> tuple[list[dict], list[np.ndarray] | None, dict]:
     """
@@ -287,31 +301,30 @@ def evaluate_sac(
     """
 
     # Split rendered and distributed episodes
-    rendered_episode_ids = list(range(n_render))
-    parallel_episode_ids = list(range(n_render, n_episodes))
+    rendered_episode_ids = list(range(n_renders))
+    parallel_episode_ids = list(range(n_renders, n_episodes))
 
     history = []
-    frames = [] if n_render > 0 else None
-    step_times = []
+    frames = [] if n_renders > 0 else None
+    action_times = []
 
-    # ---------------------------------------------------------
+    # ---------------------------------------------------------------------------------
     # Rendered episodes
-    # ---------------------------------------------------------
+    # ---------------------------------------------------------------------------------
 
     if rendered_episode_ids:
-        render_history, frames, render_step_times = _evaluate_rendered_episodes(
+        render_history, frames, render_action_times = _evaluate_rendered_episodes(
             task=task,
             policy_name=policy_name,
             episode_ids=rendered_episode_ids,
-            trained_agent_id=trained_agent_id,
         )
 
         history.extend(render_history)
-        step_times.extend(render_step_times)
+        action_times.extend(render_action_times)
 
-    # ---------------------------------------------------------
+    # ---------------------------------------------------------------------------------
     # Distributed episodes
-    # ---------------------------------------------------------
+    # ---------------------------------------------------------------------------------
 
     if parallel_episode_ids:
         # Do not create more workers than episodes
@@ -327,36 +340,34 @@ def evaluate_sac(
         # Evaluate the chunks in parallel
         with ProcessPoolExecutor(max_workers=n_workers) as executor:
             futures = [
-                executor.submit(
-                    _evaluate_worker, task, policy_name, episode_ids, trained_agent_id
-                )
+                executor.submit(_evaluate_worker, task, policy_name, episode_ids)
                 for episode_ids in episode_chunks
             ]
 
             # Collect results
             for future in futures:
-                worker_history, worker_step_times = future.result()
+                worker_history, worker_action_times = future.result()
                 history.extend(worker_history)
-                step_times.extend(worker_step_times)
+                action_times.extend(worker_action_times)
 
-    # ---------------------------------------------------------
+    # ---------------------------------------------------------------------------------
     # Restore episode order
-    # ---------------------------------------------------------
+    # ---------------------------------------------------------------------------------
 
     history.sort(key=lambda x: x[0])
 
     # Remove the episode indices
     history = [episode_info for _, episode_info in history]
 
-    # ---------------------------------------------------------
+    # ---------------------------------------------------------------------------------
     # Compute execution metrics
-    # ---------------------------------------------------------
+    # ---------------------------------------------------------------------------------
 
     metrics = {
-        "n_actions": len(step_times),
-        "mean_action_time": np.mean(step_times),
-        "std_action_time": np.std(step_times),
-        "actions_per_second": 1.0 / np.mean(step_times),
+        "n_actions": len(action_times),
+        "mean_action_time": np.mean(action_times),
+        "std_action_time": np.std(action_times),
+        "actions_per_second": 1.0 / np.mean(action_times),
     }
 
     return history, frames, metrics
@@ -366,7 +377,6 @@ def _evaluate_worker(
     task: Task,
     policy_name: str,
     episode_ids: list[int],
-    trained_agent_id: str,
 ) -> tuple[list[tuple[int, dict]], list[float]]:
     """
     Evaluate a subset of episodes in a separate process.
@@ -379,11 +389,10 @@ def _evaluate_worker(
     env, agent = _load_evaluation_policy(
         task=task,
         policy_name=policy_name,
-        trained_agent_id=trained_agent_id,
     )
 
     history = []
-    step_times = []
+    action_times = []
 
     # Evaluate all episodes assigned to this worker
     for episode_id in episode_ids:
@@ -409,7 +418,7 @@ def _evaluate_worker(
                     deterministic=True,
                 )
 
-                step_times.append(time.perf_counter() - step_start)
+                action_times.append(time.perf_counter() - step_start)
 
             # Apply all actions and advance the environment by one step
             next_state, _, _, _, info = env.step(action=action)
@@ -421,14 +430,13 @@ def _evaluate_worker(
         info["episode"] = episode_id + 1
         history.append((episode_id, info))
 
-    return history, step_times
+    return history, action_times
 
 
 def _evaluate_rendered_episodes(
     task: Task,
     policy_name: str,
     episode_ids: list[int],
-    trained_agent_id: str,
 ) -> tuple[list[tuple[int, dict]], list[np.ndarray], list[float]]:
     """
     Evaluate and render a subset of episodes sequentially.
@@ -438,12 +446,11 @@ def _evaluate_rendered_episodes(
     env, agent = _load_evaluation_policy(
         task=task,
         policy_name=policy_name,
-        trained_agent_id=trained_agent_id,
     )
 
     history = []
     frames = []
-    step_times = []
+    action_times = []
 
     # Create the rendering figure
     fig, ax = plt.subplots(figsize=(10, 8))
@@ -477,7 +484,7 @@ def _evaluate_rendered_episodes(
                     deterministic=True,
                 )
 
-                step_times.append(time.perf_counter() - step_start)
+                action_times.append(time.perf_counter() - step_start)
 
             # Apply all actions and advance the environment by one step
             next_state, _, _, _, info = env.step(action=action)
@@ -496,13 +503,12 @@ def _evaluate_rendered_episodes(
 
     plt.close(fig)
 
-    return history, frames, step_times
+    return history, frames, action_times
 
 
 def _load_evaluation_policy(
     task: Task,
     policy_name: str,
-    trained_agent_id: str,
 ) -> tuple[Environment, SACAgent]:
     """
     Create an evaluation environment and load the selected trained policy.
@@ -515,6 +521,9 @@ def _load_evaluation_policy(
         reward_config=task.reward_config,
         name=task.name,
     )
+
+    # Evaluate all agents controlled by the shared policy.
+    env.set_focus_agents(n_focus_agents=task.env_config.nb_agents)
 
     # Create a temporary task used only to load the selected policy
     policy_task = replace(

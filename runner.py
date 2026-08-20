@@ -1,7 +1,9 @@
 import os
 import time
 from dataclasses import replace
+from pathlib import Path
 
+import imageio.v3 as iio
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.animation import FuncAnimation
@@ -13,187 +15,18 @@ from simulator.environment.environment import Environment
 from utils.logging import log_debug, log_rewards, log_train
 from utils.plotting import plot_animation, plot_figures
 
-
-def run_validation(
-    tasks: list[Task],
-    n_episodes: int,
-    n_render: int,
-    policy_name: str | None,
-    trained_agent_id="agent_1",
-):
-    """
-    Evaluate a trained policy on the validation scenarios and save the resulting metrics
-    and animations.
-    """
-
-    # Fix the seed
-    np.random.seed(4321)
-
-    # Use the maximum number of workers
-    n_workers = os.cpu_count() or 1
-
-    # Record the training start time
-    start = time.perf_counter()
-
-    print(
-        f"\n[ VALIDATION ] {len(tasks)} task(s) | Number of workers: {n_workers} | "
-        f"Episodes : {n_episodes} | Renders  : {n_render}\n"
-    )
-
-    # Evaluate all tasks
-    for task in tasks:
-        task_start = time.perf_counter()
-        print(
-            f"[ {task.name} ] Evaluating... ",
-            end="\r",
-        )
-
-        # Run the trained policy over multiple episodes
-        history, frames, _ = evaluate_sac(
-            task=task,
-            policy_name=policy_name if policy_name is not None else task.name,
-            n_episodes=n_episodes,
-            n_render=n_render,
-            trained_agent_id=trained_agent_id,
-            n_workers=n_workers,
-        )
-
-        task_duration = time.perf_counter() - task_start
-        print(f"[ {task.name} ] Evaluation terminated in {task_duration:.1f}s")
-
-        # Run the trained policy over multiple episodes
-        path = (
-            f"logs/validation/{policy_name}"
-            if policy_name is not None
-            else "logs/validation"
-        )
-        df_train = log_train(metrics=history, path=path, file_name=task.name)
-        df_rewards = log_rewards(metrics=history, path=path, file_name=task.name)
-
-        # Generate validation figures
-        path = (
-            f"figures/validation/{policy_name}"
-            if policy_name is not None
-            else "figures/validation"
-        )
-        plot_figures(
-            df_perf=df_train,
-            df_rewards=df_rewards,
-            path=path,
-            file_name=task.name,
-            window=100,
-        )
-
-        # Save an animation when rendering is enabled
-        if n_render > 0:
-            plot_animation(frames=frames, path=path, file_name=task.name, fps=10)
-
-    # Compute the total validation duration
-    duration = time.perf_counter() - start
-
-    print(f"\n[ SUMMARY ] {len(tasks)} task(s) completed in {duration:.1f}s\n")
-
-
-def run_evaluation(
-    tasks: list[Task],
-    policy_name: str,
-    n_episodes: int = 100,
-    n_render: int = 5,
-    trained_agent_id: str = "agent_1",
-):
-    """
-    Evaluate a trained policy on a set of tasks and save the corresponding
-    performance metrics, figures and animations.
-    """
-
-    # Fix the seed
-    np.random.seed(1234)
-
-    # Record the training start time
-    start = time.perf_counter()
-
-    # Use the maximum number of workers
-    n_workers = os.cpu_count() or 1
-
-    print(f"\n[ EVALUATION ] {len(tasks)} task(s) | Number of workers: {n_workers}\n")
-
-    # Evaluate all tasks with a chosen policy
-    for task in tasks:
-        print(
-            f"[ {task.name} ] Evaluating... ",
-            end="\r",
-        )
-
-        # Run the selected policy over multiple episodes
-        history, frames, metrics = evaluate_sac(
-            task=task,
-            policy_name=policy_name,
-            n_episodes=n_episodes,
-            n_render=n_render,
-            trained_agent_id=trained_agent_id,
-            n_workers=n_workers,
-        )
-
-        # Save training metrics
-        print(
-            f"[ {task.name} ] Saving metrics... ",
-            end="\r",
-        )
-        df_train = log_train(
-            metrics=history, path=f"logs/evaluation/{policy_name}", file_name=task.name
-        )
-        df_rewards = log_rewards(
-            metrics=history, path=f"logs/evaluation/{policy_name}", file_name=task.name
-        )
-
-        # Generate training figures
-        print(
-            f"[ {task.name} ] Generating figures... ",
-            end="\r",
-        )
-        plot_figures(
-            df_perf=df_train,
-            df_rewards=df_rewards,
-            path=f"figures/evaluation/{policy_name}",
-            file_name=task.name,
-            window=100,
-        )
-
-        # Save an animation when rendering is enabled
-        if n_render > 0:
-            print(
-                f"[ {task.name} ] Generating animation... ",
-                end="\r",
-            )
-            plot_animation(
-                frames=frames,
-                path=f"figures/evaluation/{policy_name}",
-                file_name=task.name,
-                fps=10,
-            )
-
-        print(
-            f"[ {task.name} ] Evaluation terminated "
-            f"| Action time = {metrics['mean_action_time'] * 1000:.2f} ms "
-            f"| Actions/s = {metrics['actions_per_second']:.1f} "
-            f"| Actions = {metrics['n_actions']}",
-            end="\r",
-        )
-        print()
-
-    # Compute the total training duration
-    duration = time.perf_counter() - start
-
-    print(f"\n[ SUMMARY ] {len(tasks)} task(s) completed in {duration:.1f}s\n")
+# -------------------------------------------------------------------------------------
+# MODE = train
+# -------------------------------------------------------------------------------------
 
 
 def run_train(
     tasks: list[Task],
-    previous_task: Task | None = None,
-    trained_agent_id: str = "agent_1",
-    name: str = None,
-    fixed_curriculum: bool = True,
-    max_steps: int | None = None,
+    init_task: Task | None,
+    n_trained_agents: int,
+    policy_name: str | None,
+    max_steps: float | None,
+    sequential_curriculum: bool = False,
 ):
     """
     Train a SAC policy using either a fixed sequential curriculum
@@ -208,10 +41,10 @@ def run_train(
 
     print(f"\n[ TRAIN ] {len(tasks)} task(s)\n")
 
-    if fixed_curriculum:
-        # --------------------------------------------------------------
+    if sequential_curriculum:
+        # -----------------------------------------------------------------------------
         # Fixed sequential curriculum
-        # --------------------------------------------------------------
+        # -----------------------------------------------------------------------------
 
         # Keep the same SAC agent across all curriculum stages
         agent = None
@@ -220,21 +53,21 @@ def run_train(
             # Train the current curriculum stage
             _, _, agent = run_train_task(
                 task=task,
-                previous_task=previous_task,
+                init_task=init_task,
                 n_steps=task.n_steps,
-                trained_agent_id=trained_agent_id,
+                n_trained_agents=n_trained_agents,
                 agent=agent,
                 policy_name=task.name,
                 save_results=True,
                 save_best=True,
             )
 
-            previous_task = task
+            init_task = task
 
     else:
-        # --------------------------------------------------------------
+        # -----------------------------------------------------------------------------
         # Probabilistic curriculum
-        # --------------------------------------------------------------
+        # -----------------------------------------------------------------------------
 
         # Get curriculum parameters from config
         chunk_steps = Curriculum.chunk_steps
@@ -242,13 +75,13 @@ def run_train(
         threshold = Curriculum.threshold
         n_eval_episodes = Curriculum.n_eval_episodes
 
-        name = name if name is not None else "curriculum"
+        policy_name = policy_name if policy_name is not None else "curriculum"
 
         run_curriculum(
             tasks=tasks,
-            previous_task=previous_task,
-            trained_agent_id=trained_agent_id,
-            name=name,
+            init_task=init_task,
+            n_trained_agents=n_trained_agents,
+            policy_name=policy_name,
             chunk_steps=chunk_steps,
             n_chunks=n_chunks,
             threshold=threshold,
@@ -264,14 +97,14 @@ def run_train(
 
 def run_curriculum(
     tasks: list[Task],
-    previous_task: Task | None,
-    trained_agent_id: str,
-    name: str,
+    init_task: Task | None,
+    n_trained_agents: int,
+    policy_name: str,
     chunk_steps: int,
     n_chunks: int,
     threshold: float,
     n_eval_episodes: int,
-    max_steps: int | None | str,
+    max_steps: float | None,
 ) -> None:
     """
     Train a SAC policy using a probabilistic curriculum based on
@@ -284,14 +117,11 @@ def run_curriculum(
     # Start with the easiest task
     focus_idx = 0
 
-    # Name of the curriculum policy
-    policy_name = name
-
     # Name used to store the globally best curriculum policy
-    best_policy_name = f"{name}_best"
+    best_policy_name = f"{policy_name}_best"
 
     # Latest evaluation success rate for every task
-    scores = np.zeros(n_tasks)
+    success_rates = np.zeros(n_tasks)
 
     # Best average success rate observed across all tasks
     best_global_success = -np.inf
@@ -300,12 +130,13 @@ def run_curriculum(
     agent = None
 
     # Used only when resuming training from a saved policy
-    current_task = previous_task
+    current_task = init_task
 
     # Set total budget : max_steps or same as fixed curriculum
     if max_steps is None:
         max_steps = sum(task.n_steps for task in tasks)
 
+    episode_offset = 0
     total_steps = 0
     block = 0
 
@@ -313,9 +144,11 @@ def run_curriculum(
     all_history = []
     all_debug = []
 
-    # ---------------------------------------------------------
+    curriculum_completed = False
+
+    # ---------------------------------------------------------------------------------
     # Curriculum loop
-    # ---------------------------------------------------------
+    # ---------------------------------------------------------------------------------
 
     while total_steps < max_steps:
         # Give the current focus task the largest Dirichlet parameter
@@ -326,9 +159,9 @@ def run_curriculum(
             f"\n[ CURRICULUM ] Focus: {tasks[focus_idx].name} | alpha={list(alpha)}\n"
         )
 
-        # ---------------------------------------------------------
+        # -----------------------------------------------------------------------------
         # Train several chunks before evaluation
-        # ---------------------------------------------------------
+        # -----------------------------------------------------------------------------
         for _ in range(n_chunks):
             if total_steps >= max_steps:
                 break
@@ -364,27 +197,34 @@ def run_curriculum(
             # Train the SAC agent on the sampled task
             history, debug, agent = run_train_task(
                 task=train_task,
-                previous_task=current_task,
+                init_task=current_task,
                 n_steps=steps,
-                trained_agent_id=trained_agent_id,
+                n_trained_agents=n_trained_agents,
                 agent=agent,
                 policy_name=policy_name,
                 save_results=False,
                 save_best=False,
             )
 
-            # ----------------------------------------------------------
+            # -------------------------------------------------------------------------
             # Add curriculum metrics
-            # ----------------------------------------------------------
+            # -------------------------------------------------------------------------
+
+            chunk_episode_ids = [row["episode"] for row in history + debug]
+            chunk_n_episodes = max(chunk_episode_ids, default=0)
+
             for row in history:
                 row["task"] = task.name
                 row["block"] = block
+                row["episode"] += episode_offset
+
             for row in debug:
                 row["task"] = task.name
                 row["block"] = block
-
-                # Convert the local chunk step into a global curriculum step
+                row["episode"] += episode_offset
                 row["step"] += total_steps
+
+            episode_offset += chunk_n_episodes
 
             # Accumulate metrics across all chunks
             all_history.extend(history)
@@ -394,9 +234,10 @@ def run_curriculum(
             total_steps += steps
             block += 1
 
-        # --------------------------------------------------------------
+        # -----------------------------------------------------------------------------
         # Evaluate the current policy on all tasks
-        # --------------------------------------------------------------
+        # -----------------------------------------------------------------------------
+
         n_workers = os.cpu_count() or 1
 
         print(
@@ -406,25 +247,35 @@ def run_curriculum(
 
         for i, task in enumerate(tasks):
             # Evaluate the SAC policy
-            history, _, _ = evaluate_sac(
+            history, _, metrics = evaluate_sac(
                 task=task,
                 policy_name=policy_name,
                 n_episodes=n_eval_episodes,
-                n_render=0,
-                trained_agent_id=trained_agent_id,
+                n_renders=0,
                 n_workers=n_workers,
             )
 
             # Compute the success rate on this task
-            scores[i] = np.mean([episode["success_rate"] for episode in history])
-            print(f"{task.name}: {scores[i]:.1%}")
+            success_rates[i] = np.mean([episode["success_rate"] for episode in history])
 
-        focus_success = scores[focus_idx]  # Performance on the currently focused task
-        global_success = np.mean(scores)  # Global performance
+            print(
+                f"[ {task.name} ] Evaluation terminated. "
+                f"| Score = {success_rates[i]:.1%}"
+                f"| Action time = {metrics['mean_action_time'] * 1000:.2f} ms "
+                f"| Actions/s = {metrics['actions_per_second']:.1f} "
+                f"| Actions = {metrics['n_actions']}",
+                end="\r",
+            )
+
+        # Performance on the currently focused task
+        focus_success = success_rates[focus_idx]
+        # Global performance
+        global_success = np.mean(success_rates)
 
         print(
             f"\n[ CURRICULUM ] "
-            f"Focus success = {focus_success:.1%} "
+            f"Focus task: {tasks[focus_idx].name} "
+            f"| Focus success = {focus_success:.1%} "
             f"| Global success = {global_success:.1%} "
             f"| Threshold = {threshold:.1%}\n"
         )
@@ -462,26 +313,21 @@ def run_curriculum(
 
             else:
                 # All tasks are mastered
-                if np.min(scores) >= threshold:
+                if np.min(success_rates) >= threshold:
                     print(
                         "\n[ CURRICULUM ] "
                         f"Curriculum completed "
-                        f"| min success={np.min(scores):.1%}\n"
+                        f"| min success={np.min(success_rates):.1%}\n"
                     )
-                    break
+                    curriculum_completed = True
 
-                # Return to the task below the threshold
-                focus_idx = int(np.where(scores < threshold)[0][0])
+                else:
+                    # Return to the task below the threshold
+                    focus_idx = int(np.where(success_rates < threshold)[0][0])
 
         # --------------------------------------------------------------
         # Save cumulative curriculum logs
         # --------------------------------------------------------------
-
-        # Renumber episodes continuously
-        for episode, history in enumerate(all_history, start=1):
-            history["episode"] = episode
-        for episode, debug in enumerate(all_debug, start=1):
-            debug["episode"] = episode
 
         # Save training metrics
         df_train = log_train(
@@ -500,12 +346,15 @@ def run_curriculum(
             file_name=policy_name,
         )
 
+        if curriculum_completed:
+            break
+
 
 def run_train_task(
     task: Task,
-    previous_task: Task | None,
+    init_task: Task | None,
     n_steps: int,
-    trained_agent_id: str,
+    n_trained_agents: int,
     agent: SACAgent | None = None,
     policy_name: str | None = None,
     save_results: bool = True,
@@ -518,8 +367,8 @@ def run_train_task(
     # Train the SAC policy
     history, debug, agent = run_sac(
         task=task,
-        previous_task=previous_task,
-        trained_agent_id=trained_agent_id,
+        init_task=init_task,
+        n_trained_agents=n_trained_agents,
         n_steps=n_steps,
         agent=agent,
         policy_name=policy_name,
@@ -546,24 +395,317 @@ def run_train_task(
     return history, debug, agent
 
 
-def run_demo(
+# -------------------------------------------------------------------------------------
+# MODE = validate
+# -------------------------------------------------------------------------------------
+
+
+def run_validation(
+    tasks: list[Task],
+    policy_name: str | None,
+    n_episodes: int,
+    n_renders: int,
+):
+    """
+    Evaluate a trained policy on the validation scenarios and save the resulting metrics
+    and animations.
+    """
+
+    # Fix the seed
+    np.random.seed(4321)
+
+    # Use the maximum number of workers
+    n_workers = os.cpu_count() or 1
+
+    # Record the training start time
+    start = time.perf_counter()
+
+    print(
+        f"\n[ VALIDATION ] {len(tasks)} task(s) | Number of workers: {n_workers} | "
+        f"Episodes : {n_episodes} | Renders  : {n_renders}\n"
+    )
+
+    # Evaluate all tasks
+    for task in tasks:
+        print(
+            f"[ {task.name} ] Evaluating... ",
+            end="\r",
+        )
+
+        # Run the trained policy over multiple episodes
+        history, frames, metrics = evaluate_sac(
+            task=task,
+            policy_name=policy_name if policy_name is not None else task.name,
+            n_episodes=n_episodes,
+            n_renders=n_renders,
+            n_workers=n_workers,
+        )
+
+        # Run the trained policy over multiple episodes
+        path = (
+            f"logs/validation/{policy_name}"
+            if policy_name is not None
+            else "logs/validation"
+        )
+        df_train = log_train(metrics=history, path=path, file_name=task.name)
+        df_rewards = log_rewards(metrics=history, path=path, file_name=task.name)
+
+        # Generate validation figures
+        path = (
+            f"figures/validation/{policy_name}"
+            if policy_name is not None
+            else "figures/validation"
+        )
+        plot_figures(
+            df_perf=df_train,
+            df_rewards=df_rewards,
+            path=path,
+            file_name=task.name,
+            window=100,
+        )
+
+        # Save an animation when rendering is enabled
+        if n_renders > 0:
+            plot_animation(frames=frames, path=path, file_name=task.name, fps=10)
+
+        print(
+            f"[ {task.name} ] Evaluation terminated. "
+            f"| Success rate = {df_train['success_rate'].mean():.1%}"
+            f"| Action time = {metrics['mean_action_time'] * 1000:.2f} ms "
+            f"| Actions/s = {metrics['actions_per_second']:.1f} "
+            f"| Actions = {metrics['n_actions']}",
+            end="\r",
+        )
+        print()
+
+    # Compute the total validation duration
+    duration = time.perf_counter() - start
+
+    print(f"\n[ SUMMARY ] {len(tasks)} task(s) completed in {duration:.1f}s\n")
+
+
+# -------------------------------------------------------------------------------------
+# MODE = evaluate
+# -------------------------------------------------------------------------------------
+
+
+def run_evaluation(
     tasks: list[Task],
     policy_name: str,
-    trained_agent_id: str = "agent_1",
+    n_episodes: int = 100,
+    n_renders: int = 5,
+):
+    """
+    Evaluate a trained policy on a set of tasks and save the corresponding
+    performance metrics, figures and animations.
+    """
+
+    # Fix the seed
+    np.random.seed(1234)
+
+    # Record the training start time
+    start = time.perf_counter()
+
+    # Use the maximum number of workers
+    n_workers = os.cpu_count() or 1
+
+    print(
+        f"\n[ EVALUATION ] {len(tasks)} task(s) | Number of workers: {n_workers} | "
+        f"Episodes : {n_episodes} | Renders  : {n_renders}\n"
+    )
+
+    # Evaluate all tasks with a chosen policy
+    for task in tasks:
+        print(
+            f"[ {task.name} ] Evaluating... ",
+            end="\r",
+        )
+
+        # Run the selected policy over multiple episodes
+        history, frames, metrics = evaluate_sac(
+            task=task,
+            policy_name=policy_name,
+            n_episodes=n_episodes,
+            n_renders=n_renders,
+            n_workers=n_workers,
+        )
+
+        # Save training metrics
+        print(
+            f"[ {task.name} ] Saving metrics... ",
+            end="\r",
+        )
+        df_train = log_train(
+            metrics=history, path=f"logs/evaluation/{policy_name}", file_name=task.name
+        )
+        df_rewards = log_rewards(
+            metrics=history, path=f"logs/evaluation/{policy_name}", file_name=task.name
+        )
+
+        # Generate training figures
+        print(
+            f"[ {task.name} ] Generating figures... ",
+            end="\r",
+        )
+        plot_figures(
+            df_perf=df_train,
+            df_rewards=df_rewards,
+            path=f"figures/evaluation/{policy_name}",
+            file_name=task.name,
+            window=1,
+        )
+
+        # Save an animation when rendering is enabled
+        if n_renders > 0:
+            print(
+                f"[ {task.name} ] Generating animation... ",
+                end="\r",
+            )
+            plot_animation(
+                frames=frames,
+                path=f"figures/evaluation/{policy_name}",
+                file_name=task.name,
+                fps=10,
+            )
+
+        print(
+            f"[ {task.name} ] Evaluation terminated. "
+            f"| Success rate = {df_train['success_rate'].mean():.1%}"
+            f"| Action time = {metrics['mean_action_time'] * 1000:.2f} ms "
+            f"| Actions/s = {metrics['actions_per_second']:.1f} "
+            f"| Actions = {metrics['n_actions']}",
+            end="\r",
+        )
+
+    # Compute the total training duration
+    duration = time.perf_counter() - start
+
+    print(f"\n[ SUMMARY ] {len(tasks)} task(s) completed in {duration:.1f}s\n")
+
+
+# -------------------------------------------------------------------------------------
+# MODE = animate
+# -------------------------------------------------------------------------------------
+
+
+def run_animation(
+    tasks: list[Task],
+    policy_name: str,
+    path: str,
+    file_name: str,
+    fps: int,
 ) -> None:
+    """
+    Run one episode for each task and save the rendered frames as an animation.
+    """
+
+    print(f"\n[ ANIMATION ] {len(tasks)} task(s) | Policy: {policy_name}\n")
+
+    # Initialize the frames
+    frames = []
+
+    # Create the figure
+    fig, ax = plt.subplots(figsize=(10, 8))
+
+    # Run one episode for each task
+    for task in tasks:
+        print(
+            f"[ {task.name} ] Generating frames... ",
+            end="\r",
+        )
+        task_start_frame = len(frames)
+
+        # Create the environment from the task configuration
+        env = Environment(
+            env_config=task.env_config,
+            agent_config=task.agent_config,
+            reward_config=task.reward_config,
+            name=task.name,
+        )
+
+        # Define the number of focus agents
+        env.set_focus_agents(n_focus_agents=task.env_config.nb_agents)
+
+        # Create a temporary task used only to load the selected policy
+        policy_task = replace(
+            task,
+            name=policy_name,
+        )
+
+        # Load the selected trained policy
+        agent = SACAgent(task=policy_task, action_space=env.action_space)
+        agent.load_checkpoints()
+
+        # Reset the environment
+        state, _ = env.reset(seed=1234)
+
+        # Render the initial environment state and store it
+        env.render(ax)
+        fig.canvas.draw()
+        frames.append(np.asarray(fig.canvas.renderer.buffer_rgba()).copy())
+
+        # Run the episode until all focus agents are done.
+        while not env.done():
+            action = {}
+
+            # Select deterministic action for all agents
+            for ag in env.agents:
+                action[ag.id] = agent.choose_action(
+                    state=state[ag.id],
+                    deterministic=True,
+                )
+
+            # Apply all actions and advance the environment by one step
+            next_state, _, _, _, _ = env.step(action=action)
+
+            # Replace the current observation with the next observation
+            state = next_state
+
+            # Render the updated environment state and store it
+            env.render(ax)
+            fig.canvas.draw()
+            frame = np.asarray(fig.canvas.renderer.buffer_rgba()).copy()
+            frames.append(frame)
+
+        task_frames = len(frames) - task_start_frame
+        print(f"[ {task.name} ] Frames generated | Frames: {task_frames}")
+
+    # Close the figure
+    plt.close(fig)
+
+    # Save the animation
+    print("\n[ ANIMATION ] Saving animation... ", end="\r")
+
+    plot_animation(frames=frames, path=path, file_name=file_name, fps=fps)
+
+    print(f"[ ANIMATION ] Animation saved | File: {path}/{file_name}")
+
+    print(
+        f"\n[ SUMMARY ] {len(tasks)} task(s) rendered | Total frames: {len(frames)}\n"
+    )
+
+
+# -------------------------------------------------------------------------------------
+# MODE = demo
+# -------------------------------------------------------------------------------------
+
+
+def run_demo(policy_name: str, path: str, file_name: str) -> None:
     """
     Run trained policies and interactively navigate through the rendered frames.
     """
 
-    if policy_name is None:
-        return
+    # Search for the path
+    animation_path = Path(path) / policy_name / f"{file_name}_anim.mp4"
 
-    # Generate all the scenarios frames
-    frames = run_animation(
-        tasks=tasks,
-        policy_name=policy_name,
-        trained_agent_id=trained_agent_id,
-    )
+    if not animation_path.is_file():
+        raise FileNotFoundError(f"Animation not found: {animation_path}")
+
+    # Load the frames
+    frames = [np.asarray(frame) for frame in iio.imiter(animation_path)]
+
+    if not frames:
+        raise ValueError(f"No frames found in: {animation_path}")
 
     # Create the figure
     fig, ax = plt.subplots(figsize=(10, 8))
@@ -631,103 +773,3 @@ def run_demo(
     # Display the first frame and start the interactive viewer
     render()
     plt.show()
-
-
-def run_animation(
-    tasks: list[Task],
-    policy_name: str,
-    path: str | None = None,
-    file_name: str | None = None,
-    fps: int = 20,
-    trained_agent_id: str = "agent_1",
-) -> list[np.asarray]:
-    """
-    Run one episode for each task using a selected trained policy
-    and return the rendered frames.
-    If path and file_name are provided, also save the frames as an animation.
-    """
-
-    print(f"\n[ ANIMATION ] {len(tasks)} task(s) | Policy: {policy_name}\n")
-
-    # Initialize the frames
-    frames = []
-
-    # Create the figure
-    fig, ax = plt.subplots(figsize=(10, 8))
-
-    # Run one episode for each task
-    for task in tasks:
-        print(
-            f"[ {task.name} ] Generating frames... ",
-            end="\r",
-        )
-        task_start_frame = len(frames)
-
-        # Create the environment from the task configuration
-        env = Environment(
-            env_config=task.env_config,
-            agent_config=task.agent_config,
-            reward_config=task.reward_config,
-            name=task.name,
-        )
-
-        # Create a temporary task used only to load the selected policy
-        policy_task = replace(
-            task,
-            name=policy_name,
-        )
-
-        # Load the selected trained policy
-        agent = SACAgent(task=policy_task, action_space=env.action_space)
-        agent.load_checkpoints()
-
-        # Reset the environment
-        state, _ = env.reset(seed=1234)
-
-        # Render the initial environment state and store it
-        env.render(ax)
-        fig.canvas.draw()
-        frames.append(np.asarray(fig.canvas.renderer.buffer_rgba()).copy())
-
-        # Run the episode until the trained agent is done
-        while not env.dones[trained_agent_id]:
-            action = {}
-
-            # Select deterministic action for all agents
-            for ag in env.agents:
-                action[ag.id] = agent.choose_action(
-                    state=state[ag.id],
-                    deterministic=True,
-                )
-
-            # Apply all actions and advance the environment by one step
-            next_state, _, _, _, _ = env.step(action=action)
-
-            # Replace the current observation with the next observation
-            state = next_state
-
-            # Render the updated environment state and store it
-            env.render(ax)
-            fig.canvas.draw()
-            frame = np.asarray(fig.canvas.renderer.buffer_rgba()).copy()
-            frames.append(frame)
-
-        task_frames = len(frames) - task_start_frame
-        print(f"[ {task.name} ] Frames generated | Frames: {task_frames}")
-
-    # Close the figure
-    plt.close(fig)
-
-    # Save the animation if required
-    if path is not None and file_name is not None:
-        print("\n[ ANIMATION ] Saving animation... ", end="\r")
-
-        plot_animation(frames=frames, path=path, file_name=file_name, fps=fps)
-
-        print(f"[ ANIMATION ] Animation saved | File: {path}/{file_name}")
-
-    print(
-        f"\n[ SUMMARY ] {len(tasks)} task(s) rendered | Total frames: {len(frames)}\n"
-    )
-
-    return frames
