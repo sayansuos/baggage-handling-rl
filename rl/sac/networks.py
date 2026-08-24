@@ -101,7 +101,7 @@ class ActorNetwork(torch.nn.Module):
         hidden_size: int,
         lr: float,
         reparam_noise: float,
-        chkpt_path: str,
+        checkpoint_path: str | None,
     ):
         """
         Constructor
@@ -110,7 +110,7 @@ class ActorNetwork(torch.nn.Module):
         super().__init__()
 
         # Store the checkpoint file path
-        self.checkpoint_path = chkpt_path
+        self.checkpoint_path = checkpoint_path
 
         # Store the optimization and numerical stability parameters
         self.lr = lr
@@ -288,7 +288,7 @@ class CriticNetwork(torch.nn.Module):
         hidden_size: int,
         n_actions: int,
         lr: float,
-        chkpt_path: str,
+        checkpoint_path: str | None,
     ):
         """
         Constructor
@@ -297,7 +297,7 @@ class CriticNetwork(torch.nn.Module):
         super().__init__()
 
         # Store the checkpoint file path
-        self.checkpoint_path = chkpt_path
+        self.checkpoint_path = checkpoint_path
 
         # Store the optimization parameter
         self.lr = lr

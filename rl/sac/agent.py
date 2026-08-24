@@ -39,9 +39,7 @@ class SACAgent(torch.nn.Module):
 
         # SAC hyperparameters
         self.tau = self.sac_config.tau  # Soft update coefficient
-        self.alpha = (
-            self.sac_config.alpha
-        )  # Entropy weight (taskloitation/taskloration)
+        self.alpha = self.sac_config.alpha  # Entropy weight (exploitation/exploration)
         self.critic_lr = self.sac_config.critic_lr  # Critic learning rate
         self.actor_lr = self.sac_config.actor_lr  # Actor learning rate
         self.gamma = self.sac_config.gamma  # Discount factor
@@ -64,7 +62,7 @@ class SACAgent(torch.nn.Module):
             self.hidden_size,
             self.n_actions,
             self.critic_lr,
-            chkpt_path=f"rl/SAC/weights/{self.env_name}_critic_1.pt",
+            checkpoint_path=None,
         )
         self.q2 = networks.CriticNetwork(
             self.map_shape,
@@ -73,7 +71,7 @@ class SACAgent(torch.nn.Module):
             self.hidden_size,
             self.n_actions,
             self.critic_lr,
-            chkpt_path=f"rl/SAC/weights/{self.env_name}_critic_2.pt",
+            checkpoint_path=None,
         )
 
         # Create the corresponding target networks
@@ -84,7 +82,7 @@ class SACAgent(torch.nn.Module):
             self.hidden_size,
             self.n_actions,
             self.critic_lr,
-            chkpt_path=f"rl/SAC/weights/{self.env_name}_target_critic_1.pt",
+            checkpoint_path=None,
         )
         self.target_q2 = networks.CriticNetwork(
             self.map_shape,
@@ -93,7 +91,7 @@ class SACAgent(torch.nn.Module):
             self.hidden_size,
             self.n_actions,
             self.critic_lr,
-            chkpt_path=f"rl/SAC/weights/{self.env_name}_target_critic_2.pt",
+            checkpoint_path=None,
         )
 
         # Create the actor network
@@ -107,7 +105,7 @@ class SACAgent(torch.nn.Module):
             self.hidden_size,
             self.actor_lr,
             self.reparam_noise,
-            chkpt_path=f"rl/SAC/weights/{self.env_name}_actor.pt",
+            checkpoint_path=None,
         )
 
         # Initialize target critic networks with the critic network parameters
@@ -337,7 +335,7 @@ class SACAgent(torch.nn.Module):
         # Keep the minimum Q-value
         q_new = torch.min(q1_new, q2_new)
 
-        # Compute the SAC actor objective: minimize entropy term - taskected Q-value
+        # Compute the SAC actor objective: minimize entropy term - expected Q-value
         actor_loss = (self.alpha * log_probs - q_new).mean()
 
         # Reset gradients accumulated by the actor network

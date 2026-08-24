@@ -1,7 +1,7 @@
+import os
 import time
 import warnings
 from concurrent.futures import ProcessPoolExecutor
-from dataclasses import replace
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -14,27 +14,37 @@ from simulator.environment.environment import Environment
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 
-def set_checkpoint_paths(agent: SACAgent, policy_name: str) -> None:
+def set_checkpoint_paths(
+    agent: SACAgent, policy_name: str, checkpoint_name: str
+) -> None:
     """
-    Configure all SAC checkpoint paths for a given policy name.
+    Configure the SAC checkpoint paths for a policy checkpoint.
+
+    Checkpoints are stored in:
+    ``rl/sac/weights/<policy_name>/<checkpoint_name>/``.
     """
+
+    path = f"rl/sac/weights/{policy_name}/{checkpoint_name}"
+    os.makedirs(path, exist_ok=True)
 
     agent.env_name = policy_name
 
-    agent.actor.checkpoint_path = f"rl/SAC/weights/{policy_name}_actor.pt"
-    agent.q1.checkpoint_path = f"rl/SAC/weights/{policy_name}_critic_1.pt"
-    agent.q2.checkpoint_path = f"rl/SAC/weights/{policy_name}_critic_2.pt"
-    agent.target_q1.checkpoint_path = f"rl/SAC/weights/{policy_name}_target_critic_1.pt"
-    agent.target_q2.checkpoint_path = f"rl/SAC/weights/{policy_name}_target_critic_2.pt"
+    agent.actor.checkpoint_path = f"{path}/actor.pt"
+    agent.q1.checkpoint_path = f"{path}/critic_1.pt"
+    agent.q2.checkpoint_path = f"{path}/critic_2.pt"
+    agent.target_q1.checkpoint_path = f"{path}/target_critic_1.pt"
+    agent.target_q2.checkpoint_path = f"{path}/target_critic_2.pt"
 
 
 def run_sac(
     task: Task,
-    init_task: Task | None,
+    policy_name: str,
+    checkpoint_name: str,
     n_trained_agents: int,
     n_steps: int,
     agent: SACAgent | None = None,
-    policy_name: str | None = None,
+    init_policy_name: str | None = None,
+    init_checkpoint_name: str | None = None,
     warmup_steps: int = 1000,
     update_frequency: int = 4,
     reset_frequency: int = 5,
@@ -77,18 +87,23 @@ def run_sac(
         warmup_steps = 0
 
     # Case 2: We use the policy trained on a previous task to initialize the new one.
-    elif init_task is not None:
-        agent = SACAgent(task=init_task, action_space=env.action_space)
+    elif init_policy_name is not None:
+        agent = SACAgent(task=task, action_space=env.action_space)
+        set_checkpoint_paths(
+            agent=agent,
+            policy_name=init_policy_name,
+            checkpoint_name=init_checkpoint_name,
+        )
         agent.load_checkpoints()
 
     # Case 3: We build a new policy from scratch.
     else:
         agent = SACAgent(task=task, action_space=env.action_space)
 
-    # Configure the checkpoint paths for the current policy.
-    if policy_name is None:
-        policy_name = task.name
-    set_checkpoint_paths(agent=agent, policy_name=policy_name)
+    # Configure the checkpoint paths for the current policy
+    set_checkpoint_paths(
+        agent=agent, policy_name=policy_name, checkpoint_name=checkpoint_name
+    )
 
     # ---------------------------------------------------------------------------------
     # Initialize the metrics
@@ -131,7 +146,7 @@ def run_sac(
             for ag in env.agents:
                 if ag in env.focus_agents:
                     # If the policy starts from scratch, use random actions during warmup
-                    if init_task is None and total_steps < warmup_steps:
+                    if init_policy_name is None and total_steps < warmup_steps:
                         action[ag.id] = env.action_space.sample()
 
                     # Otherwise, use stochastics actions from the policy
@@ -194,7 +209,8 @@ def run_sac(
                             "pos_y": ag_info["pos_y"],
                             "distance_to_goal": ag_info["distance_to_goal"],
                             "heading_error": ag_info["heading_error"],
-                            "min_obstacle_distance": ag_info["min_obstacle_distance"],
+                            "closest_entity_dist": ag_info["closest_entity_dist"],
+                            "closest_entity": ag_info["closest_entity"],
                             "v": ag_info["v"],
                             "omega": ag_info["omega"],
                             "reward": reward[ag_id],
@@ -222,7 +238,7 @@ def run_sac(
 
         history.append(
             {
-                "experiment": episode_info["experiment"],
+                "task": episode_info["task"],
                 "episode": episode_info["episode"],
                 "return_total": episode_info["return_total"],
                 "mean_v": episode_info["mean_v"],
@@ -277,8 +293,12 @@ def run_sac(
     # Final checkpoint
     # ---------------------------------------------------------------------------------
 
-    # Probabilistic curriculum chunks retain their current policy.
-    if not save_best or best_success_rate == -np.inf:
+    # Restore the best checkpoint when one was selected.
+    if save_best and best_success_rate != -np.inf:
+        agent.load_checkpoints()
+
+    # Otherwise, save the current policy.
+    else:
         agent.save_checkpoints()
 
     print()
@@ -289,10 +309,12 @@ def run_sac(
 def evaluate_sac(
     task: Task,
     policy_name: str,
+    checkpoint_name: str,
     n_episodes: int,
     n_renders: int,
     n_workers: int,
-) -> tuple[list[dict], list[np.ndarray] | None, dict]:
+    log_debug: bool,
+) -> tuple[list[dict], list[dict] | None, list[np.ndarray] | None, dict]:
     """
     Evaluate a trained SAC policy on a task over multiple episodes.
 
@@ -305,6 +327,7 @@ def evaluate_sac(
     parallel_episode_ids = list(range(n_renders, n_episodes))
 
     history = []
+    debug = [] if log_debug else None
     frames = [] if n_renders > 0 else None
     action_times = []
 
@@ -313,13 +336,19 @@ def evaluate_sac(
     # ---------------------------------------------------------------------------------
 
     if rendered_episode_ids:
-        render_history, frames, render_action_times = _evaluate_rendered_episodes(
-            task=task,
-            policy_name=policy_name,
-            episode_ids=rendered_episode_ids,
+        render_history, render_debug, frames, render_action_times = (
+            _evaluate_rendered_episodes(
+                task=task,
+                policy_name=policy_name,
+                checkpoint_name=checkpoint_name,
+                episode_ids=rendered_episode_ids,
+                log_debug=log_debug,
+            )
         )
 
         history.extend(render_history)
+        if log_debug:
+            debug.extend(render_debug)
         action_times.extend(render_action_times)
 
     # ---------------------------------------------------------------------------------
@@ -340,14 +369,23 @@ def evaluate_sac(
         # Evaluate the chunks in parallel
         with ProcessPoolExecutor(max_workers=n_workers) as executor:
             futures = [
-                executor.submit(_evaluate_worker, task, policy_name, episode_ids)
+                executor.submit(
+                    _evaluate_worker,
+                    task,
+                    policy_name,
+                    checkpoint_name,
+                    episode_ids,
+                    log_debug,
+                )
                 for episode_ids in episode_chunks
             ]
 
             # Collect results
             for future in futures:
-                worker_history, worker_action_times = future.result()
+                worker_history, worker_debug, worker_action_times = future.result()
                 history.extend(worker_history)
+                if log_debug:
+                    debug.extend(worker_debug)
                 action_times.extend(worker_action_times)
 
     # ---------------------------------------------------------------------------------
@@ -355,9 +393,10 @@ def evaluate_sac(
     # ---------------------------------------------------------------------------------
 
     history.sort(key=lambda x: x[0])
-
-    # Remove the episode indices
     history = [episode_info for _, episode_info in history]
+
+    if log_debug:
+        debug.sort(key=lambda row: (row["episode"], row["step"], row["agent"]))
 
     # ---------------------------------------------------------------------------------
     # Compute execution metrics
@@ -370,14 +409,16 @@ def evaluate_sac(
         "actions_per_second": 1.0 / np.mean(action_times),
     }
 
-    return history, frames, metrics
+    return history, debug, frames, metrics
 
 
 def _evaluate_worker(
     task: Task,
     policy_name: str,
+    checkpoint_name: str,
     episode_ids: list[int],
-) -> tuple[list[tuple[int, dict]], list[float]]:
+    log_debug: bool,
+) -> tuple[list[tuple[int, dict]], list[dict] | None, list[float]]:
     """
     Evaluate a subset of episodes in a separate process.
     """
@@ -387,11 +428,15 @@ def _evaluate_worker(
 
     # Load one environment and one policy per worker
     env, agent = _load_evaluation_policy(
-        task=task,
-        policy_name=policy_name,
+        task=task, policy_name=policy_name, checkpoint_name=checkpoint_name
     )
 
+    # Enable debug if required
+    if log_debug:
+        env.debug = True
+
     history = []
+    debug = [] if log_debug else None
     action_times = []
 
     # Evaluate all episodes assigned to this worker
@@ -404,6 +449,7 @@ def _evaluate_worker(
 
         # Reset the environment
         state, _ = env.reset(seed=seed)
+        step_id = 0
 
         # Run the episode until completion
         while not env.done():
@@ -421,34 +467,87 @@ def _evaluate_worker(
                 action_times.append(time.perf_counter() - step_start)
 
             # Apply all actions and advance the environment by one step
-            next_state, _, _, _, info = env.step(action=action)
+            next_state, reward, _, _, info = env.step(action=action)
 
             # Replace the current observation with the next observation
             state = next_state
+            step_id += 1
+
+            # Save debug metrics
+            if log_debug:
+                for ag_id, ag_info in info.items():
+                    debug.append(
+                        {
+                            "task": env.name,
+                            "episode": episode_id + 1,
+                            "step": step_id,
+                            "agent": ag_id,
+                            "pos_x": ag_info["pos_x"],
+                            "pos_y": ag_info["pos_y"],
+                            "distance_to_goal": ag_info["distance_to_goal"],
+                            "heading_error": ag_info["heading_error"],
+                            "closest_entity_dist": ag_info["closest_entity_dist"],
+                            "closest_entity": ag_info["closest_entity"],
+                            "v": ag_info["v"],
+                            "omega": ag_info["omega"],
+                            "reward": reward[ag_id],
+                            "reward_progress": ag_info["reward_progress"],
+                            "reward_rotation": ag_info["reward_rotation"],
+                            "reward_safety": ag_info["reward_safety"],
+                            "reward_collision": ag_info["reward_collision"],
+                            "state": ag_info["state"],
+                        }
+                    )
+
+        # Save episode-level metrics
+        if log_debug:
+            episode_info = next(iter(info.values()))
+        else:
+            episode_info = info
+
+        episode_metrics = {
+            "task": episode_info["task"],
+            "episode": episode_info["episode"],
+            "return_total": episode_info["return_total"],
+            "mean_v": episode_info["mean_v"],
+            "mean_abs_omega": episode_info["mean_abs_omega"],
+            "success_rate": episode_info["success_rate"],
+            "collision_rate": episode_info["collision_rate"],
+            "mean_time_travel": episode_info["mean_time_travel"],
+            "reward_progress": episode_info["reward_progress"],
+            "reward_collision": episode_info["reward_collision"],
+            "reward_safety": episode_info["reward_safety"],
+            "reward_rotation": episode_info["reward_rotation"],
+        }
 
         # Keep the episode index to restore the original order later
-        info["episode"] = episode_id + 1
-        history.append((episode_id, info))
+        history.append((episode_id, episode_metrics))
 
-    return history, action_times
+    return history, debug, action_times
 
 
 def _evaluate_rendered_episodes(
     task: Task,
     policy_name: str,
+    checkpoint_name: str,
     episode_ids: list[int],
-) -> tuple[list[tuple[int, dict]], list[np.ndarray], list[float]]:
+    log_debug: bool,
+) -> tuple[list[tuple[int, dict]], list[dict] | None, list[np.ndarray], list[float]]:
     """
     Evaluate and render a subset of episodes sequentially.
     """
 
     # Load the environment and policy
     env, agent = _load_evaluation_policy(
-        task=task,
-        policy_name=policy_name,
+        task=task, policy_name=policy_name, checkpoint_name=checkpoint_name
     )
 
+    # Enable debug if required
+    if log_debug:
+        env.debug = True
+
     history = []
+    debug = [] if log_debug else None
     frames = []
     action_times = []
 
@@ -464,6 +563,7 @@ def _evaluate_rendered_episodes(
 
         # Reset the environment
         state, _ = env.reset(seed=seed)
+        step_id = 0
 
         # Render the initial state
         env.render(ax)
@@ -487,28 +587,74 @@ def _evaluate_rendered_episodes(
                 action_times.append(time.perf_counter() - step_start)
 
             # Apply all actions and advance the environment by one step
-            next_state, _, _, _, info = env.step(action=action)
+            next_state, reward, _, _, info = env.step(action=action)
 
             # Replace the current observation with the next observation
             state = next_state
+            step_id += 1
 
             # Render the current state
             env.render(ax)
             fig.canvas.draw()
             frames.append(np.asarray(fig.canvas.renderer.buffer_rgba()).copy())
 
+            # Save debug metrics
+            if log_debug:
+                for ag_id, ag_info in info.items():
+                    debug.append(
+                        {
+                            "task": env.name,
+                            "episode": episode_id + 1,
+                            "step": step_id,
+                            "agent": ag_id,
+                            "pos_x": ag_info["pos_x"],
+                            "pos_y": ag_info["pos_y"],
+                            "distance_to_goal": ag_info["distance_to_goal"],
+                            "heading_error": ag_info["heading_error"],
+                            "closest_entity_dist": ag_info["closest_entity_dist"],
+                            "closest_entity": ag_info["closest_entity"],
+                            "v": ag_info["v"],
+                            "omega": ag_info["omega"],
+                            "reward": reward[ag_id],
+                            "reward_progress": ag_info["reward_progress"],
+                            "reward_rotation": ag_info["reward_rotation"],
+                            "reward_safety": ag_info["reward_safety"],
+                            "reward_collision": ag_info["reward_collision"],
+                            "state": ag_info["state"],
+                        }
+                    )
+
+        # Save episode-level metrics
+        if log_debug:
+            episode_info = next(iter(info.values()))
+        else:
+            episode_info = info
+
+        episode_metrics = {
+            "task": episode_info["task"],
+            "episode": episode_info["episode"],
+            "return_total": episode_info["return_total"],
+            "mean_v": episode_info["mean_v"],
+            "mean_abs_omega": episode_info["mean_abs_omega"],
+            "success_rate": episode_info["success_rate"],
+            "collision_rate": episode_info["collision_rate"],
+            "mean_time_travel": episode_info["mean_time_travel"],
+            "reward_progress": episode_info["reward_progress"],
+            "reward_collision": episode_info["reward_collision"],
+            "reward_safety": episode_info["reward_safety"],
+            "reward_rotation": episode_info["reward_rotation"],
+        }
+
         # Keep the episode index to restore the original order later
-        info["episode"] = episode_id + 1
-        history.append((episode_id, info))
+        history.append((episode_id, episode_metrics))
 
     plt.close(fig)
 
-    return history, frames, action_times
+    return history, debug, frames, action_times
 
 
 def _load_evaluation_policy(
-    task: Task,
-    policy_name: str,
+    task: Task, policy_name: str, checkpoint_name: str
 ) -> tuple[Environment, SACAgent]:
     """
     Create an evaluation environment and load the selected trained policy.
@@ -525,14 +671,11 @@ def _load_evaluation_policy(
     # Evaluate all agents controlled by the shared policy.
     env.set_focus_agents(n_focus_agents=task.env_config.nb_agents)
 
-    # Create a temporary task used only to load the selected policy
-    policy_task = replace(
-        task,
-        name=policy_name,
-    )
-
     # Load the trained agent
-    agent = SACAgent(task=policy_task, action_space=env.action_space)
+    agent = SACAgent(task=task, action_space=env.action_space)
+    set_checkpoint_paths(
+        agent=agent, policy_name=policy_name, checkpoint_name=checkpoint_name
+    )
     agent.load_checkpoints()
 
     return env, agent
