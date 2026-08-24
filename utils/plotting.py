@@ -1,11 +1,13 @@
 import math
-import os
+from pathlib import Path
+from typing import Literal
 
 import cv2
 import imageio.v2 as imageio
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from matplotlib.figure import Figure
 
 from configs.config import Task
 from simulator.environment.environment import Environment
@@ -13,7 +15,7 @@ from simulator.environment.environment import Environment
 
 def plot_renders(
     tasks: list[Task],
-    path: str,
+    path: str | Path,
     file_name: str = "",
     max_ncols: int = 2,
 ) -> None:
@@ -23,7 +25,8 @@ def plot_renders(
     """
 
     # Create the output directory if it does not exist
-    os.makedirs(path, exist_ok=True)
+    path = Path(path)
+    path.mkdir(parents=True, exist_ok=True)
 
     # Compute the number of rows and columns
     n = len(tasks)
@@ -47,6 +50,7 @@ def plot_renders(
             reward_config=task.reward_config,
             name=task.name,
         )
+        env.set_focus_agents(n_focus_agents=env.env_config.nb_agents)
         env.reset(1234)
 
         # Render the environment
@@ -60,13 +64,13 @@ def plot_renders(
 
     # Save the figure
     plt.tight_layout()
-    plt.savefig(f"{path}/{file_name}_renders.png", dpi=300)
+    fig.savefig(path / f"{file_name}_renders.png", dpi=300)
     plt.close(fig)
 
 
 def plot_grid(
     grid: np.ndarray,
-    path: str,
+    path: str | Path,
     file_name: str = "",
     scale: int = 10,
 ) -> None:
@@ -76,7 +80,8 @@ def plot_grid(
     """
 
     # Create the output directory if it does not exist
-    os.makedirs(path, exist_ok=True)
+    path = Path(path)
+    path.mkdir(parents=True, exist_ok=True)
 
     # Convert the binary occupancy grid to grayscale
     img = (1 - grid) * 255
@@ -103,7 +108,7 @@ def plot_grid(
         cv2.line(img, (0, y), (W * scale, y), (200, 200, 200), 1)
 
     # Save the figure
-    imageio.imwrite(f"{path}/{file_name}_grid.png", img)
+    imageio.imwrite(path / f"{file_name}_grid.png", img)
 
 
 def plot_animation(frames, path: str, file_name: str = "", fps: int = 20):
@@ -112,11 +117,12 @@ def plot_animation(frames, path: str, file_name: str = "", fps: int = 20):
     """
 
     # Create the output directory if it does not exist
-    os.makedirs(path, exist_ok=True)
+    path = Path(path)
+    path.mkdir(parents=True, exist_ok=True)
 
     # Define the output file paths
-    mp4_file = f"{path}/{file_name}_anim.mp4"
-    gif_file = f"{path}/{file_name}_anim.gif"
+    mp4_file = path / f"{file_name}_anim.mp4"
+    gif_file = path / f"{file_name}_anim.gif"
 
     # Create the video writer
     writer = imageio.get_writer(mp4_file, fps=fps)
@@ -127,263 +133,379 @@ def plot_animation(frames, path: str, file_name: str = "", fps: int = 20):
     writer.close()
 
     # Save the frames as a GIF
-    imageio.mimsave(
-        gif_file,
-        frames,
-        fps=min(fps, 10),
-        loop=0,
-    )
+    imageio.mimsave(gif_file, frames, fps=min(fps, 10), loop=0)
 
 
 def plot_figures(
-    df_perf: pd.DataFrame,
-    df_rewards: pd.DataFrame,
-    path: str | None,
-    file_name: str | None,
-    window: int = 10,
-    render: bool = False,
-) -> None:
-    """
-    Generate and save the reward, performance, and velocity plots for an task.
-    """
-
-    # Generate the reward decomposition figure
-    plot_rewards(df_rewards, path, file_name, window, render)
-
-    # Generate the performance metrics figure
-    plot_performances(df_perf, path, file_name, window, render)
-
-    # Generate the velocity metrics figure
-    plot_velocities(df_perf, path, file_name, window, render)
-
-
-def plot_rewards(
-    df: pd.DataFrame,
-    path: str | None,
-    file_name: str | None,
+    logs_path: str | Path,
+    figs_path: str | Path,
+    mode: Literal["train", "validation", "evaluation"],
+    policy_name: str,
+    file_name: str,
     window: int,
-    render: bool,
-) -> None:
+) -> tuple[Figure, Figure, Figure]:
     """
-    Plot the smoothed evolution of the total reward and its different components over
-    episodes.
+    Generate training curves or validation/evaluation summaries.
+
+    For training, ''file_name'' identifies the task or curriculum log.
+    For validation and evaluation, all task logs of the policy are combined.
     """
 
     # Create the output directory if it does not exist
-    os.makedirs(path, exist_ok=True)
+    figs_path = Path(figs_path) / mode / policy_name
+    figs_path.mkdir(parents=True, exist_ok=True)
 
-    # Create the figure
-    fig, ax = plt.subplots(figsize=(8, 4))
+    # Load one task logs for train
+    logs_path = Path(logs_path) / mode / policy_name
+    if mode == "train":
+        metrics_file = logs_path / f"{file_name}_metrics.csv"
+        rewards_file = logs_path / f"{file_name}_rewards.csv"
 
-    # Compute rolling averages to smooth the curves
-    for col in [
-        "return_total",
-        "reward_progress",
-        "reward_collision",
-        "reward_safety",
-        "reward_rotation",
-    ]:
-        df[f"{col}_smooth"] = df[col].rolling(window, min_periods=1).mean()
+        if not metrics_file.is_file():
+            raise FileNotFoundError(f"Performance log not found: {metrics_file}")
+        if not rewards_file.is_file():
+            raise FileNotFoundError(f"Reward log not found: {rewards_file}")
 
-    # Plot the smoothed progress reward
-    ax.plot(
-        df["episode"],
-        df["reward_progress_smooth"],
-        alpha=0.3,
-        label="Progress",
+        metrics = pd.read_csv(metrics_file)
+        rewards = pd.read_csv(rewards_file)
+
+        output_name = file_name
+
+    # Load all tasks logs for validation and evaluation
+    else:
+        metrics_files = sorted(logs_path.glob("*_metrics.csv"))
+        rewards_files = sorted(logs_path.glob("*_rewards.csv"))
+
+        if not metrics_files:
+            raise FileNotFoundError(f"No metrics files found in: {logs_path}")
+        if not rewards_files:
+            raise FileNotFoundError(f"No reward files found in: {logs_path}")
+
+        # Concatenate all files in one
+        metrics_frames = []
+        rewards_frames = []
+
+        for metrics_file in metrics_files:
+            task_name = metrics_file.name.removesuffix("_metrics.csv")
+            task_df = pd.read_csv(metrics_file)
+            task_df["task"] = task_name
+            metrics_frames.append(task_df)
+
+        for rewards_file in rewards_files:
+            task_name = rewards_file.name.removesuffix("_rewards.csv")
+            task_df = pd.read_csv(rewards_file)
+            task_df["task"] = task_name
+            rewards_frames.append(task_df)
+
+        metrics = pd.concat(metrics_frames, ignore_index=True)
+        rewards = pd.concat(rewards_frames, ignore_index=True)
+
+        # Create one summary row per task
+        metrics = metrics.groupby("task", sort=False, as_index=False).mean(
+            numeric_only=True
+        )
+        rewards = rewards.groupby("task", sort=False, as_index=False).mean(
+            numeric_only=True
+        )
+
+        output_name = policy_name
+
+    # Generate figures
+    rewards = _plot_rewards(
+        mode=mode, df=rewards, path=figs_path, file_name=output_name, window=window
     )
 
-    # Plot the smoothed collision reward
-    ax.plot(
-        df["episode"],
-        df["reward_collision_smooth"],
-        alpha=0.3,
-        label="Collision",
+    performances = _plot_performances(
+        mode=mode, df=metrics, path=figs_path, file_name=output_name, window=window
     )
 
-    # Plot the smoothed safety reward
-    ax.plot(
-        df["episode"],
-        df["reward_safety_smooth"],
-        alpha=0.3,
-        label="Safety",
+    velocities = _plot_velocities(
+        mode=mode, df=metrics, path=figs_path, file_name=output_name, window=window
     )
 
-    # Plot the smoothed rotation reward
-    ax.plot(
-        df["episode"],
-        df["reward_rotation_smooth"],
-        alpha=0.3,
-        label="Rotation",
-    )
+    # Close the figures
+    plt.close(rewards)
+    plt.close(performances)
+    plt.close(velocities)
 
-    # Plot the smoothed total reward
-    ax.plot(
-        df["episode"],
-        df["return_total_smooth"],
-        color="black",
-        label="Total",
-    )
-
-    # Configure the figure
-    ax.set_xlabel("Episode")
-    ax.set_ylabel("Reward")
-    ax.set_title("Reward decomposition")
-    ax.grid(alpha=0.3)
-    ax.legend()
-    fig.tight_layout()
-
-    # Save the figure when an output path and file name are provided
-    if path and file_name:
-        fig.savefig(f"{path}/{file_name}_rewards.png", dpi=300)
-
-    # Display the figure when requested
-    if render:
-        plt.show()
-
-    plt.close(fig)
+    return rewards, performances, velocities
 
 
-def plot_performances(
+def _plot_performances(
+    mode: Literal["train", "validation", "evaluation"],
     df: pd.DataFrame,
-    path: str | None,
-    file_name: str | None,
-    window: int,
-    render: bool,
-) -> None:
+    path: str | Path,
+    file_name: str,
+    window: int | None,
+) -> Figure:
     """
-    Plot the smoothed success, collision, timeout rates, and mean travel time over
-    episodes.
+    Plot success, collision, timeout, and travel-time metrics.
+
+    Training metrics are represented as smoothed curves over episodes.
+    Validation and evaluation metrics are represented as bars per task.
     """
 
     # Create the output directory if it does not exist
-    os.makedirs(path, exist_ok=True)
+    path = Path(path)
+    path.mkdir(parents=True, exist_ok=True)
 
     # Create the subplot grid (one for rates and one for travel time)
-    fig, (ax1, ax2) = plt.subplots(
-        2,
-        1,
-        figsize=(8, 8),
-        sharex=True,
-    )
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(9, 8), sharex=True)
+
+    df = df.copy()
 
     # Compute the timeout rate
-    df["timeout_rate"] = 1 - df["success_rate"] - df["collision_rate"]
+    df["timeout_rate"] = (1 - df["success_rate"] - df["collision_rate"]).clip(0, 1)
 
-    # Compute rolling averages to smooth the curves
-    for col in ["success_rate", "collision_rate", "timeout_rate", "mean_time_travel"]:
-        df[f"{col}_smooth"] = df[col].rolling(window, min_periods=1).mean()
+    # Convert rates to percentage
+    cols = ["success_rate", "collision_rate", "timeout_rate"]
+    df[cols] = 100 * df[cols]
 
-    # Plot the smoothed success rate
-    ax1.plot(
-        df["episode"],
-        df["success_rate_smooth"],
-        linewidth=2,
-        label="Success rate",
-    )
+    if mode == "train":
+        # Smooth the curves
+        cols = [*cols, "mean_time_travel"]
+        for col in cols:
+            df[f"{col}_smooth"] = df[col].rolling(window, min_periods=1).mean()
 
-    # Plot the smoothed collison rate
-    ax1.plot(
-        df["episode"],
-        df["collision_rate_smooth"],
-        linewidth=2,
-        label="Collision rate",
-    )
-
-    # Plot the smoothed timeout rate
-    ax1.plot(
-        df["episode"],
-        df["timeout_rate_smooth"],
-        linewidth=2,
-        label="Timeout rate",
-    )
-
-    # Plot the time travel
-    ax2.plot(
-        df["episode"],
-        df["mean_time_travel_smooth"],
-        linewidth=2,
-        label="Mean travel time",
-    )
-
-    # Configure the figure
-    ax1.set_ylabel("Rate")
-    ax1.set_ylim(0, 1.1)
-    ax1.set_title("Training performance")
-    ax1.grid(alpha=0.3)
-    ax1.legend()
-    ax2.set_xlabel("Episode")
-    ax2.set_ylabel("Steps")
-    ax2.grid(alpha=0.3)
-    ax2.legend()
-    fig.tight_layout()
-
-    # Save the figure when an output path and file name are provided
-    if path and file_name:
-        fig.savefig(
-            f"{path}/{file_name}_performances.png",
-            dpi=300,
+        # Plot
+        ax1.plot(df["episode"], df["success_rate_smooth"], linewidth=2, label="Success")
+        ax1.plot(
+            df["episode"], df["collision_rate_smooth"], linewidth=2, label="Collision"
+        )
+        ax1.plot(df["episode"], df["timeout_rate_smooth"], linewidth=2, label="Timeout")
+        ax2.plot(
+            df["episode"],
+            df["mean_time_travel_smooth"],
+            linewidth=2,
+            label="Mean travel time",
         )
 
-    # Display the figure when requested
-    if render:
-        plt.show()
+        # Configure the figure
+        ax1.set_title("Training performance")
+        ax2.set_xlabel("Episode")
 
-    plt.close(fig)
+    else:
+        # Sort x labels
+        if mode == "evaluation":
+            df = df.sort_values(
+                "eval", key=lambda x: x.str.extract(r"(\d+)$", expand=False).astype(int)
+            )
+        else:
+            df = df.sort_values(
+                "task", key=lambda x: x.str.extract(r"(\d+)$", expand=False).astype(int)
+            )
+
+        # Define bars
+        x = np.arange(len(df))
+        width = 0.25
+
+        # Plot
+        ax1.bar(x - width, df["success_rate"], width, label="Success")
+        ax1.bar(x, df["collision_rate"], width, label="Collision")
+        ax1.bar(x + width, df["timeout_rate"], width, label="Timeout")
+
+        ax2.bar(x, df["mean_time_travel"], label="Mean travel time")
+
+        # Configure the figure
+        ax1.set_title(f"{mode.capitalize()} performance")
+        ax2.set_xticks(x)
+        ax2.set_xticklabels(df["task"], rotation=45, ha="right")
+
+    # Configure the figure
+    ax1.set_ylabel("Rate (%)")
+    ax1.set_ylim(0, 100)
+    ax1.grid(axis="y", alpha=0.3)
+    ax1.legend()
+
+    ax2.set_ylabel("Travel time")
+    ax2.grid(axis="y", alpha=0.3)
+    ax2.legend()
+
+    fig.tight_layout()
+
+    # Save the figure
+    fig.savefig(path / f"{file_name}_performances.png", dpi=300)
+
+    return fig
 
 
-def plot_velocities(
+def _plot_velocities(
+    mode: Literal["train", "validation", "evaluation"],
     df: pd.DataFrame,
-    path: str | None,
-    file_name: str | None,
-    window: int,
-    render: bool,
-):
+    path: str | Path,
+    file_name: str,
+    window: int | None,
+) -> Figure:
     """
-    Plot the smoothed mean linear and angular velocities over episodes.
+    Plot mean linear and absolute angular velocities.
+
+    Training metrics are represented as smoothed curves over episodes.
+    Validation and evaluation metrics are represented as bars per task.
     """
+
+    # Create the output directory if it does not exist
+    path = Path(path)
+    path.mkdir(parents=True, exist_ok=True)
 
     # Create the figure
     fig, ax = plt.subplots(figsize=(8, 4))
 
-    # Create the output directory if it does not exist
-    os.makedirs(path, exist_ok=True)
+    df = df.copy()
 
-    # Compute rolling averages to smooth the curves
-    for col in ["mean_v", "mean_abs_omega"]:
-        df[f"{col}_smooth"] = df[col].rolling(window, min_periods=1).mean()
+    if mode == "train":
+        # Smooth the curves
+        cols = ["mean_v", "mean_abs_omega"]
+        for col in cols:
+            df[f"{col}_smooth"] = df[col].rolling(window, min_periods=1).mean()
 
-    # Plot the smoothed mean v
-    ax.plot(
-        df["episode"], df["mean_v_smooth"], linewidth=1, label="Mean v", color="blue"
-    )
-
-    # Plot the smoothed mean abs omega
-    ax.plot(
-        df["episode"],
-        df["mean_abs_omega_smooth"],
-        linewidth=1,
-        label="Mean |omega|",
-        color="orange",
-    )
-
-    # Configure the figure
-    ax.set_xlabel("Episode")
-    ax.set_ylabel("Value")
-    ax.set_title("Linear and angular velocities")
-    ax.grid(alpha=0.3)
-    ax.legend()
-    fig.tight_layout()
-
-    # Save the figure when an output path and file name are provided
-    if path and file_name:
-        fig.savefig(
-            f"{path}/{file_name}_velocities.png",
-            dpi=300,
+        # Plot
+        ax.plot(
+            df["episode"],
+            df["mean_v_smooth"],
+            linewidth=1,
+            label="Mean v",
+            color="tab:blue",
         )
 
-    # Display the figure when requested
-    if render:
-        plt.show()
+        ax.plot(
+            df["episode"],
+            df["mean_abs_omega_smooth"],
+            linewidth=1,
+            label="Mean |omega|",
+            color="tab:orange",
+        )
 
-    plt.close(fig)
+        # Configure the figure
+        ax.set_xlabel("Episode")
+
+    else:
+        # Sort x labels
+        if mode == "evaluation":
+            df = df.sort_values(
+                "eval", key=lambda x: x.str.extract(r"(\d+)$", expand=False).astype(int)
+            )
+        else:
+            df = df.sort_values(
+                "task", key=lambda x: x.str.extract(r"(\d+)$", expand=False).astype(int)
+            )
+
+        # Define bars
+        x = np.arange(len(df))
+        width = 0.35
+
+        # Plot
+        ax.bar(
+            x - width / 2, df["mean_v"], width, label="Mean v (m/s)", color="tab:blue"
+        )
+        ax.bar(
+            x + width / 2,
+            df["mean_abs_omega"],
+            width,
+            label="Mean |omega| (rad/s)",
+            color="tab:orange",
+        )
+
+        # Configure the figure
+        ax.set_xticks(x)
+        ax.set_xticklabels(df["task"], rotation=45, ha="right")
+
+    ax.set_ylabel("Velocity")
+    ax.set_title("Linear and angular velocities")
+    ax.grid(axis="y", alpha=0.3)
+    ax.legend()
+
+    fig.tight_layout()
+
+    # Save the figure
+    fig.savefig(path / f"{file_name}_velocities.png", dpi=300)
+
+    return fig
+
+
+def _plot_rewards(
+    mode: Literal["train", "validation", "evaluation"],
+    df: pd.DataFrame,
+    path: str | Path,
+    file_name: str,
+    window: int | None,
+) -> Figure:
+    """
+    Plot returns and reward components.
+
+    Training rewards are represented as smoothed curves over episodes.
+    Validation and evaluation returns are represented as bars per task.
+    """
+
+    # Create the output directory if it does not exist
+    path = Path(path)
+    path.mkdir(parents=True, exist_ok=True)
+
+    # Create the figure
+    fig, ax = plt.subplots(figsize=(8, 4))
+
+    df = df.copy()
+
+    if mode == "train":
+        # Smooth the curves
+        cols = [
+            "return_total",
+            "reward_progress",
+            "reward_collision",
+            "reward_safety",
+            "reward_rotation",
+        ]
+        for col in cols:
+            df[f"{col}_smooth"] = df[col].rolling(window, min_periods=1).mean()
+
+        # Plot
+        ax.plot(
+            df["episode"], df["reward_progress_smooth"], alpha=0.3, label="Progress"
+        )
+        ax.plot(
+            df["episode"], df["reward_collision_smooth"], alpha=0.3, label="Collision"
+        )
+        ax.plot(df["episode"], df["reward_safety_smooth"], alpha=0.3, label="Safety")
+        ax.plot(
+            df["episode"], df["reward_rotation_smooth"], alpha=0.3, label="Rotation"
+        )
+        ax.plot(df["episode"], df["return_total_smooth"], color="black", label="Total")
+
+        # Configure the figure
+        ax.set_xlabel("Episode")
+        ax.set_ylabel("Reward")
+        ax.set_title("Reward decomposition")
+
+    if mode == "evaluation" or mode == "validation":
+        # Sort x labels
+        if mode == "evaluation":
+            df = df.sort_values(
+                "eval", key=lambda x: x.str.extract(r"(\d+)$", expand=False).astype(int)
+            )
+        else:
+            df = df.sort_values(
+                "task", key=lambda x: x.str.extract(r"(\d+)$", expand=False).astype(int)
+            )
+
+        # Define bars
+        x = np.arange(len(df))
+
+        ax.bar(x, df["return_total"], color="tab:blue")
+
+        # Configure the figure
+        ax.set_xticks(x)
+        ax.set_xticklabels(df["task"], rotation=45, ha="right")
+
+        ax.set_xlabel("Task")
+        ax.set_ylabel("Mean return")
+        ax.set_title(f"{mode.capitalize()} mean returns")
+
+    # Configure the figure
+    ax.grid(axis="y", alpha=0.3)
+    ax.legend() if mode == "train" else None
+
+    fig.tight_layout()
+
+    # Save the figure
+    fig.savefig(path / f"{file_name}_rewards.png", dpi=300)
+
+    return fig
