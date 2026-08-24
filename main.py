@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import numpy as np
 
 from cli import parse_args
@@ -14,11 +16,8 @@ def main() -> None:
     # ---------------------------------------------------------------------------------
 
     if args.mode == "train":
-        tasks = load_tasks(section=args.task_section)[args.start_task :]
-        if args.end_task is not None:
-            tasks = tasks[args.start_task : args.end_task + 1]
-
-        init_task = tasks[args.init_task] if args.init_task is not None else None
+        end_task = args.end_task + 1 if args.end_task is not None else None
+        tasks = load_tasks(section=args.task_section)[args.start_task : end_task]
 
         if args.no_max_steps:
             max_steps = np.inf
@@ -29,9 +28,10 @@ def main() -> None:
 
         run_train(
             tasks=tasks,
-            init_task=init_task,
-            n_trained_agents=args.n_trained_agents,
             policy_name=args.policy_name,
+            n_trained_agents=args.n_trained_agents,
+            init_policy_name=args.init_policy_name,
+            init_checkpoint_name=args.init_checkpoint_name,
             max_steps=max_steps,
             sequential_curriculum=args.sequential_curriculum,
         )
@@ -41,13 +41,13 @@ def main() -> None:
     # ---------------------------------------------------------------------------------
 
     elif args.mode == "validate":
-        tasks = load_tasks(section=args.task_section)[args.start_task :]
-        if args.end_task is not None:
-            tasks = tasks[args.start_task : args.end_task + 1]
+        end_task = args.end_task + 1 if args.end_task is not None else None
+        tasks = load_tasks(section=args.task_section)[args.start_task : end_task]
 
         run_validation(
             tasks=tasks,
             policy_name=args.policy_name,
+            checkpoint_strategy=args.checkpoint_strategy,
             n_episodes=args.n_episodes,
             n_renders=args.n_renders,
         )
@@ -57,9 +57,8 @@ def main() -> None:
     # ---------------------------------------------------------------------------------
 
     elif args.mode == "evaluate":
-        tasks = load_tasks(section=args.task_section)[args.start_task :]
-        if args.end_task is not None:
-            tasks = tasks[args.start_task : args.end_task + 1]
+        end_task = args.end_task + 1 if args.end_task is not None else None
+        tasks = load_tasks(section=args.task_section)[args.start_task : end_task]
 
         run_evaluation(
             tasks=tasks,
@@ -76,13 +75,16 @@ def main() -> None:
         tasks = load_tasks(section=args.task_section)
 
         plot_renders(
-            tasks=tasks, path="figures/demo/", file_name=args.task_section, max_ncols=4
+            tasks=tasks,
+            path=Path("figures/demo"),
+            file_name=args.task_section,
+            max_ncols=4,
         )
 
         run_animation(
             tasks=tasks,
             policy_name=args.policy_name,
-            path=f"{args.path}/{args.policy_name}",
+            checkpoint_name=args.checkpoint_name,
             file_name=args.task_section,
             fps=args.fps,
         )
@@ -92,11 +94,7 @@ def main() -> None:
     # ---------------------------------------------------------------------------------
 
     elif args.mode == "demo":
-        run_demo(
-            policy_name=args.policy_name,
-            path=args.path,
-            file_name=args.task_section,
-        )
+        run_demo(policy_name=args.policy_name, file_name=args.task_section)
 
 
 if __name__ == "__main__":

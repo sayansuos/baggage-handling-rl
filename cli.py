@@ -17,7 +17,10 @@ def build_parser() -> argparse.ArgumentParser:
     train_parser = subparsers.add_parser("train", help="Train a policy.")
 
     train_parser.add_argument(
-        "--task-section", type=str, help="Name of the task section in tasks.yaml."
+        "--task-section",
+        type=str,
+        required=True,
+        help="Name of the task section in tasks.yaml.",
     )
     train_parser.add_argument(
         "--start-task", type=int, default=0, help="Index of the first task."
@@ -26,7 +29,16 @@ def build_parser() -> argparse.ArgumentParser:
         "--end-task", type=int, default=None, help="Index of the last task."
     )
     train_parser.add_argument(
-        "--init-task", type=int, default=None, help="Index of the initialization task."
+        "--init-policy-name",
+        type=str,
+        default=None,
+        help="Name of the policy used to initialize training.",
+    )
+    train_parser.add_argument(
+        "--init-checkpoint-name",
+        type=str,
+        default=None,
+        help="Name of the checkpoint used to initialize training.",
     )
     train_parser.add_argument(
         "--n-trained-agents", type=int, default=1, help="Number of agents to train."
@@ -37,7 +49,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="Activate a sequential curriculum.",
     )
     train_parser.add_argument(
-        "--policy-name", type=str, default=None, help="Name of the trained policy."
+        "--policy-name", type=str, required=True, help="Name of the trained policy."
     )
 
     train_group = train_parser.add_mutually_exclusive_group()
@@ -59,16 +71,29 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     validation_parser.add_argument(
-        "--task-section", type=str, help="Name of the task section in tasks.yaml."
+        "--task-section",
+        type=str,
+        required=True,
+        help="Name of the task section in tasks.yaml.",
     )
     validation_parser.add_argument(
-        "--policy-name", type=str, help="Name of the trained policy."
+        "--policy-name", type=str, required=True, help="Name of the trained policy."
     )
     validation_parser.add_argument(
         "--start-task", type=int, default=0, help="Index of the first task."
     )
     validation_parser.add_argument(
         "--end-task", type=int, default=None, help="Index of the last task."
+    )
+    validation_parser.add_argument(
+        "--checkpoint-strategy",
+        choices=["matching", "final"],
+        default="final",
+        help=(
+            "Checkpoint selection strategy: 'matching' uses the checkpoint "
+            "having the same name as each task, while 'final' uses the final "
+            "checkpoint for every task."
+        ),
     )
     validation_parser.add_argument(
         "--n-episodes", type=int, default=500, help="Number of episodes to run."
@@ -91,6 +116,7 @@ def build_parser() -> argparse.ArgumentParser:
     evaluation_parser.add_argument(
         "--task-section",
         type=str,
+        required=True,
         help="Name of the task section in tasks.yaml.",
     )
     evaluation_parser.add_argument(
@@ -100,9 +126,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--end-task", type=int, default=None, help="Index of the last task."
     )
     evaluation_parser.add_argument(
-        "--policy-name",
-        type=str,
-        help="Name of the trained policy.",
+        "--policy-name", type=str, required=True, help="Name of the trained policy."
     )
     evaluation_parser.add_argument(
         "--n-episodes", type=int, default=500, help="Number of episodes to run."
@@ -125,16 +149,23 @@ def build_parser() -> argparse.ArgumentParser:
     animation_parser.add_argument(
         "--task-section",
         type=str,
+        required=True,
         help="Name of task section in tasks.yaml.",
     )
     animation_parser.add_argument(
-        "--policy-name", type=str, help="Name of the trained policy."
+        "--policy-name", type=str, required=True, help="Name of the trained policy."
     )
     animation_parser.add_argument(
-        "--path", type=str, default="figures/demo", help="Path to save the animation."
+        "--checkpoint-name",
+        type=str,
+        default="final",
+        help="Name of the policy checkpoint to animate.",
     )
     animation_parser.add_argument(
-        "--fps", type=int, default=10, help="Number of fps in the animation/"
+        "--fps",
+        type=int,
+        default=10,
+        help="Number of frames per second in the animation.",
     )
 
     # ---------------------------------------------------------------------------------
@@ -144,13 +175,13 @@ def build_parser() -> argparse.ArgumentParser:
     demo_parser = subparsers.add_parser("demo", help="Run a demonstration.")
 
     demo_parser.add_argument(
-        "--task-section", type=str, help="Name of the task section in tasks.yaml."
+        "--task-section",
+        type=str,
+        required=True,
+        help="Name of the task section in tasks.yaml.",
     )
     demo_parser.add_argument(
-        "--policy-name", type=str, help="Name of the trained policy."
-    )
-    demo_parser.add_argument(
-        "--path", type=str, default="figures/demo", help="Path to the animation."
+        "--policy-name", type=str, required=True, help="Name of the trained policy."
     )
 
     return parser
@@ -162,4 +193,18 @@ def parse_args(
     """
     Parse command-line arguments.
     """
+
+    parser = build_parser()
+    args = parser.parse_args(argv)
+
+    if args.mode == "train":
+        has_init_policy = args.init_policy_name is not None
+        has_init_checkpoint = args.init_checkpoint_name is not None
+
+        if has_init_policy != has_init_checkpoint:
+            parser.error(
+                "`--init-policy-name` and `--init-checkpoint-name` "
+                "must be provided together."
+            )
+
     return build_parser().parse_args(argv)
