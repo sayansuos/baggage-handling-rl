@@ -286,14 +286,9 @@ def _plot_performances(
 
     else:
         # Sort x labels
-        if mode == "evaluation":
-            df = df.sort_values(
-                "eval", key=lambda x: x.str.extract(r"(\d+)$", expand=False).astype(int)
-            )
-        else:
-            df = df.sort_values(
-                "task", key=lambda x: x.str.extract(r"(\d+)$", expand=False).astype(int)
-            )
+        df = df.sort_values(
+            "task", key=lambda x: x.str.extract(r"(\d+)$", expand=False).astype(int)
+        )
 
         # Define bars
         x = np.arange(len(df))
@@ -380,14 +375,9 @@ def _plot_velocities(
 
     else:
         # Sort x labels
-        if mode == "evaluation":
-            df = df.sort_values(
-                "eval", key=lambda x: x.str.extract(r"(\d+)$", expand=False).astype(int)
-            )
-        else:
-            df = df.sort_values(
-                "task", key=lambda x: x.str.extract(r"(\d+)$", expand=False).astype(int)
-            )
+        df = df.sort_values(
+            "task", key=lambda x: x.str.extract(r"(\d+)$", expand=False).astype(int)
+        )
 
         # Define bars
         x = np.arange(len(df))
@@ -477,14 +467,9 @@ def _plot_rewards(
 
     if mode == "evaluation" or mode == "validation":
         # Sort x labels
-        if mode == "evaluation":
-            df = df.sort_values(
-                "eval", key=lambda x: x.str.extract(r"(\d+)$", expand=False).astype(int)
-            )
-        else:
-            df = df.sort_values(
-                "task", key=lambda x: x.str.extract(r"(\d+)$", expand=False).astype(int)
-            )
+        df = df.sort_values(
+            "task", key=lambda x: x.str.extract(r"(\d+)$", expand=False).astype(int)
+        )
 
         # Define bars
         x = np.arange(len(df))
