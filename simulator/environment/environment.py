@@ -173,7 +173,7 @@ class Environment(gym.Env):
         )
 
         global_info = {
-            "experiment": self.name,
+            "task": self.name,
             "episode": self.episode,
             "return_total": self.reward_total,
             "mean_v": mean_v,
@@ -203,7 +203,9 @@ class Environment(gym.Env):
                 theta=ag.theta,
             )
 
-            closest_distance = self._closest[ag.id]["closest_distance"]
+            closest_entity_dist = self._closest[ag.id]["closest_distance"]
+            closest_entity = self._closest[ag.id]["closest_entity"]
+            closest_id = None if closest_entity is None else closest_entity.id
 
             if rewards_info is not None:
                 rewards = rewards_info[ag.id]
@@ -220,7 +222,8 @@ class Environment(gym.Env):
                 "pos_y": y,
                 "distance_to_goal": ag._goal_relative_distance,
                 "heading_error": heading_error,
-                "min_obstacle_distance": closest_distance,
+                "closest_entity_dist": closest_entity_dist,
+                "closest_entity": closest_id,
                 "v": ag.v,
                 "omega": ag.omega,
                 "state": ag.state,
