@@ -68,13 +68,11 @@ class Environment(gym.Env):
         Set the number of agents considered for rewards, metrics,
         and episode termination.
         """
-        if not 1 <= n_focus_agents <= self.env_config.nb_agents:
-            raise ValueError(
-                "`n_focus_agents` must be between 1 and "
-                f"{self.env_config.nb_agents}, got {n_focus_agents}."
-            )
 
-        self.n_focus_agents = n_focus_agents
+        if n_focus_agents < 1:
+            raise ValueError("n_focus_agents must be greater than 0.")
+
+        self.n_focus_agents = min(n_focus_agents, self.env_config.nb_agents)
 
     # ---------------------------------------------------------------
     # PROPERTIES
