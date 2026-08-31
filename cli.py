@@ -87,7 +87,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     validation_parser.add_argument(
         "--checkpoint-strategy",
-        choices=["matching", "final"],
+        choices=["matching", "final", "best", "current"],
         default="final",
         help=(
             "Checkpoint selection strategy: 'matching' uses the checkpoint "
@@ -120,13 +120,19 @@ def build_parser() -> argparse.ArgumentParser:
         help="Name of the task section in tasks.yaml.",
     )
     evaluation_parser.add_argument(
+        "--policy-name", type=str, required=True, help="Name of the trained policy."
+    )
+    evaluation_parser.add_argument(
+        "--checkpoint-name",
+        type=str,
+        default="final",
+        help="Name of the policy checkpoint to evaluate.",
+    )
+    evaluation_parser.add_argument(
         "--start-task", type=int, default=0, help="Index of the first task."
     )
     evaluation_parser.add_argument(
         "--end-task", type=int, default=None, help="Index of the last task."
-    )
-    evaluation_parser.add_argument(
-        "--policy-name", type=str, required=True, help="Name of the trained policy."
     )
     evaluation_parser.add_argument(
         "--n-episodes", type=int, default=500, help="Number of episodes to run."
@@ -182,6 +188,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     demo_parser.add_argument(
         "--policy-name", type=str, required=True, help="Name of the trained policy."
+    )
+    demo_parser.add_argument(
+        "--checkpoint-name",
+        type=str,
+        default="final",
+        help="Name of the policy checkpoint to demonstrate.",
     )
 
     return parser

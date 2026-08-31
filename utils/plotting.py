@@ -137,11 +137,11 @@ def plot_animation(frames, path: str, file_name: str = "", fps: int = 20):
 
 
 def plot_figures(
-    logs_path: str | Path,
-    figs_path: str | Path,
+    logs_dir: str,
+    figs_dir: str,
     mode: Literal["train", "validation", "evaluation"],
     policy_name: str,
-    file_name: str,
+    checkpoint_name: str | None,
     window: int,
 ) -> tuple[Figure, Figure, Figure]:
     """
@@ -152,14 +152,17 @@ def plot_figures(
     """
 
     # Create the output directory if it does not exist
-    figs_path = Path(figs_path) / mode / policy_name
-    figs_path.mkdir(parents=True, exist_ok=True)
+    if mode == "train":
+        figs_dir = Path(figs_dir) / mode / policy_name
+    else:
+        figs_dir = Path(figs_dir) / mode / policy_name / checkpoint_name
+    figs_dir.mkdir(parents=True, exist_ok=True)
 
     # Load one task logs for train
-    logs_path = Path(logs_path) / mode / policy_name
     if mode == "train":
-        metrics_file = logs_path / f"{file_name}_metrics.csv"
-        rewards_file = logs_path / f"{file_name}_rewards.csv"
+        logs_dir = Path(logs_dir) / mode / policy_name
+        metrics_file = logs_dir / "metrics.csv"
+        rewards_file = logs_dir / "rewards.csv"
 
         if not metrics_file.is_file():
             raise FileNotFoundError(f"Performance log not found: {metrics_file}")
@@ -169,17 +172,16 @@ def plot_figures(
         metrics = pd.read_csv(metrics_file)
         rewards = pd.read_csv(rewards_file)
 
-        output_name = file_name
-
     # Load all tasks logs for validation and evaluation
     else:
-        metrics_files = sorted(logs_path.glob("*_metrics.csv"))
-        rewards_files = sorted(logs_path.glob("*_rewards.csv"))
+        logs_dir = Path(logs_dir) / mode / policy_name / checkpoint_name
+        metrics_files = sorted(logs_dir.glob("*_metrics.csv"))
+        rewards_files = sorted(logs_dir.glob("*_rewards.csv"))
 
         if not metrics_files:
-            raise FileNotFoundError(f"No metrics files found in: {logs_path}")
+            raise FileNotFoundError(f"No metrics files found in: {logs_dir}")
         if not rewards_files:
-            raise FileNotFoundError(f"No reward files found in: {logs_path}")
+            raise FileNotFoundError(f"No reward files found in: {logs_dir}")
 
         # Concatenate all files in one
         metrics_frames = []
@@ -208,25 +210,12 @@ def plot_figures(
             numeric_only=True
         )
 
-        output_name = policy_name
-
     # Generate figures
-    rewards = _plot_rewards(
-        mode=mode, df=rewards, path=figs_path, file_name=output_name, window=window
-    )
-
+    rewards = _plot_rewards(mode=mode, df=rewards, path=figs_dir, window=window)
     performances = _plot_performances(
-        mode=mode, df=metrics, path=figs_path, file_name=output_name, window=window
+        mode=mode, df=metrics, path=figs_dir, window=window
     )
-
-    velocities = _plot_velocities(
-        mode=mode, df=metrics, path=figs_path, file_name=output_name, window=window
-    )
-
-    # Close the figures
-    plt.close(rewards)
-    plt.close(performances)
-    plt.close(velocities)
+    velocities = _plot_velocities(mode=mode, df=metrics, path=figs_dir, window=window)
 
     return rewards, performances, velocities
 
@@ -234,8 +223,7 @@ def plot_figures(
 def _plot_performances(
     mode: Literal["train", "validation", "evaluation"],
     df: pd.DataFrame,
-    path: str | Path,
-    file_name: str,
+    path: Path,
     window: int | None,
 ) -> Figure:
     """
@@ -319,7 +307,7 @@ def _plot_performances(
     fig.tight_layout()
 
     # Save the figure
-    fig.savefig(path / f"{file_name}_performances.png", dpi=300)
+    fig.savefig(path / "performances.png", dpi=300)
 
     return fig
 
@@ -328,7 +316,6 @@ def _plot_velocities(
     mode: Literal["train", "validation", "evaluation"],
     df: pd.DataFrame,
     path: str | Path,
-    file_name: str,
     window: int | None,
 ) -> Figure:
     """
@@ -407,7 +394,7 @@ def _plot_velocities(
     fig.tight_layout()
 
     # Save the figure
-    fig.savefig(path / f"{file_name}_velocities.png", dpi=300)
+    fig.savefig(path / "velocities.png", dpi=300)
 
     return fig
 
@@ -416,7 +403,6 @@ def _plot_rewards(
     mode: Literal["train", "validation", "evaluation"],
     df: pd.DataFrame,
     path: str | Path,
-    file_name: str,
     window: int | None,
 ) -> Figure:
     """
@@ -491,6 +477,6 @@ def _plot_rewards(
     fig.tight_layout()
 
     # Save the figure
-    fig.savefig(path / f"{file_name}_rewards.png", dpi=300)
+    fig.savefig(path / "rewards.png", dpi=300)
 
     return fig

@@ -13,7 +13,7 @@ from configs.config import Curriculum, Task
 from rl.sac.agent import SACAgent
 from rl.sac.sac import evaluate_sac, run_sac, set_checkpoint_paths
 from simulator.environment.environment import Environment
-from utils.logging import log_debug, log_metrics, log_rewards
+from utils.logging import log
 from utils.plotting import plot_animation, plot_figures
 
 # -------------------------------------------------------------------------------------
@@ -44,48 +44,24 @@ def run_train(
     print(f"\n[ TRAIN ] {len(tasks)} task(s)\n")
 
     if sequential_curriculum:
-        # -----------------------------------------------------------------------------
-        # Fixed sequential curriculum
-        # -----------------------------------------------------------------------------
-
-        # Keep the same SAC agent across all curriculum stages
-        agent = None
-
-        for task in tasks:
-            # Train the current curriculum stage
-            _, _, agent = run_train_task(
-                task=task,
-                policy_name=policy_name,
-                checkpoint_name=task.name,
-                n_trained_agents=n_trained_agents,
-                n_steps=task.n_steps,
-                agent=agent,
-                init_policy_name=init_policy_name,
-                init_checkpoint_name=init_checkpoint_name,
-                save_results=True,
-                save_best=True,
-            )
-
-            init_policy_name = policy_name
-            init_checkpoint_name = task.name
-
-        set_checkpoint_paths(
-            agent=agent, policy_name=policy_name, checkpoint_name="final"
+        # Run sequential curriculum
+        run_sequential_curriculum(
+            tasks=tasks,
+            policy_name=policy_name,
+            n_trained_agents=n_trained_agents,
+            init_policy_name=init_policy_name,
+            init_checkpoint_name=init_checkpoint_name,
         )
-        agent.save_checkpoints()
 
     else:
-        # -----------------------------------------------------------------------------
-        # Probabilistic curriculum
-        # -----------------------------------------------------------------------------
-
         # Get curriculum parameters from config
         chunk_steps = Curriculum.chunk_steps
         n_chunks = Curriculum.n_chunks
         threshold = Curriculum.threshold
         n_eval_episodes = Curriculum.n_eval_episodes
 
-        run_curriculum(
+        # Run probabilistic curriculum
+        run_probabilistic_curriculum(
             tasks=tasks,
             n_trained_agents=n_trained_agents,
             init_policy_name=init_policy_name,
@@ -104,7 +80,83 @@ def run_train(
     print(f"\n[ SUMMARY ] {len(tasks)} task(s) completed in {duration:.1f}s\n")
 
 
-def run_curriculum(
+def run_sequential_curriculum(
+    tasks: list[Task],
+    policy_name: str,
+    n_trained_agents: int,
+    init_policy_name: str | None,
+    init_checkpoint_name: str | None,
+) -> None:
+    """ """
+
+    # Keep the same SAC agent across all curriculum stages
+    agent = None
+    all_history = []
+    all_debug = []
+    episode_offset = 0
+    step_offset = 0
+
+    for task in tasks:
+        # Train the current curriculum stage
+        history, debug, agent = run_sac(
+            task=task,
+            policy_name=policy_name,
+            checkpoint_name=task.name,
+            n_trained_agents=n_trained_agents,
+            n_steps=task.n_steps,
+            agent=agent,
+            init_policy_name=init_policy_name,
+            init_checkpoint_name=init_checkpoint_name,
+            save_best=True,
+        )
+
+        episode_ids = [row["episode"] for row in history + debug]
+        n_episodes = max(episode_ids, default=0)
+
+        for row in history:
+            row["episode"] += episode_offset
+
+        for row in debug:
+            row["episode"] += episode_offset
+            row["step"] += step_offset
+
+        all_history.extend(history)
+        all_debug.extend(debug)
+
+        episode_offset += n_episodes
+        step_offset += task.n_steps
+
+        init_policy_name = policy_name
+        init_checkpoint_name = task.name
+
+    set_checkpoint_paths(agent=agent, policy_name=policy_name, checkpoint_name="final")
+    agent.save_checkpoints()
+
+    # Save training metrics
+    log(
+        history=all_history,
+        debug=all_debug,
+        logs_dir="logs",
+        mode="train",
+        policy_name=policy_name,
+        checkpoint_name=None,
+        file_name=None,
+    )
+
+    # Generate training figures
+    figures = plot_figures(
+        logs_dir="logs",
+        figs_dir="figures",
+        mode="train",
+        policy_name=policy_name,
+        checkpoint_name=None,
+        window=100,
+    )
+    for figure in figures:
+        plt.close(figure)
+
+
+def run_probabilistic_curriculum(
     tasks: list[Task],
     policy_name: str,
     n_trained_agents: int,
@@ -126,9 +178,6 @@ def run_curriculum(
 
     # Start with the easiest task
     focus_idx = 0
-
-    # Name used to store the globally best curriculum policy
-    best_policy_name = f"{policy_name}_best"
 
     # Latest evaluation success rate for every task
     success_rates = np.zeros(n_tasks)
@@ -163,7 +212,8 @@ def run_curriculum(
         alpha[focus_idx] = n_tasks
 
         print(
-            f"\n[ CURRICULUM ] Focus: {tasks[focus_idx].name} | alpha={list(alpha)}\n"
+            f"\n[ CURRICULUM ] Focus: {tasks[focus_idx].name} "
+            f"| alpha={list(alpha.astype(int))}\n"
         )
 
         # -----------------------------------------------------------------------------
@@ -196,21 +246,20 @@ def run_curriculum(
             )
 
             # Train the SAC agent on the sampled task
-            history, debug, agent = run_train_task(
+            history, debug, agent = run_sac(
                 task=train_task,
                 policy_name=policy_name,
-                checkpoint_name="final",
-                n_steps=steps,
+                checkpoint_name="current",
                 n_trained_agents=n_trained_agents,
+                n_steps=steps,
                 agent=agent,
                 init_policy_name=init_policy_name,
                 init_checkpoint_name=init_checkpoint_name,
-                save_results=False,
                 save_best=False,
             )
 
             init_policy_name = policy_name
-            init_checkpoint_name = "final"
+            init_checkpoint_name = "current"
 
             # -------------------------------------------------------------------------
             # Add curriculum metrics
@@ -256,7 +305,7 @@ def run_curriculum(
             history, _, _, metrics = evaluate_sac(
                 task=task,
                 policy_name=policy_name,
-                checkpoint_name="final",
+                checkpoint_name="current",
                 n_episodes=n_eval_episodes,
                 n_renders=0,
                 n_workers=n_workers,
@@ -268,7 +317,7 @@ def run_curriculum(
 
             print(
                 f"[ {task.name} ] Evaluation terminated. "
-                f"| Score = {success_rates[i]:.1%}"
+                f"| Success rate = {success_rates[i]:.1%} "
                 f"| Action time = {metrics['mean_action_time'] * 1000:.2f} ms "
                 f"| Actions/s = {metrics['actions_per_second']:.1f} "
                 f"| Actions = {metrics['n_actions']}",
@@ -296,15 +345,15 @@ def run_curriculum(
         if global_success > best_global_success:
             best_global_success = global_success
 
-            # Redirect checkpoint paths toward "curriculum_best"
+            # Redirect checkpoint paths toward "best"
             set_checkpoint_paths(
-                agent=agent, policy_name=best_policy_name, checkpoint_name="final"
+                agent=agent, policy_name=policy_name, checkpoint_name="best"
             )
             agent.save_checkpoints()
 
             # Restore the paths used by the current curriculum policy
             set_checkpoint_paths(
-                agent=agent, policy_name=policy_name, checkpoint_name="final"
+                agent=agent, policy_name=policy_name, checkpoint_name="current"
             )
 
             print(f"[ CURRICULUM ] New best global success: {best_global_success:.1%}")
@@ -337,18 +386,23 @@ def run_curriculum(
         # --------------------------------------------------------------
 
         # Save training metrics
-        path = Path("logs/train") / policy_name
-        log_metrics(metrics=all_history, path=path, file_name=policy_name)
-        log_debug(metrics=all_debug, path=path, file_name=policy_name)
-        log_rewards(metrics=all_history, path=path, file_name=policy_name)
+        log(
+            history=all_history,
+            debug=all_debug,
+            logs_dir="logs",
+            mode="train",
+            policy_name=policy_name,
+            checkpoint_name=None,
+            file_name=None,
+        )
 
         # Generate training figures
         figures = plot_figures(
-            logs_path="logs",
-            figs_path="figures",
+            logs_dir="logs",
+            figs_dir="figures",
             mode="train",
             policy_name=policy_name,
-            file_name=policy_name,
+            checkpoint_name=None,
             window=100,
         )
         for figure in figures:
@@ -357,57 +411,9 @@ def run_curriculum(
         if curriculum_completed:
             break
 
-
-def run_train_task(
-    task: Task,
-    policy_name: str,
-    checkpoint_name: str,
-    n_trained_agents: int,
-    n_steps: int,
-    agent: SACAgent | None = None,
-    init_policy_name: str | None = None,
-    init_checkpoint_name: str | None = None,
-    save_results: bool = True,
-    save_best: bool = True,
-) -> tuple[list[dict], list[dict], SACAgent]:
-    """
-    Train the policy on a single task.
-    """
-
-    # Train the SAC policy
-    history, debug, agent = run_sac(
-        task=task,
-        policy_name=policy_name,
-        checkpoint_name=checkpoint_name,
-        n_trained_agents=n_trained_agents,
-        n_steps=n_steps,
-        agent=agent,
-        init_policy_name=init_policy_name,
-        init_checkpoint_name=init_checkpoint_name,
-        save_best=save_best,
-    )
-
-    # Save results when requested
-    if save_results:
-        # Save training metrics
-        path = Path("logs/train") / policy_name
-        log_metrics(metrics=history, path=path, file_name=task.name)
-        log_debug(metrics=debug, path=path, file_name=task.name)
-        log_rewards(metrics=history, path=path, file_name=task.name)
-
-        # Generate training figures
-        figures = plot_figures(
-            logs_path="logs",
-            figs_path="figures",
-            mode="train",
-            policy_name=policy_name,
-            file_name=task.name,
-            window=100,
-        )
-        for figure in figures:
-            plt.close(figure)
-
-    return history, debug, agent
+    # Save the policy obtained at the end of training
+    set_checkpoint_paths(agent=agent, policy_name=policy_name, checkpoint_name="final")
+    agent.save_checkpoints()
 
 
 # -------------------------------------------------------------------------------------
@@ -418,7 +424,7 @@ def run_train_task(
 def run_validation(
     tasks: list[Task],
     policy_name: str,
-    checkpoint_strategy: Literal["matching", "final"],
+    checkpoint_strategy: Literal["matching", "final", "best", "current"],
     n_episodes: int,
     n_renders: int,
 ):
@@ -446,33 +452,43 @@ def run_validation(
         print(f"[ {task.name} ] Evaluating... ", end="\r")
 
         # Run the trained policy over multiple episodes
-        checkpoint_name = task.name if checkpoint_strategy == "matching" else "final"
+        loaded_chkpt_name = (
+            task.name if checkpoint_strategy == "matching" else checkpoint_strategy
+        )
         history, debug, frames, metrics = evaluate_sac(
             task=task,
             policy_name=policy_name,
-            checkpoint_name=checkpoint_name,
+            checkpoint_name=loaded_chkpt_name,
             n_episodes=n_episodes,
             n_renders=n_renders,
             n_workers=n_workers,
             log_debug=True,
         )
 
-        # Run the trained policy over multiple episodes
-        path = Path("logs/validation") / policy_name
-        log_metrics(metrics=history, path=path, file_name=task.name)
-        log_debug(metrics=debug, path=path, file_name=task.name)
-        log_rewards(metrics=history, path=path, file_name=task.name)
+        # Save validation metrics
+        result_chkpt_name = (
+            "matching" if checkpoint_strategy == "matching" else checkpoint_strategy
+        )
+        log(
+            history=history,
+            debug=debug,
+            logs_dir="logs",
+            mode="validation",
+            policy_name=policy_name,
+            checkpoint_name=result_chkpt_name,
+            file_name=task.name,
+        )
 
         # Save an animation when rendering is enabled
         if n_renders > 0:
-            path = Path("figures/validation") / policy_name
+            path = Path("figures/validation") / policy_name / result_chkpt_name
             print(f"[ {task.name} ] Generating animation... ", end="\r")
             plot_animation(frames=frames, path=path, file_name=task.name, fps=10)
 
         success_rate = np.mean([episode["success_rate"] for episode in history])
         print(
             f"[ {task.name} ] Evaluation terminated. "
-            f"| Success rate = {success_rate:.1%}"
+            f"| Success rate = {success_rate:.1%} "
             f"| Action time = {metrics['mean_action_time'] * 1000:.2f} ms "
             f"| Actions/s = {metrics['actions_per_second']:.1f} "
             f"| Actions = {metrics['n_actions']}",
@@ -483,11 +499,11 @@ def run_validation(
     # Generate validation figures
     print("\n[ VALIDATION ] Generating figures... \n", end="\r")
     figures = plot_figures(
-        logs_path="logs",
-        figs_path="figures",
+        logs_dir="logs",
+        figs_dir="figures",
         mode="validation",
         policy_name=policy_name,
-        file_name=policy_name,
+        checkpoint_name=result_chkpt_name,
         window=100,
     )
     for figure in figures:
@@ -507,6 +523,7 @@ def run_validation(
 def run_evaluation(
     tasks: list[Task],
     policy_name: str,
+    checkpoint_name: str,
     n_episodes: int = 100,
     n_renders: int = 5,
 ):
@@ -537,30 +554,35 @@ def run_evaluation(
         history, debug, frames, metrics = evaluate_sac(
             task=task,
             policy_name=policy_name,
-            checkpoint_name="final",
+            checkpoint_name=checkpoint_name,
             n_episodes=n_episodes,
             n_renders=n_renders,
             n_workers=n_workers,
             log_debug=True,
         )
 
-        # Save training metrics
+        # Save metrics
         print(f"[ {task.name} ] Saving metrics... ", end="\r")
-        path = Path("logs/evaluation") / policy_name
-        log_metrics(metrics=history, path=path, file_name=task.name)
-        log_debug(metrics=debug, path=path, file_name=task.name)
-        log_rewards(metrics=history, path=path, file_name=task.name)
+        log(
+            history=history,
+            debug=debug,
+            logs_dir="logs",
+            mode="evaluation",
+            policy_name=policy_name,
+            checkpoint_name=checkpoint_name,
+            file_name=task.name,
+        )
 
-        # Save an animation when rendering is enabled
+        # Generate animation if required
         if n_renders > 0:
             print(f"[ {task.name} ] Generating animation... ", end="\r")
-            path = Path("figures/evaluation") / policy_name
+            path = Path("figures/evaluation") / policy_name / checkpoint_name
             plot_animation(frames=frames, path=path, file_name=task.name, fps=10)
 
         success_rate = np.mean([episode["success_rate"] for episode in history])
         print(
             f"[ {task.name} ] Evaluation terminated. "
-            f"| Success rate = {success_rate:.1%}"
+            f"| Success rate = {success_rate:.1%} "
             f"| Action time = {metrics['mean_action_time'] * 1000:.2f} ms "
             f"| Actions/s = {metrics['actions_per_second']:.1f} "
             f"| Actions = {metrics['n_actions']}",
@@ -568,14 +590,14 @@ def run_evaluation(
         )
         print()
 
-    # Generate training figures
+    # Generate evaluation figures
     print("\n[ EVALUATION ] Generating figures... \n", end="\r")
     figures = plot_figures(
-        logs_path="logs",
-        figs_path="figures",
+        logs_dir="logs",
+        figs_dir="figures",
         mode="evaluation",
         policy_name=policy_name,
-        file_name=policy_name,
+        checkpoint_name=checkpoint_name,
         window=100,
     )
     for figure in figures:
@@ -672,7 +694,7 @@ def run_animation(
 
     # Save the animation
     print("\n[ ANIMATION ] Saving animation... ", end="\r")
-    path = Path("figures/demo") / policy_name
+    path = Path("figures/demo") / policy_name / checkpoint_name
     plot_animation(frames=frames, path=path, file_name=file_name, fps=fps)
     print(f"[ ANIMATION ] Animation saved | File: {path}/{file_name}_anim.mp4")
 
@@ -686,13 +708,15 @@ def run_animation(
 # -------------------------------------------------------------------------------------
 
 
-def run_demo(policy_name: str, file_name: str) -> None:
+def run_demo(policy_name: str, checkpoint_name: str, file_name: str) -> None:
     """
     Run trained policies and interactively navigate through the rendered frames.
     """
 
     # Search for the path
-    animation_path = Path("figures/demo") / policy_name / f"{file_name}_anim.mp4"
+    animation_path = (
+        Path("figures/demo") / policy_name / checkpoint_name / f"{file_name}_anim.mp4"
+    )
 
     if not animation_path.is_file():
         raise FileNotFoundError(f"Animation not found: {animation_path}")
