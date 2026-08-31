@@ -7,9 +7,9 @@ The objective is to minimize transport time while ensuring collision-free naviga
 The current implementation uses the **Soft Actor-Critic (SAC)** algorithm and supports both single-agent and multi-agent training through **parameter sharing**.
 
 <p align="center">
-  <img src="figures/demo/policy_v1/best/train_v1_anim.gif" width="60%">
+  <img src="figures/demo/policy_v1/best/eval_anim.gif" width="60%">
   <br>
-  <em>Examples of a random, warehouse and crossing scenarios with agents and static and dynamic obstacles.</em>
+  <em> </em>
 </p>
 
 ## Features
