@@ -6,7 +6,10 @@ from configs.config import Task
 
 
 def get_collision_types(
-    policy_name: str, tasks: list[Task], mode: Literal["validation", "evaluation"]
+    policy_name: str,
+    checkpoint_name: str,
+    tasks: list[Task],
+    mode: Literal["validation", "evaluation"],
 ) -> pd.DataFrame:
     """
     Compute the distribution of collision types for each task.
@@ -24,7 +27,9 @@ def get_collision_types(
 
     for task in tasks:
         task_name = task.name
-        df = pd.read_csv(f"logs/{mode}/{policy_name}/{task_name}_debug.csv")
+        df = pd.read_csv(
+            f"logs/{mode}/{policy_name}/{checkpoint_name}/{task_name}_debug.csv"
+        )
 
         collisions_raw = (
             df.loc[
