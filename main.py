@@ -63,6 +63,7 @@ def main() -> None:
         run_evaluation(
             tasks=tasks,
             policy_name=args.policy_name,
+            checkpoint_name=args.checkpoint_name,
             n_episodes=args.n_episodes,
             n_renders=args.n_renders,
         )
@@ -94,7 +95,11 @@ def main() -> None:
     # ---------------------------------------------------------------------------------
 
     elif args.mode == "demo":
-        run_demo(policy_name=args.policy_name, file_name=args.task_section)
+        run_demo(
+            policy_name=args.policy_name,
+            checkpoint_name=args.checkpoint_name,
+            file_name=args.task_section,
+        )
 
 
 if __name__ == "__main__":
