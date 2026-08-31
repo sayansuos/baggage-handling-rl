@@ -155,7 +155,7 @@ class Manager:
 
         # Retrieve the generation parameters
         nb_targets = self.env_config.nb_targets
-        min_dist = self.env_config.margin // 2
+        min_dist = self.env_config.margin
         max_attempts = self.env_config.max_attempts
         mode = self.env_config.agent_mode
 
@@ -713,6 +713,9 @@ class Manager:
             # Create the obstacle
             entity = moving_entity.MovingEntity(num=i + 1)
 
+            # Randomly select the obstacle radius
+            entity.radius = np.random.uniform(radius_min, radius_max)
+
             # Generate a valid position
             pos = self._set_random_position(
                 entity=entity,
@@ -726,9 +729,6 @@ class Manager:
             )
             entity.start_position = pos
             entity.current_position = pos
-
-            # Randomly select the obstacle radius
-            entity.radius = np.random.uniform(radius_min, radius_max)
 
             # Generate valid target positions
             for _ in range(nb_targets):
@@ -788,7 +788,7 @@ class Manager:
             return
 
         # Elevator area parameters
-        elevator_w, elevator_h = 6, 6
+        elevator_w, elevator_h = 8, 8
 
         # Corridor parameters
         corridor_h = 8
@@ -814,6 +814,9 @@ class Manager:
                 target_w_min = corridor_w_min
                 target_w_max = corridor_w_min + self.width // 5
 
+            # Randomly select the obstacle radius
+            entity.radius = np.random.uniform(radius_min, radius_max)
+
             # Generate a valid position
             pos = self._set_random_position(
                 entity=entity,
@@ -827,9 +830,6 @@ class Manager:
             )
             entity.start_position = pos
             entity.current_position = pos
-
-            # Randomly select the obstacle radius
-            entity.radius = np.random.uniform(radius_min, radius_max)
 
             # Generate a valid target position
             target = self._set_random_position(
@@ -872,6 +872,9 @@ class Manager:
             # Create the obstacle
             entity = moving_entity.MovingEntity(num=i + 1)
 
+            # Randomly select the obstacle radius
+            entity.radius = np.random.uniform(radius_min, radius_max)
+
             # Generate a valid position between the pickup and delivery areas
             pos = self._set_random_position(
                 entity=entity,
@@ -885,9 +888,6 @@ class Manager:
             )
             entity.start_position = pos
             entity.current_position = pos
-
-            # Randomly select the obstacle radius
-            entity.radius = np.random.uniform(radius_min, radius_max)
 
             # Generate valid target positions between the pickup and delivery areas
             for _ in range(nb_targets):
@@ -1053,14 +1053,14 @@ class Manager:
             return
 
         # Elevator area parameters
-        elevator_w, elevator_h = 6, 6
+        elevator_w, elevator_h = 8, 8
         elevator_w_min, elevator_w_max = 0, elevator_w
         elevator_h_min = (self.height - elevator_h) / 2
         elevator_h_max = (self.height + elevator_h) / 2
 
         # Corridor parameters
         corridor_h = 8
-        corridor_w_min, corridor_w_max = elevator_w_max, self.height
+        corridor_w_min, corridor_w_max = elevator_w_max, self.width
         corridor_h_min = (self.height - corridor_h) / 2
         corridor_h_max = (self.height + corridor_h) / 2
 
@@ -1194,34 +1194,53 @@ class Manager:
         min_dist: float,
         max_attempts: int,
         for_target: bool = False,
-    ) -> tuple[int, int]:
+    ) -> tuple[int, int] | None:
         """
         Generate a random collision-free position.
         """
 
         # Compute the minimum distance from the environment borders
-        pad = int(self.env_config.thickness + min_dist)
+        clearance = entity.radius
 
-        is_free = False
-        i = 0
+        x_min = int(np.ceil(w_min + clearance))
+        x_max = int(np.floor(w_max - clearance))
+        y_min = int(np.ceil(h_min + clearance))
+        y_max = int(np.floor(h_max - clearance))
 
-        # Continue until a valid position is found or the limit is reached
-        while not is_free and i < max_attempts:
-            # Generate a random position
+        if x_min > x_max or y_min > y_max:
+            return None
+
+        # 1. Random quick search
+        for _ in range(max_attempts):
             pos = (
-                np.random.randint(w_min + pad, w_max - pad),
-                np.random.randint(h_min, h_max - pad),
+                np.random.randint(x_min, x_max + 1),
+                np.random.randint(y_min, y_max + 1),
             )
 
-            # Check whether the position is collision-free
-            is_free = self._is_free(
-                new=entity, pos=pos, min_dist=min_dist, for_target=for_target
-            )
+            if self._is_free(
+                new=entity,
+                pos=pos,
+                min_dist=min_dist,
+                for_target=for_target,
+            ):
+                return pos
 
-            # Increment the attempt counter
-            i += 1
+        # 2. Slow exhaustive search
+        candidates = [
+            (x, y) for x in range(x_min, x_max + 1) for y in range(y_min, y_max + 1)
+        ]
+        np.random.shuffle(candidates)
 
-        return pos
+        for pos in candidates:
+            if self._is_free(
+                new=entity,
+                pos=pos,
+                min_dist=min_dist,
+                for_target=for_target,
+            ):
+                return pos
+
+        return None
 
     def _set_circular_position(
         self,
