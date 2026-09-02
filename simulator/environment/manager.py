@@ -598,33 +598,47 @@ class Manager:
         then add random static obstacles if required.
         """
 
-        # # Pickup and Delivery zone parameters
-        # w = self.width // 6
-        # h = self.height // 2
-        # pickup_x, delivery_x = w, self.width - w
-        # y = self.height / 2
-
-        # # Create pickup zone
-        # obstacle = static_entity.StaticEntity(
-        #     width=2 * pad, height=h, num=len(self.static_obstacles) + 1
-        # )
-        # obstacle.current_position = (pickup_x, y)
-        # self.static_obstacles.append(obstacle)
-
-        # # Create delivery zone
-        # obstacle = static_entity.StaticEntity(
-        #     width=2 * pad, height=h, num=len(self.static_obstacles) + 1
-        # )
-        # obstacle.current_position = (delivery_x, y)
-        # self.static_obstacles.append(obstacle)
-
-        # Create fixed obstacles if required
         n = self.env_config.nb_static_obstacles
-        if n > 0:
-            for _ in range(n):
-                return self._random_static_obstacles(
-                    min_dist=min_dist, max_attempts=max_attempts, size=(5, 5)
+
+        if n < 1:
+            return
+
+        # Get airport configurations
+        half = self.width // 2
+        margin = self.width // 6
+
+        # Define obstacle parameters
+        w, h = 5, 5
+
+        for _ in range(n):
+            placed = False
+            attempts = 0
+
+            # Continue until a valid position is found or attempts are exhausted.
+            while not placed and attempts < max_attempts:
+                # Create obstacle
+                obstacle = static_entity.StaticEntity(
+                    width=w,
+                    height=h,
+                    num=len(self.static_obstacles) + 1,
                 )
+
+                # Compute a random position
+                pos = (
+                    np.random.randint(half - margin, half + margin),
+                    np.random.randint(pad, self.height - pad),
+                )
+
+                # If the position is valid, assign it
+                if self._is_free(
+                    new=obstacle, pos=pos, min_dist=min_dist, for_target=False
+                ):
+                    obstacle.current_position = pos
+                    self.static_obstacles.append(obstacle)
+                    placed = True
+
+                # Increment attempts
+                attempts += 1
 
     # ---------------------------------------------------------------
     # GENERATE MOVING OBSTACLES
