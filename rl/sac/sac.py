@@ -279,13 +279,13 @@ def run_sac(
 
         print(
             f"[ {task.name} ] "
-            f"Step {total_steps:06d}/{n_steps} | "
-            f"Episode {episode:04d} | "
-            f"Return = {env.reward_total:8.3f} "
-            f"Success = {success_rate:.0%} "
-            f"Average Success = {avg_success:.1%} "
-            f"Best Success = {best_display:.1%} "
-            f"Time = {episode_info['mean_time_travel']:5.1f} ",
+            f"Step {total_steps:06d}/{n_steps} "
+            f"| Episode {episode:04d} "
+            f"| Return = {env.reward_total:8.3f} "
+            f"| Success = {success_rate:.0%} "
+            f"| Avg = {avg_success:.1%} "
+            f"| Best = {best_display:.1%} "
+            f"| Time = {episode_info['mean_time_travel']:5.1f} ",
             end="\r",
         )
 
