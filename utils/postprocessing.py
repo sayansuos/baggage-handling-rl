@@ -1,8 +1,34 @@
 from typing import Literal
 
+import numpy as np
 import pandas as pd
 
 from configs.config import Task
+
+
+def get_bootstrap_ci(
+    values: np.ndarray,
+    confidence: float = 0.95,
+    n_bootstrap: int = 10_000,
+    seed: int = 1234,
+) -> tuple[float, float]:
+    """
+    Compute a bootstrap confidence interval for the mean.
+    """
+
+    rng = np.random.default_rng(seed)
+    bootstrap_means = np.empty(n_bootstrap)
+
+    for i in range(n_bootstrap):
+        sample = rng.choice(values, size=len(values), replace=True)
+        bootstrap_means[i] = np.mean(sample)
+
+    alpha = 1.0 - confidence
+
+    lower = np.quantile(bootstrap_means, alpha / 2)
+    upper = np.quantile(bootstrap_means, 1.0 - alpha / 2)
+
+    return lower, upper
 
 
 def get_collision_types(
