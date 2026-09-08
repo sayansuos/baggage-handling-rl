@@ -815,18 +815,18 @@ class Manager:
             # Create the obstacle
             entity = moving_entity.MovingEntity(num=i + 1)
 
-            # Randomly select one end of the corridor
-            side = np.random.choice(["left", "right"])
-            if side == "left":
-                w_min = corridor_w_min
-                w_max = corridor_w_min + self.width // 5
-                target_w_min = 4 * self.width // 5
-                target_w_max = corridor_w_max
+            # Randomly select top or bot rooms
+            side = np.random.choice(["top", "bot"])
+            if side == "top":
+                h_min = corridor_h_max
+                h_max = self.height
+                target_h_min = 0
+                target_h_max = corridor_h_min
             else:
-                w_min = 4 * self.width // 5
-                w_max = corridor_w_max
-                target_w_min = corridor_w_min
-                target_w_max = corridor_w_min + self.width // 5
+                h_min = 0
+                h_max = corridor_h_min
+                target_h_min = corridor_h_max
+                target_h_max = self.height
 
             # Randomly select the obstacle radius
             entity.radius = np.random.uniform(radius_min, radius_max)
@@ -834,10 +834,10 @@ class Manager:
             # Generate a valid position
             pos = self._set_random_position(
                 entity=entity,
-                w_min=w_min,
-                w_max=w_max,
-                h_min=corridor_h_min,
-                h_max=corridor_h_max,
+                w_min=corridor_w_min,
+                w_max=corridor_w_max,
+                h_min=h_min,
+                h_max=h_max,
                 min_dist=min_dist,
                 max_attempts=max_attempts,
                 for_target=False,
@@ -848,10 +848,10 @@ class Manager:
             # Generate a valid target position
             target = self._set_random_position(
                 entity=entity,
-                w_min=target_w_min,
-                w_max=target_w_max,
-                h_min=corridor_h_min,
-                h_max=corridor_h_max,
+                w_min=corridor_w_min,
+                w_max=corridor_w_max,
+                h_min=target_h_min,
+                h_max=target_h_max,
                 min_dist=min_dist,
                 max_attempts=max_attempts,
                 for_target=False,
@@ -1157,11 +1157,11 @@ class Manager:
         for i in range(n):
             entity = agent.Agent(self.agent_config, i + 1)
 
-            # Generate a valid position anywhere on the map
+            # Generate a valid position between the two zones
             pos = self._set_random_position(
                 entity=entity,
-                w_min=0,
-                w_max=self.width,
+                w_min=pickup_w,
+                w_max=delivery_w,
                 h_min=0,
                 h_max=self.height,
                 min_dist=min_dist,
