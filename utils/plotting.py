@@ -1,4 +1,5 @@
 import math
+import re
 from pathlib import Path
 from typing import Literal
 
@@ -18,6 +19,7 @@ def plot_renders(
     path: str | Path,
     file_name: str = "",
     max_ncols: int = 2,
+    max_nrows: int = 5,
 ) -> None:
     """
     Render the initial environment of each task and save them in a single
@@ -29,43 +31,53 @@ def plot_renders(
     path.mkdir(parents=True, exist_ok=True)
 
     # Compute the number of rows and columns
-    n = len(tasks)
-    ncols = min(max_ncols, n)
-    nrows = math.ceil(n / ncols)
+    max_plots_per_figure = max_ncols * max_nrows
+    n_figures = math.ceil(len(tasks) / max_plots_per_figure)
 
-    # Create the subplot grid
-    fig, axes = plt.subplots(
-        nrows,
-        ncols,
-        figsize=(5 * ncols, 3 * nrows),
-    )
-    axes = np.atleast_1d(axes).ravel()
+    for figure_index in range(n_figures):
+        start = figure_index * max_plots_per_figure
+        end = start + max_plots_per_figure
+        figure_tasks = tasks[start:end]
 
-    # Render the initial state of each task
-    for ax, task in zip(axes, tasks):
-        # Initialize the environment from the task configuration
-        env = Environment(
-            env_config=task.env_config,
-            agent_config=task.agent_config,
-            reward_config=task.reward_config,
-            name=task.name,
+        # Compute the grid dimensions for the current figure
+        n = len(figure_tasks)
+        ncols = min(max_ncols, n)
+        nrows = math.ceil(n / ncols)
+
+        # Create the subplot grid
+        fig, axes = plt.subplots(
+            nrows,
+            ncols,
+            figsize=(5 * ncols, 3 * nrows),
         )
-        env.set_focus_agents(n_focus_agents=env.env_config.nb_agents)
-        env.reset(1234)
+        axes = np.atleast_1d(axes).ravel()
 
-        # Render the environment
-        env.render(ax=ax)
-        ax.set_title(task.name)
-        ax.tick_params(axis="both", labelsize=6)
+        # Render the initial state of each task
+        for ax, task in zip(axes, figure_tasks):
+            # Initialize the environment from the task configuration
+            env = Environment(
+                env_config=task.env_config,
+                agent_config=task.agent_config,
+                reward_config=task.reward_config,
+                name=task.name,
+            )
+            env.set_focus_agents(n_focus_agents=env.env_config.nb_agents)
+            env.reset(1234)
 
-    # Hide unused subplots
-    for ax in axes[len(tasks) :]:
-        ax.axis("off")
+            # Render the environment
+            env.render(ax=ax)
+            ax.set_title(_get_title(task_name=task.name))
+            ax.tick_params(axis="both", labelsize=6)
 
-    # Save the figure
-    plt.tight_layout()
-    fig.savefig(path / f"{file_name}_renders.png", dpi=300)
-    plt.close(fig)
+        # Hide unused subplots
+        for ax in axes[n:]:
+            ax.axis("off")
+
+        # Save the figure
+        plt.tight_layout()
+        suffix = f"_{figure_index + 1}" if n_figures > 1 else ""
+        fig.savefig(path / f"{file_name}_renders{suffix}.png", dpi=300)
+        plt.close(fig)
 
 
 def plot_grid(
@@ -111,7 +123,7 @@ def plot_grid(
     imageio.imwrite(path / f"{file_name}_grid.png", img)
 
 
-def plot_animation(frames, path: str, file_name: str = "", fps: int = 20):
+def plot_animation(frames, path: str, file_name: str = "", fps: int = 10):
     """
     Save a sequence of rendered frames as both an MP4 video and a GIF animation.
     """
@@ -280,6 +292,7 @@ def _plot_performances(
 
         # Define bars
         x = np.arange(len(df))
+        task_labels = df["task"].map(lambda task_name: _get_title(task_name=task_name))
         width = 0.25
 
         # Plot
@@ -292,7 +305,7 @@ def _plot_performances(
         # Configure the figure
         ax1.set_title(f"{mode.capitalize()} performance")
         ax2.set_xticks(x)
-        ax2.set_xticklabels(df["task"], rotation=45, ha="right")
+        ax2.set_xticklabels(task_labels, rotation=45, ha="right")
 
     # Configure the figure
     ax1.set_ylabel("Rate (%)")
@@ -368,6 +381,8 @@ def _plot_velocities(
 
         # Define bars
         x = np.arange(len(df))
+        task_labels = df["task"].map(lambda task_name: _get_title(task_name=task_name))
+
         width = 0.35
 
         # Plot
@@ -384,7 +399,7 @@ def _plot_velocities(
 
         # Configure the figure
         ax.set_xticks(x)
-        ax.set_xticklabels(df["task"], rotation=45, ha="right")
+        ax.set_xticklabels(task_labels, rotation=45, ha="right")
 
     ax.set_ylabel("Velocity")
     ax.set_title("Linear and angular velocities")
@@ -459,12 +474,13 @@ def _plot_rewards(
 
         # Define bars
         x = np.arange(len(df))
+        task_labels = df["task"].map(lambda task_name: _get_title(task_name=task_name))
 
         ax.bar(x, df["return_total"], color="tab:blue")
 
         # Configure the figure
         ax.set_xticks(x)
-        ax.set_xticklabels(df["task"], rotation=45, ha="right")
+        ax.set_xticklabels(task_labels, rotation=45, ha="right")
 
         ax.set_xlabel("Task")
         ax.set_ylabel("Mean return")
@@ -480,3 +496,18 @@ def _plot_rewards(
     fig.savefig(path / "rewards.png", dpi=300)
 
     return fig
+
+
+def _get_title(task_name: str) -> str:
+    """
+    Return the str use for naming the task.
+    """
+    match = re.fullmatch(r"(task|eval)_?(\d+)", task_name)
+
+    if match is None:
+        return task_name
+
+    section, task_id = match.groups()
+    prefix = "T" if section == "task" else "E"
+
+    return rf"${prefix}_{{{task_id}}}$"

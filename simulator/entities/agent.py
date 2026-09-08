@@ -87,7 +87,6 @@ class Agent(MovingEntity):
         width_max: float,
         height_min: float,
         height_max: float,
-        color: str | tuple[float, float, float, float] = "red",
     ) -> None:
         """
         Render the agent, its targets, trajectory, and field of view.
@@ -101,8 +100,8 @@ class Agent(MovingEntity):
         circle = Circle(
             (x, y),
             0.5,
-            facecolor=color,
-            edgecolor=color,
+            facecolor=None,
+            edgecolor="tab:blue",
             linewidth=2,
             alpha=0.1,
         )
@@ -111,62 +110,77 @@ class Agent(MovingEntity):
         # Draw the agent target positions, if it exists
         if self.target_positions:
             for i, pos in enumerate(self.target_positions):
-                face_color = color if i < self.target_index else "white"
-                tx, ty = pos
-                target = Circle(
-                    (tx, ty),
-                    0.5,
-                    facecolor=face_color,
-                    edgecolor=color,
-                    linewidth=2,
-                    alpha=0.2,
-                )
-                ax.add_patch(target)
+                if i >= self.target_index:
+                    tx, ty = pos
+                    target = Circle(
+                        (tx, ty),
+                        0.5,
+                        facecolor="tab:green"
+                        if self.current_position == pos
+                        else "none",
+                        edgecolor="tab:green",
+                        linewidth=1,
+                    )
+                    ax.add_patch(target)
 
-        # Draw the agent current position
+        # Draw the agent current position and heading
         x, y = self.current_position
-        circle = Circle(
-            (x, y),
-            self.radius,
-            facecolor=color,
-            edgecolor=color,
-            linewidth=0,
-        )
-        ax.add_patch(circle)
-
-        # Draw the agent current heading
         ax.arrow(
             x,
             y,
-            self.radius * np.cos(self.theta),
-            self.radius * np.sin(self.theta),
-            head_width=0.1,
-            head_length=0.5,
+            3 * self.radius * np.cos(self.theta),
+            3 * self.radius * np.sin(self.theta),
+            head_width=0.25,
+            head_length=0.25,
             length_includes_head=True,
-            color="red",
+            color="black",
+            linewidth=1,
+        )
+        circle = Circle(
+            (x, y),
+            self.radius,
+            facecolor=self.color,
+            edgecolor=self.color,
+            linewidth=2,
+        )
+        ax.add_patch(circle)
+
+        # Draw the agent identifier
+        ax.text(
+            x,
+            y,
+            str(self.num),
+            color="white",
+            fontsize=6,
+            fontweight="bold",
+            ha="center",
+            va="center",
+            zorder=10,
         )
 
         # Draw the local field of view
-        x_min, y_min, x_max, y_max = self.get_vision_field(
-            width_min=width_min,
-            width_max=width_max,
-            height_min=height_min,
-            height_max=height_max,
-        )
-        rect = Rectangle(
-            (x_min, y_min),
-            x_max - x_min,
-            y_max - y_min,
-            facecolor=color,
-            alpha=0.1,
-        )
-        ax.add_patch(rect)
+        if self.state == "active":
+            x_min, y_min, x_max, y_max = self.get_vision_field(
+                width_min=width_min,
+                width_max=width_max,
+                height_min=height_min,
+                height_max=height_max,
+            )
+            rect = Rectangle(
+                (x_min, y_min),
+                x_max - x_min,
+                y_max - y_min,
+                facecolor="none",
+                edgecolor="tab:blue",
+                alpha=0.1,
+            )
+            ax.add_patch(rect)
 
         # Draw the travelled path
         if hasattr(self, "path"):
             xs = [p[0] for p in self.path]
             ys = [p[1] for p in self.path]
-            ax.plot(xs, ys, "--", color=color, alpha=0.1, linewidth=2)
+            ax.plot(xs, ys, "--", color="tab:blue", alpha=0.5, linewidth=1)
 
     def get_vision_field(
         self,
@@ -214,6 +228,18 @@ class Agent(MovingEntity):
         """
 
         return f"agent_{self.num}"
+
+    @property
+    def color(self) -> str:
+        """
+        Render color depending on the state of the agent.
+        """
+
+        colors = {
+            "truncated": "tab:red",
+            "terminated": "tab:green",
+        }
+        return colors.get(self.state, "tab:blue")
 
     @property
     def length_view(self) -> int:

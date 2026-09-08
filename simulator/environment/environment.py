@@ -1,3 +1,5 @@
+import re
+
 import gymnasium as gym
 import matplotlib.pyplot as plt
 import numpy as np
@@ -77,6 +79,21 @@ class Environment(gym.Env):
     # ---------------------------------------------------------------
     # PROPERTIES
     # ---------------------------------------------------------------
+
+    @property
+    def title(self) -> str:
+        """
+        Return the str use for naming the environment.
+        """
+        match = re.fullmatch(r"(task|eval)_?(\d+)", self.name)
+
+        if match is None:
+            return self.name
+
+        section, task_id = match.groups()
+        prefix = "T" if section == "task" else "E"
+
+        return rf"${prefix}_{{{task_id}}}$"
 
     @property
     def grid(self) -> np.ndarray:
@@ -347,54 +364,30 @@ class Environment(gym.Env):
         Default render method for the global environment.
         """
 
+        W, H = self.env_config.width, self.env_config.height
+
         # Create a new figure when no axes are provided
         if ax is None:
-            _, ax = plt.subplots(figsize=(10, 8))
+            fig, ax = plt.subplots(figsize=(16, 8), dpi=100)
+            fig.subplots_adjust(left=0.1, right=0.9, bottom=0.1, top=0.9)
 
         # Configure the plot
         ax.clear()
         ax.set_aspect("equal", adjustable="box")
-        W, H = self.env_config.width, self.env_config.height
 
         # Draw the static obstacles
         for entity in self.static_obstacles:
             entity.render(ax=ax)
 
         # Draw the moving obstacles
-        for i, entity in enumerate(self.moving_obstacles):
+        for entity in self.moving_obstacles:
             entity.render(ax=ax, color="black")
 
         # Draw the agents and build the legend
-        handles = []
-        labels = []
-        colors = plt.colormaps["tab10"]
-        for i, agent in enumerate(self.agents):
-            agent.render(
-                ax=ax,
-                width_min=0,
-                width_max=W,
-                height_min=0,
-                height_max=H,
-                color=colors(i),
-            )
-            handles.append(
-                plt.Line2D(
-                    [],
-                    [],
-                    marker="o",
-                    linestyle="",
-                    color=colors(i),
-                    label=agent.id,
-                )
-            )
-            labels.append(agent.id)
-            ax.scatter([], [], color=colors(i), label=agent.id)
+        for agent in self.agents:
+            agent.render(ax=ax, width_min=0, width_max=W, height_min=0, height_max=H)
 
         # Configure the axes and legend
         ax.set_xlim(0, W)
         ax.set_ylim(0, H)
-        ax.set_xlabel("x")
-        ax.set_ylabel("y")
-        ax.set_title(
-            f"{self.name} | Episode {self.episode} | Step {self.step_count} | Return = {self.reward_total} "
-        )
+        ax.set_title(f"{self.title} | Episode {self.episode} | Step {self.step_count}")
