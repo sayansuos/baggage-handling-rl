@@ -79,7 +79,6 @@ def main() -> None:
             tasks=tasks,
             path=Path("figures/demo"),
             file_name=args.task_section,
-            max_ncols=4,
         )
 
         run_animation(
