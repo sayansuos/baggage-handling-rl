@@ -1,4 +1,5 @@
 import os
+import random
 import time
 from dataclasses import replace
 from pathlib import Path
@@ -7,6 +8,7 @@ from typing import Literal
 import imageio.v3 as iio
 import matplotlib.pyplot as plt
 import numpy as np
+import torch
 from matplotlib.animation import FuncAnimation
 
 from configs.config import Curriculum, Task
@@ -29,6 +31,7 @@ def run_train(
     init_checkpoint_name: str | None,
     max_steps: float | None,
     sequential_curriculum: bool = False,
+    seed: int = 1234,
 ):
     """
     Train a SAC policy using either a fixed sequential curriculum
@@ -36,7 +39,9 @@ def run_train(
     """
 
     # Fix the seed
-    np.random.seed(1234)
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
 
     # Record the training start time
     start = time.perf_counter()
@@ -72,6 +77,7 @@ def run_train(
             threshold=threshold,
             n_eval_episodes=n_eval_episodes,
             max_steps=max_steps,
+            seed=seed,
         )
 
     # Compute the total training duration
@@ -167,6 +173,7 @@ def run_probabilistic_curriculum(
     threshold: float,
     n_eval_episodes: int,
     max_steps: float | None,
+    seed: int,
 ) -> None:
     """
     Train a SAC policy using a probabilistic curriculum based on
@@ -310,6 +317,7 @@ def run_probabilistic_curriculum(
                 n_renders=0,
                 n_workers=n_workers,
                 log_debug=False,
+                seed=seed,
             )
 
             # Compute the success rate on this task
@@ -427,14 +435,12 @@ def run_validation(
     checkpoint_strategy: Literal["matching", "final", "best", "current"],
     n_episodes: int,
     n_renders: int,
+    seed: int = 1234,
 ):
     """
     Evaluate a trained policy on the validation scenarios and save the resulting metrics
     and animations.
     """
-
-    # Fix the seed
-    np.random.seed(4321)
 
     # Use the maximum number of workers
     n_workers = os.cpu_count() or 1
@@ -463,6 +469,7 @@ def run_validation(
             n_renders=n_renders,
             n_workers=n_workers,
             log_debug=True,
+            seed=seed,
         )
 
         # Save validation metrics
@@ -524,16 +531,14 @@ def run_evaluation(
     tasks: list[Task],
     policy_name: str,
     checkpoint_name: str,
-    n_episodes: int = 100,
-    n_renders: int = 5,
+    n_episodes: int,
+    n_renders: int,
+    seed: int = 4444,
 ):
     """
     Evaluate a trained policy on a set of tasks and save the corresponding
     performance metrics, figures and animations.
     """
-
-    # Fix the seed
-    np.random.seed(1234)
 
     # Record the start time
     start = time.perf_counter()
@@ -559,6 +564,7 @@ def run_evaluation(
             n_renders=n_renders,
             n_workers=n_workers,
             log_debug=True,
+            seed=seed,
         )
 
         # Save metrics
@@ -620,6 +626,7 @@ def run_animation(
     checkpoint_name: str,
     file_name: str,
     fps: int,
+    seed: int = 4444,
 ) -> None:
     """
     Run one episode for each task and save the rendered frames as an animation.
@@ -631,7 +638,8 @@ def run_animation(
     frames = []
 
     # Create the figure
-    fig, ax = plt.subplots(figsize=(10, 8))
+    fig, ax = plt.subplots(figsize=(16, 8), dpi=100)
+    fig.subplots_adjust(left=0.1, right=0.9, bottom=0.1, top=0.9)
 
     # Run one episode for each task
     for task in tasks:
@@ -657,7 +665,7 @@ def run_animation(
         agent.load_checkpoints()
 
         # Reset the environment
-        state, _ = env.reset(seed=1234)
+        state, _ = env.reset(seed=seed)
 
         # Render the initial environment state and store it
         env.render(ax)

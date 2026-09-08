@@ -1,4 +1,5 @@
 import os
+import random
 import time
 import warnings
 from concurrent.futures import ProcessPoolExecutor
@@ -74,6 +75,8 @@ def run_sac(
         reward_config=task.reward_config,
         name=task.name,
     )
+    action_space_seed = int(np.random.randint(0, np.iinfo(np.int32).max))
+    env.action_space.seed(action_space_seed)
 
     # Define the number of trained agents
     env.set_focus_agents(n_focus_agents=n_trained_agents)
@@ -314,6 +317,7 @@ def evaluate_sac(
     n_renders: int,
     n_workers: int,
     log_debug: bool,
+    seed: int,
 ) -> tuple[list[dict], list[dict] | None, list[np.ndarray] | None, dict]:
     """
     Evaluate a trained SAC policy on a task over multiple episodes.
@@ -343,6 +347,7 @@ def evaluate_sac(
                 checkpoint_name=checkpoint_name,
                 episode_ids=rendered_episode_ids,
                 log_debug=log_debug,
+                seed=seed,
             )
         )
 
@@ -376,6 +381,7 @@ def evaluate_sac(
                     checkpoint_name,
                     episode_ids,
                     log_debug,
+                    seed,
                 )
                 for episode_ids in episode_chunks
             ]
@@ -418,6 +424,7 @@ def _evaluate_worker(
     checkpoint_name: str,
     episode_ids: list[int],
     log_debug: bool,
+    seed: int,
 ) -> tuple[list[tuple[int, dict]], list[dict] | None, list[float]]:
     """
     Evaluate a subset of episodes in a separate process.
@@ -441,14 +448,16 @@ def _evaluate_worker(
 
     # Evaluate all episodes assigned to this worker
     for episode_id in episode_ids:
-        seed = 1234 + episode_id
-        np.random.seed(seed)
+        ep_seed = seed + episode_id
+        random.seed(ep_seed)
+        np.random.seed(ep_seed)
+        torch.manual_seed(ep_seed)
 
         # Generate a new static obstacle configuration
         env.static_obstacles = env.env_manager.generate_static_obstacles()
 
         # Reset the environment
-        state, _ = env.reset(seed=seed)
+        state, _ = env.reset(seed=ep_seed)
         step_id = 0
 
         # Run the episode until completion
@@ -532,6 +541,7 @@ def _evaluate_rendered_episodes(
     checkpoint_name: str,
     episode_ids: list[int],
     log_debug: bool,
+    seed: int,
 ) -> tuple[list[tuple[int, dict]], list[dict] | None, list[np.ndarray], list[float]]:
     """
     Evaluate and render a subset of episodes sequentially.
@@ -552,17 +562,20 @@ def _evaluate_rendered_episodes(
     action_times = []
 
     # Create the rendering figure
-    fig, ax = plt.subplots(figsize=(10, 8))
+    fig, ax = plt.subplots(figsize=(16, 8), dpi=100)
+    fig.subplots_adjust(left=0.1, right=0.9, bottom=0.1, top=0.9)
 
     for episode_id in episode_ids:
-        seed = 1234 + episode_id
-        np.random.seed(seed)
+        ep_seed = seed + episode_id
+        random.seed(ep_seed)
+        np.random.seed(ep_seed)
+        torch.manual_seed(ep_seed)
 
         # Generate a new static obstacle configuration
         env.static_obstacles = env.env_manager.generate_static_obstacles()
 
         # Reset the environment
-        state, _ = env.reset(seed=seed)
+        state, _ = env.reset(seed=ep_seed)
         step_id = 0
 
         # Render the initial state
