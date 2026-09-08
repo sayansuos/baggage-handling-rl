@@ -95,55 +95,56 @@ train_v1:
     reward_config: reward_1
     n_steps: 300_000
 
-train_v2:
+train_v3:
   - name: task1
     env_config: task1
     agent_config: agent_1
     reward_config: reward_1
-    n_steps: 100_000
+    n_steps: null
 
   - name: task2
     env_config: task2
     agent_config: agent_1
     reward_config: reward_1
-    n_steps: 300_000
+    n_steps: null
 
   - name: task3
     env_config: task3
     agent_config: agent_1
     reward_config: reward_1
-    n_steps: 300_000
+    n_steps: null
 
   - name: task4
     env_config: task4
     agent_config: agent_1
     reward_config: reward_1
-    n_steps: 300_000
+    n_steps: null
 
   - name: task5
     env_config: task5
     agent_config: agent_1
     reward_config: reward_1
-    n_steps: 300_000
+    n_steps: null
 
   - name: task6
     env_config: task6
     agent_config: agent_1
     reward_config: reward_1
-    n_steps: 300_000
+    n_steps: null
 
   - name: task7
     env_config: task7
     agent_config: agent_1
     reward_config: reward_1
-    n_steps: 300_000
+    n_steps: null
 
   - name: task8
     env_config: task8
     agent_config: agent_1
     reward_config: reward_1
-    n_steps: 300_000
+    n_steps: null
 
+train_v4:
   - name: task9
     env_config: task9
     agent_config: agent_1
@@ -168,31 +169,32 @@ train_v2:
     reward_config: reward_1
     n_steps: 300_000
 
-  - name: task13
-    env_config: task13
+train_v5:
+  - name: task9
+    env_config: task9
     agent_config: agent_1
     reward_config: reward_1
     n_steps: 300_000
 
-  - name: task14
-    env_config: task14
+  - name: task10
+    env_config: task10
     agent_config: agent_1
     reward_config: reward_1
     n_steps: 300_000
 
-  - name: task15
-    env_config: task15
+  - name: task11
+    env_config: task11
     agent_config: agent_1
     reward_config: reward_1
     n_steps: 300_000
 
-  - name: task16
-    env_config: task16
+  - name: task12
+    env_config: task12
     agent_config: agent_1
     reward_config: reward_1
     n_steps: 300_000
 
-eval:
+eval_v1:
   - name: eval1
     env_config: eval1
     agent_config: agent_1
@@ -237,6 +239,18 @@ eval:
 
   - name: eval8
     env_config: eval8
+    agent_config: agent_1
+    reward_config: reward_1
+    n_steps: null
+
+  - name: eval9
+    env_config: eval9
+    agent_config: agent_1
+    reward_config: reward_1
+    n_steps: null
+
+  - name: eval10
+    env_config: eval10
     agent_config: agent_1
     reward_config: reward_1
     n_steps: null

@@ -16,7 +16,7 @@ class EnvConfig:
     nb_moving_obstacles: int = 0
     nb_targets: int = 2
 
-    margin: int = 2
+    margin: int = 3
     max_attempts: int = 100
     max_steps: int = 300
 
