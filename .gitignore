@@ -193,6 +193,7 @@ cython_debug/
 *.latexindent.yaml
 
 # Directories
+.vscode/
 docs/figures
 docs/modeling_report
 docs/user_guide
