@@ -17,6 +17,7 @@ from rl.sac.sac import evaluate_sac, run_sac, set_checkpoint_paths
 from simulator.environment.environment import Environment
 from utils.logging import log
 from utils.plotting import plot_animation, plot_figures
+from utils.postprocessing import get_summary
 
 # -------------------------------------------------------------------------------------
 # MODE = train
@@ -453,55 +454,68 @@ def run_validation(
         f"Episodes : {n_episodes} | Renders  : {n_renders}\n"
     )
 
-    # Evaluate all tasks
-    for task in tasks:
-        print(f"[ {task.name} ] Evaluating... ", end="\r")
+    # # Evaluate all tasks
+    # for task in tasks:
+    #     print(f"[ {task.name} ] Evaluating... ", end="\r")
 
-        # Run the trained policy over multiple episodes
-        loaded_chkpt_name = (
-            task.name if checkpoint_strategy == "matching" else checkpoint_strategy
-        )
-        history, debug, frames, metrics = evaluate_sac(
-            task=task,
-            policy_name=policy_name,
-            checkpoint_name=loaded_chkpt_name,
-            n_episodes=n_episodes,
-            n_renders=n_renders,
-            n_workers=n_workers,
-            log_debug=True,
-            seed=seed,
-        )
+    #     # Run the trained policy over multiple episodes
+    #     loaded_chkpt_name = (
+    #         task.name if checkpoint_strategy == "matching" else checkpoint_strategy
+    #     )
+    #     history, debug, frames, metrics = evaluate_sac(
+    #         task=task,
+    #         policy_name=policy_name,
+    #         checkpoint_name=loaded_chkpt_name,
+    #         n_episodes=n_episodes,
+    #         n_renders=n_renders,
+    #         n_workers=n_workers,
+    #         log_debug=True,
+    #         seed=seed,
+    #     )
 
-        # Save validation metrics
-        result_chkpt_name = (
-            "matching" if checkpoint_strategy == "matching" else checkpoint_strategy
-        )
-        log(
-            history=history,
-            debug=debug,
-            logs_dir="logs",
-            mode="validation",
-            policy_name=policy_name,
-            checkpoint_name=result_chkpt_name,
-            file_name=task.name,
-        )
+    #     # Save validation metrics
+    #     result_chkpt_name = (
+    #         "matching" if checkpoint_strategy == "matching" else checkpoint_strategy
+    #     )
+    #     log(
+    #         history=history,
+    #         debug=debug,
+    #         logs_dir="logs",
+    #         mode="validation",
+    #         policy_name=policy_name,
+    #         checkpoint_name=result_chkpt_name,
+    #         file_name=task.name,
+    #     )
 
-        # Save an animation when rendering is enabled
-        if n_renders > 0:
-            path = Path("figures/validation") / policy_name / result_chkpt_name
-            print(f"[ {task.name} ] Generating animation... ", end="\r")
-            plot_animation(frames=frames, path=path, file_name=task.name, fps=10)
+    #     # Save an animation when rendering is enabled
+    #     if n_renders > 0:
+    #         path = Path("figures/validation") / policy_name / result_chkpt_name
+    #         print(f"[ {task.name} ] Generating animation... ", end="\r")
+    #         plot_animation(frames=frames, path=path, file_name=task.name, fps=10)
 
-        success_rate = np.mean([episode["success_rate"] for episode in history])
-        print(
-            f"[ {task.name} ] Evaluation terminated. "
-            f"| Success rate = {success_rate:.1%} "
-            f"| Action time = {metrics['mean_action_time'] * 1000:.2f} ms "
-            f"| Actions/s = {metrics['actions_per_second']:.1f} "
-            f"| Actions = {metrics['n_actions']}",
-            end="\r",
-        )
-        print()
+    #     success_rate = np.mean([episode["success_rate"] for episode in history])
+    #     print(
+    #         f"[ {task.name} ] Evaluation terminated. "
+    #         f"| Success rate = {success_rate:.1%} "
+    #         f"| Action time = {metrics['mean_action_time'] * 1000:.2f} ms "
+    #         f"| Actions/s = {metrics['actions_per_second']:.1f} "
+    #         f"| Actions = {metrics['n_actions']}",
+    #         end="\r",
+    #     )
+    #     print()
+
+    result_chkpt_name = (
+        "matching" if checkpoint_strategy == "matching" else checkpoint_strategy
+    )
+    # Compute summary
+    print("\n[ EVALUATION ] Compute summary... \n", end="\r")
+    get_summary(
+        policy_name=policy_name,
+        checkpoint_name=result_chkpt_name,
+        tasks=tasks,
+        mode="validation",
+        logs_dir="logs",
+    )
 
     # Generate validation figures
     print("\n[ VALIDATION ] Generating figures... \n", end="\r")
@@ -551,50 +565,60 @@ def run_evaluation(
         f"Episodes : {n_episodes} | Renders  : {n_renders}\n"
     )
 
-    # Evaluate all tasks with a chosen policy
-    for task in tasks:
-        print(f"[ {task.name} ] Evaluating... ", end="\r")
+    # # Evaluate all tasks with a chosen policy
+    # for task in tasks:
+    #     print(f"[ {task.name} ] Evaluating... ", end="\r")
 
-        # Run the selected policy over multiple episodes
-        history, debug, frames, metrics = evaluate_sac(
-            task=task,
-            policy_name=policy_name,
-            checkpoint_name=checkpoint_name,
-            n_episodes=n_episodes,
-            n_renders=n_renders,
-            n_workers=n_workers,
-            log_debug=True,
-            seed=seed,
-        )
+    #     # Run the selected policy over multiple episodes
+    #     history, debug, frames, metrics = evaluate_sac(
+    #         task=task,
+    #         policy_name=policy_name,
+    #         checkpoint_name=checkpoint_name,
+    #         n_episodes=n_episodes,
+    #         n_renders=n_renders,
+    #         n_workers=n_workers,
+    #         log_debug=True,
+    #         seed=seed,
+    #     )
 
-        # Save metrics
-        print(f"[ {task.name} ] Saving metrics... ", end="\r")
-        log(
-            history=history,
-            debug=debug,
-            logs_dir="logs",
-            mode="evaluation",
-            policy_name=policy_name,
-            checkpoint_name=checkpoint_name,
-            file_name=task.name,
-        )
+    #     # Save metrics
+    #     print(f"[ {task.name} ] Saving metrics... ", end="\r")
+    #     log(
+    #         history=history,
+    #         debug=debug,
+    #         logs_dir="logs",
+    #         mode="evaluation",
+    #         policy_name=policy_name,
+    #         checkpoint_name=checkpoint_name,
+    #         file_name=task.name,
+    #     )
 
-        # Generate animation if required
-        if n_renders > 0:
-            print(f"[ {task.name} ] Generating animation... ", end="\r")
-            path = Path("figures/evaluation") / policy_name / checkpoint_name
-            plot_animation(frames=frames, path=path, file_name=task.name, fps=10)
+    #     # Generate animation if required
+    #     if n_renders > 0:
+    #         print(f"[ {task.name} ] Generating animation... ", end="\r")
+    #         path = Path("figures/evaluation") / policy_name / checkpoint_name
+    #         plot_animation(frames=frames, path=path, file_name=task.name, fps=10)
 
-        success_rate = np.mean([episode["success_rate"] for episode in history])
-        print(
-            f"[ {task.name} ] Evaluation terminated. "
-            f"| Success rate = {success_rate:.1%} "
-            f"| Action time = {metrics['mean_action_time'] * 1000:.2f} ms "
-            f"| Actions/s = {metrics['actions_per_second']:.1f} "
-            f"| Actions = {metrics['n_actions']}",
-            end="\r",
-        )
-        print()
+    #     success_rate = np.mean([episode["success_rate"] for episode in history])
+    #     print(
+    #         f"[ {task.name} ] Evaluation terminated. "
+    #         f"| Success rate = {success_rate:.1%} "
+    #         f"| Action time = {metrics['mean_action_time'] * 1000:.2f} ms "
+    #         f"| Actions/s = {metrics['actions_per_second']:.1f} "
+    #         f"| Actions = {metrics['n_actions']}",
+    #         end="\r",
+    #     )
+    #     print()
+
+    # Compute summary
+    print("\n[ EVALUATION ] Compute summary... \n", end="\r")
+    get_summary(
+        policy_name=policy_name,
+        checkpoint_name=checkpoint_name,
+        tasks=tasks,
+        mode="evaluation",
+        logs_dir="logs",
+    )
 
     # Generate evaluation figures
     print("\n[ EVALUATION ] Generating figures... \n", end="\r")

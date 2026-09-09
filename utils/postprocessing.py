@@ -14,74 +14,107 @@ def get_summary(
     checkpoint_name: str,
     tasks: list[Task],
     mode: Literal["validation", "evaluation"],
-) -> tuple[pd.DataFrame, pd.DataFrame]:
+    logs_dir: str = "logs",
+    confidence: float = 0.95,
+    n_bootstrap: int = 10_000,
+    seed: int = 4321,
+) -> pd.DataFrame:
     """
-    Compute the metrics summary for analysis.
+    Compute task-level metrics, confidence intervals, collision types,
+    traveled distances, and speed variations.
     """
 
-    summary = pd.DataFrame(
-        columns=[
-            "task",
-            "n_agents",
-            "success_rate",
-            "collision_rate",
-            "timeout_rate",
-            "mean_travel_time",
-            "mean_return",
-        ]
-    )
+    logs_dir = Path(logs_dir) / mode / policy_name / checkpoint_name
 
-    metrics = [
+    metrics_names = [
         "success_rate",
         "collision_rate",
         "timeout_rate",
-        "mean_travel_time",
         "mean_return",
+        "mean_v",
+        "mean_abs_omega",
+        "mean_travel_time",
     ]
-    ic = []
 
-    for task in tasks:
+    rows = []
+
+    for i, task in enumerate(tasks):
         task_name = task.name
-        df = pd.read_csv(
-            f"logs/{mode}/{policy_name}/{checkpoint_name}/{task_name}_metrics.csv"
-        )
-        df = df.rename(
+
+        metrics_path = logs_dir / f"{task_name}_metrics.csv"
+        debug_path = logs_dir / f"{task_name}_debug.csv"
+
+        # Load episode metrics
+        metrics = pd.read_csv(metrics_path)
+        metrics = metrics.rename(
             columns={
                 "mean_time_travel": "mean_travel_time",
                 "return_total": "mean_return",
             }
         )
-        df["timeout_rate"] = df.apply(
-            lambda x: max(0, 1 - x["success_rate"] - x["collision_rate"]), axis=1
-        )
-        row = {
-            "task": task_name,
-            "n_agents": task.env_config.nb_agents,
-            "success_rate": df["success_rate"].mean().round(2),
-            "collision_rate": df["collision_rate"].mean().round(2),
-            "timeout_rate": df["timeout_rate"].mean().round(2),
-            "mean_travel_time": df["mean_travel_time"].mean().round(2),
-            "mean_return": df["mean_return"].mean().astype(int),
-        }
-        summary.loc[len(summary)] = row
+        metrics["timeout_rate"] = (
+            1 - metrics["success_rate"] - metrics["collision_rate"]
+        ).clip(0, 1)
 
-        ic_row = {"task": task.name}
-        for metric in metrics:
-            values = df[metric].to_numpy()
-            lower, upper = get_bootstrap_ci(
-                values=values, confidence=0.95, n_bootstrap=10_000, seed=1234
+        row = {"task": task_name, "n_agents": task.env_config.nb_agents}
+
+        # Compute means and bootstrap confidence intervals
+        for j, metric in enumerate(metrics_names):
+            values = metrics[metric].dropna().to_numpy(dtype=float)
+
+            mean = values.mean()
+
+            lower, upper = _get_bootstrap_ci(
+                values=values,
+                confidence=confidence,
+                n_bootstrap=n_bootstrap,
+                seed=(seed + i * len(metrics) + j),
             )
-            ic_row[f"{metric}_low"] = round(lower, 2)
-            ic_row[f"{metric}_high"] = round(upper, 2)
 
-        ic.append(ic_row)
+            row[metric] = mean
+            row[f"{metric}_low"] = lower
+            row[f"{metric}_high"] = upper
 
-    ic = pd.DataFrame(ic)
+        # Load debug data
+        debug_columns = [
+            "task",
+            "episode",
+            "step",
+            "agent",
+            "pos_x",
+            "pos_y",
+            "v",
+            "omega",
+            "closest_entity",
+            "state",
+        ]
+        debug = pd.read_csv(debug_path, usecols=debug_columns)
+        debug = debug.sort_values(["task", "episode", "agent", "step"])
 
-    return summary, ic
+        # Compute collision distributions
+        collision_types = _get_collision_types(debug=debug)
+        row.update(collision_types)
+
+        # Compute step-level distance and speed variations
+        dist_speed = _get_dist_speed(debug=debug)
+        row.update(dist_speed)
+
+        # Add information
+        rows.append(row)
+
+    summary = pd.DataFrame(rows)
+    summary = (
+        summary.set_index("task").reindex([task.name for task in tasks]).reset_index()
+    )
+
+    # Save the processed summary
+    summary_path = logs_dir / "summary.csv"
+    summary.to_csv(summary_path, index=False)
+
+    return summary
 
 
-def get_bootstrap_ci(
+def _get_bootstrap_ci(
     values: np.ndarray,
     confidence: float = 0.95,
     n_bootstrap: int = 10_000,
@@ -106,136 +139,108 @@ def get_bootstrap_ci(
     return lower, upper
 
 
-def get_collision_types(
-    policy_name: str,
-    checkpoint_name: str,
-    tasks: list[Task],
-    mode: Literal["validation", "evaluation"],
-) -> pd.DataFrame:
+def _get_collision_types(debug: pd.DataFrame) -> dict:
     """
-    Compute the distribution of collision types for each task.
+    Compute the distribution of collision types.
     """
 
-    df = pd.DataFrame(
-        columns=[
-            "task",
-            "n_collisions",
-            "collision_with_agent",
-            "collision_with_static",
-            "collision_with_moving",
+    # Select variables and sort
+    collisions = (
+        debug.loc[
+            debug["state"].eq("truncated"),
+            ["task", "episode", "step", "agent", "closest_entity"],
         ]
+        .drop_duplicates(subset=["task", "episode", "agent"], keep="first")
+        .copy()
     )
 
-    for task in tasks:
-        task_name = task.name
-        debug = pd.read_csv(
-            f"logs/{mode}/{policy_name}/{checkpoint_name}/{task_name}_debug.csv"
-        )
+    # Replace NA values
+    collisions["closest_entity"] = collisions["closest_entity"].replace(
+        {"None": pd.NA, "": pd.NA}
+    )
+    collisions = collisions.dropna(subset=["closest_entity"])
 
-        df_raw = (
-            debug.loc[
-                debug["state"] == "truncated",
-                ["task", "episode", "step", "agent", "closest_entity"],
-            ]
-            .sort_values(["task", "episode", "agent", "step"])
-            .drop_duplicates(subset=["task", "episode", "agent"], keep="first")
-            .reset_index(drop=True)
-        )
+    # Identify collision type
+    collisions["collision_type"] = (
+        collisions["closest_entity"].astype(str).str.replace(r"_\d+$", "", regex=True)
+    )
 
-        df_raw["closest_entity"] = df_raw["closest_entity"].replace(
-            {"None": pd.NA, "": pd.NA}
-        )
-        df_raw = df_raw.dropna(subset=["closest_entity"])
+    # Compute percentages
+    collision_percentages = (
+        collisions["collision_type"]
+        .value_counts(normalize=True)
+        .mul(100)
+        .reindex(["agent", "static_entity", "moving_obstacle"], fill_value=0)
+    )
 
-        df_raw["collision_type"] = df_raw["closest_entity"].str.extract(
-            r"^(.+?)_\d+$", expand=False
-        )
+    row = {
+        "n_collisions": len(collisions),
+        "collision_with_agent": (collision_percentages["agent"]),
+        "collision_with_static": (collision_percentages["static_entity"]),
+        "collision_with_moving": (collision_percentages["moving_obstacle"]),
+    }
 
-        row_raw = (
-            df_raw["collision_type"]
-            .value_counts(normalize=True)
-            .mul(100)
-            .reindex(["agent", "static_entity", "moving_obstacle"], fill_value=0)
-            .round(2)
-            .T
-        )
-
-        df.loc[len(df)] = {
-            "task": task_name,
-            "n_collisions": len(df_raw),
-            "collision_with_agent": row_raw["agent"],
-            "collision_with_static": row_raw["static_entity"],
-            "collision_with_moving": row_raw["moving_obstacle"],
-        }
-
-    return df
+    return row
 
 
-def get_dist_speed(
-    policy_name: str,
-    checkpoint_name: str,
-    tasks: list[Task],
-    mode: Literal["validation", "evaluation"],
-) -> pd.DataFrame:
+def _get_dist_speed(debug: pd.DataFrame) -> dict:
     """
-    Compute the mean traveled distance and the speed variations for each task.
+    Compute the mean traveled distance and the speed variations.
     """
 
-    columns = ["task", "episode", "step", "agent", "pos_x", "pos_y", "v", "omega"]
-
-    dataframes = []
-    for task in tasks:
-        task_name = task.name
-        df = pd.read_csv(
-            f"logs/{mode}/{policy_name}/{checkpoint_name}/{task_name}_debug.csv"
-        )
-        dataframes.append(df[columns])
-    debug = pd.concat(dataframes, ignore_index=True)
-
+    # Keep data until the first terminal state of each agent
     group_columns = ["task", "episode", "agent"]
-    debug = debug.sort_values([*group_columns, "step"])
+    terminal_state = debug["state"].isin(["terminated", "truncated"])
+    first_terminal_step = (
+        debug["step"]
+        .where(terminal_state)
+        .groupby([debug["task"], debug["episode"], debug["agent"]])
+        .transform("min")
+    )
+    motion = debug.loc[
+        first_terminal_step.isna() | debug["step"].le(first_terminal_step)
+    ].copy()
 
     # Compute distance between steps
-    delta_x = debug.groupby(group_columns)["pos_x"].diff()
-    delta_y = debug.groupby(group_columns)["pos_y"].diff()
-    debug["step_distance"] = np.hypot(delta_x, delta_y)
+    delta_x = motion.groupby(group_columns)["pos_x"].diff()
+    delta_y = motion.groupby(group_columns)["pos_y"].diff()
+    motion["step_distance"] = np.hypot(delta_x, delta_y)
 
     # Compute speed variation between steps
-    debug["abs_delta_v"] = debug.groupby(group_columns)["v"].diff().abs()
-    debug["abs_delta_omega"] = debug.groupby(group_columns)["omega"].diff().abs()
+    motion["abs_delta_v"] = motion.groupby(group_columns)["v"].diff().abs()
+    motion["abs_delta_omega"] = motion.groupby(group_columns)["omega"].diff().abs()
 
-    # Aggregate all
-    summary = debug.groupby(group_columns, as_index=False, sort=False).agg(
-        n_steps=("step", "count"),
+    # Aggregate per agent and episode
+    agent_episodes = motion.groupby(group_columns, as_index=False, sort=False).agg(
         distance_traveled=("step_distance", "sum"),
-        mean_v=("v", "mean"),
-        mean_abs_omega=("omega", lambda x: x.abs().mean()),
         mean_abs_delta_v=("abs_delta_v", "mean"),
         mean_abs_delta_omega=("abs_delta_omega", "mean"),
     )
 
-    # Compute mean per tasl
-    df = (
-        summary.groupby("task", as_index=False)
-        .agg(
-            mean_distance_traveled=("distance_traveled", "mean"),
-            mean_abs_delta_v=("mean_abs_delta_v", "mean"),
-            mean_abs_delta_omega=("mean_abs_delta_omega", "mean"),
-        )
-        .round(3)
-    )
+    row = {
+        "mean_distance_traveled": (agent_episodes["distance_traveled"].mean()),
+        "mean_abs_delta_v": (agent_episodes["mean_abs_delta_v"].mean()),
+        "mean_abs_delta_omega": (agent_episodes["mean_abs_delta_omega"].mean()),
+    }
 
-    return df
+    return row
 
 
 def plot_training_heatmap(
     policy_name: str,
-    metric: str,
+    metric: Literal[
+        "sucess_rate",
+        "collision_rate",
+        "timeout_rate",
+        "mean_v",
+        "mean_abs_omega",
+        "return_total",
+    ],
     tasks: list[Task],
     path: str | Path,
     cmap: str = "RdYlGn",
     n_bins: int = 50,
-) -> None:
+) -> pd.DataFrame:
     """
     Plot the evolution of a training metric for each curriculum task.
     """
@@ -262,15 +267,16 @@ def plot_training_heatmap(
 
     # Plot heatmap
     task_names = [task.name for task in tasks]
-    task_labels = (
-        df["task"]
-        .map(lambda task_name: _get_title(task_name=task_name))
-        .unique()
-        .tolist()
-    )
-    values = values.reindex(task_names)
-    vmin = np.floor(values.min().min())
-    vmax = np.ceil(values.max().max())
+    values = values.reindex(index=task_names, columns=range(n_bins))
+    task_labels = [_get_title(task_name=task_name) for task_name in task_names]
+    if metric == "return_total":
+        vmin, vmax = np.floor(values.min().min()), np.ceil(values.max().max())
+    elif metric == "mean_v":
+        vmin, vmax = 0.0, 2.0
+    elif metric == "mean_abs_omega":
+        vmin, vmax = 0.0, np.pi / 3
+    else:
+        vmin, vmax = 0.0, 1.0
     im = ax.imshow(
         values, aspect="auto", vmin=vmin, vmax=vmax, interpolation="nearest", cmap=cmap
     )
@@ -289,6 +295,8 @@ def plot_training_heatmap(
 
     plt.tight_layout()
     fig.savefig(path / f"{metric}.png", dpi=300)
+
+    return values
 
 
 def _get_title(task_name: str) -> str:
