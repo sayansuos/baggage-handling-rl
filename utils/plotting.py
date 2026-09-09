@@ -158,71 +158,27 @@ def plot_figures(
 ) -> tuple[Figure, Figure, Figure]:
     """
     Generate training curves or validation/evaluation summaries.
-
-    For training, ''file_name'' identifies the task or curriculum log.
-    For validation and evaluation, all task logs of the policy are combined.
     """
 
     # Create the output directory if it does not exist
-    if mode == "train":
-        figs_dir = Path(figs_dir) / mode / policy_name
-    else:
-        figs_dir = Path(figs_dir) / mode / policy_name / checkpoint_name
-    figs_dir.mkdir(parents=True, exist_ok=True)
 
     # Load one task logs for train
     if mode == "train":
+        figs_dir = Path(figs_dir) / mode / policy_name
         logs_dir = Path(logs_dir) / mode / policy_name
         metrics_file = logs_dir / "metrics.csv"
         rewards_file = logs_dir / "rewards.csv"
-
-        if not metrics_file.is_file():
-            raise FileNotFoundError(f"Performance log not found: {metrics_file}")
-        if not rewards_file.is_file():
-            raise FileNotFoundError(f"Reward log not found: {rewards_file}")
-
         metrics = pd.read_csv(metrics_file)
         rewards = pd.read_csv(rewards_file)
 
     # Load all tasks logs for validation and evaluation
     else:
+        figs_dir = Path(figs_dir) / mode / policy_name / checkpoint_name
         logs_dir = Path(logs_dir) / mode / policy_name / checkpoint_name
-        metrics_files = sorted(logs_dir.glob("*_metrics.csv"))
-        rewards_files = sorted(logs_dir.glob("*_rewards.csv"))
+        summary_path = Path(logs_dir) / "summary.csv"
+        summary = pd.read_csv(summary_path)
+        metrics, rewards = summary, summary
 
-        if not metrics_files:
-            raise FileNotFoundError(f"No metrics files found in: {logs_dir}")
-        if not rewards_files:
-            raise FileNotFoundError(f"No reward files found in: {logs_dir}")
-
-        # Concatenate all files in one
-        metrics_frames = []
-        rewards_frames = []
-
-        for metrics_file in metrics_files:
-            task_name = metrics_file.name.removesuffix("_metrics.csv")
-            task_df = pd.read_csv(metrics_file)
-            task_df["task"] = task_name
-            metrics_frames.append(task_df)
-
-        for rewards_file in rewards_files:
-            task_name = rewards_file.name.removesuffix("_rewards.csv")
-            task_df = pd.read_csv(rewards_file)
-            task_df["task"] = task_name
-            rewards_frames.append(task_df)
-
-        metrics = pd.concat(metrics_frames, ignore_index=True)
-        rewards = pd.concat(rewards_frames, ignore_index=True)
-
-        # Create one summary row per task
-        metrics = metrics.groupby("task", sort=False, as_index=False).mean(
-            numeric_only=True
-        )
-        rewards = rewards.groupby("task", sort=False, as_index=False).mean(
-            numeric_only=True
-        )
-
-    # Generate figures
     rewards = _plot_rewards(mode=mode, df=rewards, path=figs_dir, window=window)
     performances = _plot_performances(
         mode=mode, df=metrics, path=figs_dir, window=window
@@ -249,19 +205,21 @@ def _plot_performances(
     path = Path(path)
     path.mkdir(parents=True, exist_ok=True)
 
-    # Create the subplot grid (one for rates and one for travel time)
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(9, 8), sharex=True)
-
-    df = df.copy()
-
-    # Compute the timeout rate
-    df["timeout_rate"] = (1 - df["success_rate"] - df["collision_rate"]).clip(0, 1)
+    # Create the subplots
+    fig1, ax1 = plt.subplots(figsize=(8, 4))
+    fig2, ax2 = plt.subplots(figsize=(8, 4))
 
     # Convert rates to percentage
     cols = ["success_rate", "collision_rate", "timeout_rate"]
-    df[cols] = 100 * df[cols]
 
+    df = df.copy()
     if mode == "train":
+        # Compute the timeout rate
+        df["timeout_rate"] = (1 - df["success_rate"] - df["collision_rate"]).clip(0, 1)
+
+        # Convert rates to percentage
+        df[cols] = 100 * df[cols]
+
         # Smooth the curves
         cols = [*cols, "mean_time_travel"]
         for col in cols:
@@ -281,7 +239,10 @@ def _plot_performances(
         )
 
         # Configure the figure
-        ax1.set_title("Training performance")
+        ax1.set_title("Training rates")
+        ax1.set_xlabel("Episode")
+
+        ax2.set_title("Training mean travel time")
         ax2.set_xlabel("Episode")
 
     else:
@@ -290,39 +251,81 @@ def _plot_performances(
             "task", key=lambda x: x.str.extract(r"(\d+)$", expand=False).astype(int)
         )
 
+        # Convert rates to percentage
+        cols = [
+            column
+            for metric in cols
+            for column in [metric, f"{metric}_low", f"{metric}_high"]
+        ]
+        df[cols] = 100 * df[cols]
+
         # Define bars
         x = np.arange(len(df))
-        task_labels = df["task"].map(lambda task_name: _get_title(task_name=task_name))
         width = 0.25
+        task_labels = df["task"].map(lambda task_name: _get_title(task_name=task_name))
 
         # Plot
-        ax1.bar(x - width, df["success_rate"], width, label="Success")
-        ax1.bar(x, df["collision_rate"], width, label="Collision")
-        ax1.bar(x + width, df["timeout_rate"], width, label="Timeout")
-
-        ax2.bar(x, df["mean_time_travel"], label="Mean travel time")
+        ax1.bar(
+            x - width,
+            df["success_rate"],
+            width,
+            yerr=_get_yerr(df, "success_rate"),
+            capsize=3,
+            label="Success",
+        )
+        ax1.bar(
+            x,
+            df["collision_rate"],
+            width,
+            yerr=_get_yerr(df, "collision_rate"),
+            capsize=3,
+            label="Collision",
+        )
+        ax1.bar(
+            x + width,
+            df["timeout_rate"],
+            width,
+            yerr=_get_yerr(df, "timeout_rate"),
+            capsize=3,
+            label="Timeout",
+        )
+        ax2.bar(
+            x,
+            df["mean_travel_time"],
+            yerr=_get_yerr(df, "mean_travel_time"),
+            capsize=3,
+            label="Mean travel time",
+        )
 
         # Configure the figure
-        ax1.set_title(f"{mode.capitalize()} performance")
-        ax2.set_xticks(x)
-        ax2.set_xticklabels(task_labels, rotation=45, ha="right")
+        for ax in [ax1, ax2]:
+            ax.set_xticks(x)
+            ax.set_xticklabels(
+                task_labels,
+                rotation=45,
+                ha="right",
+            )
+            ax.set_xlabel("Task")
+
+        ax1.set_title(f"{mode.capitalize()} rates")
+        ax2.set_title(f"{mode.capitalize()} mean travel time")
 
     # Configure the figure
     ax1.set_ylabel("Rate (%)")
-    ax1.set_ylim(0, 100)
+    ax1.set_ylim(0, 105)
     ax1.grid(axis="y", alpha=0.3)
-    ax1.legend()
-
+    ax1.legend(loc="upper center", bbox_to_anchor=(0.5, -0.18), ncol=3, frameon=False)
+    fig1.tight_layout()
     ax2.set_ylabel("Travel time")
     ax2.grid(axis="y", alpha=0.3)
     ax2.legend()
-
-    fig.tight_layout()
+    fig2.tight_layout()
 
     # Save the figure
-    fig.savefig(path / "performances.png", dpi=300)
+    fig1.savefig(path / "rates.png", dpi=300)
+    fig2.savefig(path / "travel_time.png", dpi=300)
 
-    return fig
+    return fig1
 
 
 def _plot_velocities(
@@ -381,18 +384,25 @@ def _plot_velocities(
 
         # Define bars
         x = np.arange(len(df))
-        task_labels = df["task"].map(lambda task_name: _get_title(task_name=task_name))
-
         width = 0.35
+        task_labels = df["task"].map(lambda task_name: _get_title(task_name=task_name))
 
         # Plot
         ax.bar(
-            x - width / 2, df["mean_v"], width, label="Mean v (m/s)", color="tab:blue"
+            x - width / 2,
+            df["mean_v"],
+            width,
+            yerr=_get_yerr(df, "mean_v"),
+            capsize=3,
+            label="Mean v (m/s)",
+            color="tab:blue",
         )
         ax.bar(
             x + width / 2,
             df["mean_abs_omega"],
             width,
+            yerr=_get_yerr(df, "mean_abs_omega"),
+            capsize=3,
             label="Mean |omega| (rad/s)",
             color="tab:orange",
         )
@@ -476,7 +486,13 @@ def _plot_rewards(
         x = np.arange(len(df))
         task_labels = df["task"].map(lambda task_name: _get_title(task_name=task_name))
 
-        ax.bar(x, df["return_total"], color="tab:blue")
+        ax.bar(
+            x,
+            df["mean_return"],
+            yerr=_get_yerr(df, "mean_return"),
+            capsize=3,
+            color="tab:blue",
+        )
 
         # Configure the figure
         ax.set_xticks(x)
@@ -496,6 +512,17 @@ def _plot_rewards(
     fig.savefig(path / "rewards.png", dpi=300)
 
     return fig
+
+
+def _get_yerr(df: pd.DataFrame, metric: str) -> np.ndarray:
+    """
+    Return asymmetric error bars from confidence interval bounds.
+    """
+
+    lower_error = (df[metric] - df[f"{metric}_low"]).clip(lower=0)
+    upper_error = (df[f"{metric}_high"] - df[metric]).clip(lower=0)
+
+    return np.vstack([lower_error.to_numpy(), upper_error.to_numpy()])
 
 
 def _get_title(task_name: str) -> str:
