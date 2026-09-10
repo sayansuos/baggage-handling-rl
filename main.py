@@ -33,6 +33,7 @@ def main() -> None:
             init_policy_name=args.init_policy_name,
             init_checkpoint_name=args.init_checkpoint_name,
             max_steps=max_steps,
+            max_hours=args.max_hours,
             sequential_curriculum=args.sequential_curriculum,
         )
 

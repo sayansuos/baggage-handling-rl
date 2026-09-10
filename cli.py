@@ -51,6 +51,12 @@ def build_parser() -> argparse.ArgumentParser:
     train_parser.add_argument(
         "--policy-name", type=str, required=True, help="Name of the trained policy."
     )
+    train_parser.add_argument(
+        "--max-hours",
+        type=float,
+        default=None,
+        help="Maximum training runtime in hours.",
+    )
 
     train_group = train_parser.add_mutually_exclusive_group()
     train_group.add_argument(

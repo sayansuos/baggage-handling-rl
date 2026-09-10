@@ -31,6 +31,7 @@ def run_train(
     init_policy_name: str | None,
     init_checkpoint_name: str | None,
     max_steps: float | None,
+    max_hours: float | None,
     sequential_curriculum: bool = False,
     seed: int = 1234,
 ):
@@ -78,6 +79,7 @@ def run_train(
             threshold=threshold,
             n_eval_episodes=n_eval_episodes,
             max_steps=max_steps,
+            max_hours=max_hours,
             seed=seed,
         )
 
@@ -174,6 +176,7 @@ def run_probabilistic_curriculum(
     threshold: float,
     n_eval_episodes: int,
     max_steps: float | None,
+    max_hours: float | None,
     seed: int,
 ) -> None:
     """
@@ -196,9 +199,21 @@ def run_probabilistic_curriculum(
     # Keep one SAC agent during the entire curriculum
     agent = None
 
-    # Set total budget : max_steps or same as fixed curriculum
+    # Set total budget : max_steps or same as fixed curriculum or duration
     if max_steps is None:
         max_steps = sum(task.n_steps for task in tasks)
+
+    training_start = time.monotonic()
+    if max_hours is not None:
+        # Convert max_duration to seconds
+        max_duration = max_hours * 3600
+
+    def time_limit_reached() -> bool:
+        if max_duration is None:
+            return False
+
+        elapsed = time.monotonic() - training_start
+        return elapsed >= max_duration
 
     episode_offset = 0
     total_steps = 0
@@ -214,7 +229,7 @@ def run_probabilistic_curriculum(
     # Curriculum loop
     # ---------------------------------------------------------------------------------
 
-    while total_steps < max_steps:
+    while total_steps < max_steps and not time_limit_reached():
         # Give the current focus task the largest Dirichlet parameter
         alpha = np.ones(n_tasks)
         alpha[focus_idx] = n_tasks
@@ -228,7 +243,7 @@ def run_probabilistic_curriculum(
         # Train several chunks before evaluation
         # -----------------------------------------------------------------------------
         for _ in range(n_chunks):
-            if total_steps >= max_steps:
+            if total_steps >= max_steps or time_limit_reached():
                 break
 
             # Sample a probability vector over curriculum tasks
@@ -417,7 +432,26 @@ def run_probabilistic_curriculum(
         for figure in figures:
             plt.close(figure)
 
+        # Stop when the curriculum is completed
         if curriculum_completed:
+            break
+
+        # Stop when the time limit is reached
+        if time_limit_reached():
+            elapsed_hours = (time.monotonic() - training_start) / 3600
+            print(
+                "\n[ CURRICULUM ] Time limit reached "
+                f"| elapsed={elapsed_hours:.2f} h "
+                f"| min success={np.min(success_rates):.1%}\n"
+            )
+            break
+
+        # Stop when the step limit is reached
+        if total_steps >= max_steps:
+            print(
+                "\n[ CURRICULUM ] Steps limit reached "
+                f"| min success={np.min(success_rates):.1%}\n"
+            )
             break
 
     # Save the policy obtained at the end of training
@@ -454,55 +488,55 @@ def run_validation(
         f"Episodes : {n_episodes} | Renders  : {n_renders}\n"
     )
 
-    # # Evaluate all tasks
-    # for task in tasks:
-    #     print(f"[ {task.name} ] Evaluating... ", end="\r")
+    # Evaluate all tasks
+    for task in tasks:
+        print(f"[ {task.name} ] Evaluating... ", end="\r")
 
-    #     # Run the trained policy over multiple episodes
-    #     loaded_chkpt_name = (
-    #         task.name if checkpoint_strategy == "matching" else checkpoint_strategy
-    #     )
-    #     history, debug, frames, metrics = evaluate_sac(
-    #         task=task,
-    #         policy_name=policy_name,
-    #         checkpoint_name=loaded_chkpt_name,
-    #         n_episodes=n_episodes,
-    #         n_renders=n_renders,
-    #         n_workers=n_workers,
-    #         log_debug=True,
-    #         seed=seed,
-    #     )
+        # Run the trained policy over multiple episodes
+        loaded_chkpt_name = (
+            task.name if checkpoint_strategy == "matching" else checkpoint_strategy
+        )
+        history, debug, frames, metrics = evaluate_sac(
+            task=task,
+            policy_name=policy_name,
+            checkpoint_name=loaded_chkpt_name,
+            n_episodes=n_episodes,
+            n_renders=n_renders,
+            n_workers=n_workers,
+            log_debug=True,
+            seed=seed,
+        )
 
-    #     # Save validation metrics
-    #     result_chkpt_name = (
-    #         "matching" if checkpoint_strategy == "matching" else checkpoint_strategy
-    #     )
-    #     log(
-    #         history=history,
-    #         debug=debug,
-    #         logs_dir="logs",
-    #         mode="validation",
-    #         policy_name=policy_name,
-    #         checkpoint_name=result_chkpt_name,
-    #         file_name=task.name,
-    #     )
+        # Save validation metrics
+        result_chkpt_name = (
+            "matching" if checkpoint_strategy == "matching" else checkpoint_strategy
+        )
+        log(
+            history=history,
+            debug=debug,
+            logs_dir="logs",
+            mode="validation",
+            policy_name=policy_name,
+            checkpoint_name=result_chkpt_name,
+            file_name=task.name,
+        )
 
-    #     # Save an animation when rendering is enabled
-    #     if n_renders > 0:
-    #         path = Path("figures/validation") / policy_name / result_chkpt_name
-    #         print(f"[ {task.name} ] Generating animation... ", end="\r")
-    #         plot_animation(frames=frames, path=path, file_name=task.name, fps=10)
+        # Save an animation when rendering is enabled
+        if n_renders > 0:
+            path = Path("figures/validation") / policy_name / result_chkpt_name
+            print(f"[ {task.name} ] Generating animation... ", end="\r")
+            plot_animation(frames=frames, path=path, file_name=task.name, fps=10)
 
-    #     success_rate = np.mean([episode["success_rate"] for episode in history])
-    #     print(
-    #         f"[ {task.name} ] Evaluation terminated. "
-    #         f"| Success rate = {success_rate:.1%} "
-    #         f"| Action time = {metrics['mean_action_time'] * 1000:.2f} ms "
-    #         f"| Actions/s = {metrics['actions_per_second']:.1f} "
-    #         f"| Actions = {metrics['n_actions']}",
-    #         end="\r",
-    #     )
-    #     print()
+        success_rate = np.mean([episode["success_rate"] for episode in history])
+        print(
+            f"[ {task.name} ] Evaluation terminated. "
+            f"| Success rate = {success_rate:.1%} "
+            f"| Action time = {metrics['mean_action_time'] * 1000:.2f} ms "
+            f"| Actions/s = {metrics['actions_per_second']:.1f} "
+            f"| Actions = {metrics['n_actions']}",
+            end="\r",
+        )
+        print()
 
     result_chkpt_name = (
         "matching" if checkpoint_strategy == "matching" else checkpoint_strategy
@@ -565,50 +599,50 @@ def run_evaluation(
         f"Episodes : {n_episodes} | Renders  : {n_renders}\n"
     )
 
-    # # Evaluate all tasks with a chosen policy
-    # for task in tasks:
-    #     print(f"[ {task.name} ] Evaluating... ", end="\r")
+    # Evaluate all tasks with a chosen policy
+    for task in tasks:
+        print(f"[ {task.name} ] Evaluating... ", end="\r")
 
-    #     # Run the selected policy over multiple episodes
-    #     history, debug, frames, metrics = evaluate_sac(
-    #         task=task,
-    #         policy_name=policy_name,
-    #         checkpoint_name=checkpoint_name,
-    #         n_episodes=n_episodes,
-    #         n_renders=n_renders,
-    #         n_workers=n_workers,
-    #         log_debug=True,
-    #         seed=seed,
-    #     )
+        # Run the selected policy over multiple episodes
+        history, debug, frames, metrics = evaluate_sac(
+            task=task,
+            policy_name=policy_name,
+            checkpoint_name=checkpoint_name,
+            n_episodes=n_episodes,
+            n_renders=n_renders,
+            n_workers=n_workers,
+            log_debug=True,
+            seed=seed,
+        )
 
-    #     # Save metrics
-    #     print(f"[ {task.name} ] Saving metrics... ", end="\r")
-    #     log(
-    #         history=history,
-    #         debug=debug,
-    #         logs_dir="logs",
-    #         mode="evaluation",
-    #         policy_name=policy_name,
-    #         checkpoint_name=checkpoint_name,
-    #         file_name=task.name,
-    #     )
+        # Save metrics
+        print(f"[ {task.name} ] Saving metrics... ", end="\r")
+        log(
+            history=history,
+            debug=debug,
+            logs_dir="logs",
+            mode="evaluation",
+            policy_name=policy_name,
+            checkpoint_name=checkpoint_name,
+            file_name=task.name,
+        )
 
-    #     # Generate animation if required
-    #     if n_renders > 0:
-    #         print(f"[ {task.name} ] Generating animation... ", end="\r")
-    #         path = Path("figures/evaluation") / policy_name / checkpoint_name
-    #         plot_animation(frames=frames, path=path, file_name=task.name, fps=10)
+        # Generate animation if required
+        if n_renders > 0:
+            print(f"[ {task.name} ] Generating animation... ", end="\r")
+            path = Path("figures/evaluation") / policy_name / checkpoint_name
+            plot_animation(frames=frames, path=path, file_name=task.name, fps=10)
 
-    #     success_rate = np.mean([episode["success_rate"] for episode in history])
-    #     print(
-    #         f"[ {task.name} ] Evaluation terminated. "
-    #         f"| Success rate = {success_rate:.1%} "
-    #         f"| Action time = {metrics['mean_action_time'] * 1000:.2f} ms "
-    #         f"| Actions/s = {metrics['actions_per_second']:.1f} "
-    #         f"| Actions = {metrics['n_actions']}",
-    #         end="\r",
-    #     )
-    #     print()
+        success_rate = np.mean([episode["success_rate"] for episode in history])
+        print(
+            f"[ {task.name} ] Evaluation terminated. "
+            f"| Success rate = {success_rate:.1%} "
+            f"| Action time = {metrics['mean_action_time'] * 1000:.2f} ms "
+            f"| Actions/s = {metrics['actions_per_second']:.1f} "
+            f"| Actions = {metrics['n_actions']}",
+            end="\r",
+        )
+        print()
 
     # Compute summary
     print("\n[ EVALUATION ] Compute summary... \n", end="\r")
